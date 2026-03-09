@@ -1,0 +1,317 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+    <div>
+        <div class="eyebrow">解释详情</div>
+        <h2>{{ explanation["overall"]["headline"] if explanation else "还没有解释内容" }}</h2>
+        <p>{{ advice.summary_text if advice else "先生成一条建议。" }}</p>
+    </div>
+    {% if advice %}
+    <div class="action-cluster">
+        <a class="primary-link" href="/evidence/{{ advice.id }}">查看数据证据</a>
+    </div>
+    {% endif %}
+</section>
+
+{% if explanation %}
+<section class="card">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">整体判断</div>
+            <h3>{{ explanation["overall"]["market_regime"] }}</h3>
+        </div>
+    </div>
+    <div class="evidence-list">
+        {% for item in explanation["overall"]["evidence"] %}
+        <div><span>{{ item.label }}</span><strong>{{ item.value }}</strong></div>
+        {% endfor %}
+    </div>
+    <ul class="plain-list">
+        {% for reason in explanation["overall"]["reasons"] %}
+        <li>{{ reason }}</li>
+        {% endfor %}
+    </ul>
+    <p class="muted">{{ explanation["overall"]["session_hint"] }}</p>
+    <ul class="plain-list">
+        {% for risk in explanation["overall"]["risks"] %}
+        <li>{{ risk }}</li>
+        {% endfor %}
+    </ul>
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">出手规则</div>
+            <h3>系统为什么现在出手，或者为什么先不出手</h3>
+        </div>
+    </div>
+    <p>{{ explanation["overall"]["execution_rule"]["rule"] }}</p>
+    <div class="evidence-list">
+        <div><span>出手阈值</span><strong>{{ "%.1f"|format(explanation["overall"]["execution_rule"]["threshold"]) }}</strong></div>
+        <div><span>当前最高分</span><strong>{{ "%.1f"|format(explanation["overall"]["execution_rule"]["top_score"]) }}</strong></div>
+        <div><span>市场条件</span><strong>{{ "已通过" if explanation["overall"]["execution_rule"]["market_passed"] else "未通过" }}</strong></div>
+        <div><span>分数条件</span><strong>{{ "已通过" if explanation["overall"]["execution_rule"]["score_passed"] else "未通过" }}</strong></div>
+        <div><span>结论</span><strong>{{ explanation["overall"]["execution_rule"]["result"] }}</strong></div>
+    </div>
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">数据来源</div>
+            <h3>这次建议用了什么数据</h3>
+        </div>
+    </div>
+    <div class="evidence-list">
+        {% for item in explanation["overall"]["source_info"] %}
+        <div><span>{{ item.label }}</span><strong>{{ item.value }}</strong></div>
+        {% endfor %}
+    </div>
+    <p class="muted">{{ explanation["overall"]["source_note"] }}</p>
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">市场打分公式</div>
+            <h3>宽基强弱分、风险偏好分、趋势分是怎么来的</h3>
+        </div>
+    </div>
+    <div class="card-grid three">
+        {% for card in explanation["overall"]["market_score_details"] %}
+        <article class="sub-card">
+            <h4>{{ card.title }}：{{ "%.1f"|format(card.score) }}</h4>
+            <p>{{ card.meaning }}</p>
+            <p><strong>公式：</strong>{{ card.formula }}</p>
+            <p><strong>代入值：</strong>{{ card.formula_with_values }}</p>
+            <div class="evidence-list">
+                {% for input in card.inputs %}
+                <div><span>{{ input.label }}</span><strong>{{ input.value }}</strong></div>
+                {% endfor %}
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">ETF 综合分公式</div>
+            <h3>推荐 ETF 的综合分是怎么计算的</h3>
+        </div>
+    </div>
+    <p>{{ explanation["overall"]["etf_score_formula"] }}</p>
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>指标</th>
+            <th>计算方式</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in explanation["overall"]["etf_input_formulas"] %}
+        <tr>
+            <td>{{ row.label }}</td>
+            <td>{{ row.formula }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+{% if explanation["overall"]["watchlist"] %}
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">候选池对比</div>
+            <h3>当前更值得关注的 ETF</h3>
+        </div>
+    </div>
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>ETF</th>
+            <th>排名</th>
+            <th>综合得分</th>
+            <th>5日动量</th>
+            <th>10日波动率</th>
+            <th>20日回撤</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in explanation["overall"]["watchlist"] %}
+        <tr>
+            <td>{{ row.name }}<br><span class="muted">{{ row.symbol }}</span></td>
+            <td>{{ row.rank }}</td>
+            <td>{{ "%.1f"|format(row.score) }}</td>
+            <td>{{ "%.2f"|format(row.momentum_5d) }}%</td>
+            <td>{{ "%.2f"|format(row.volatility_10d) }}%</td>
+            <td>{{ "%.2f"|format(row.drawdown_20d) }}%</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="card-grid three" style="margin-top: 18px;">
+        {% for row in explanation["overall"]["watchlist"] %}
+        <article class="sub-card">
+            <h4>{{ row.name }}：{{ "%.1f"|format(row.score) }}</h4>
+            <p>{{ row.note }}</p>
+            <p><strong>代入结果：</strong>{{ row.score_substitution }}</p>
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>分项</th>
+                    <th>原始值</th>
+                    <th>贡献</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for detail in row.score_calculation %}
+                <tr>
+                    <td>{{ detail.label }}</td>
+                    <td>{{ detail.raw_value }}</td>
+                    <td>{{ detail.formula }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if explanation["overall"]["rejected_summary"] %}
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">过滤结果</div>
+            <h3>为什么有些 ETF 没能进候选池</h3>
+        </div>
+    </div>
+    <div class="evidence-list">
+        {% for row in explanation["overall"]["rejected_summary"] %}
+        <div><span>{{ row.reason }}</span><strong>{{ row.count }}</strong></div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% for item in explanation["items"] %}
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">{{ item.symbol }}</div>
+            <h3>{{ item.title }}</h3>
+        </div>
+    </div>
+    <p>{{ item.summary }}</p>
+
+    <div class="card-grid two">
+        <article class="sub-card">
+            <h4>为什么选它</h4>
+            <ul class="plain-list">
+                {% for reason in item.why_selected %}
+                <li>{{ reason }}</li>
+                {% endfor %}
+            </ul>
+        </article>
+        <article class="sub-card">
+            <h4>数据证明</h4>
+            <div class="evidence-list">
+                {% for proof in item.proofs %}
+                <div><span>{{ proof.label }}</span><strong>{{ proof.value }}</strong></div>
+                {% endfor %}
+            </div>
+        </article>
+    </div>
+
+    <article class="sub-card" style="margin-top: 18px;">
+        <h4>综合分怎么算</h4>
+        <p><strong>公式：</strong>{{ item.score_formula }}</p>
+        <p><strong>这只 ETF 的代入结果：</strong>{{ item.score_substitution }}</p>
+        <table class="data-table">
+            <thead>
+            <tr>
+                <th>分项</th>
+                <th>原始值</th>
+                <th>分位/惩罚分</th>
+                <th>贡献</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for row in item.score_calculation %}
+            <tr>
+                <td>{{ row.label }}</td>
+                <td>{{ row.raw_value }}</td>
+                <td>{{ "%.2f"|format(row.score_value) }}</td>
+                <td>{{ row.formula }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </article>
+
+    <div class="score-compare">
+        {% for label, value in item.score_breakdown.items() %}
+        <div class="bar-row">
+            <span>{{ label }}</span>
+            <div class="bar-track"><div class="bar-fill" style="width: {{ value }}%;"></div></div>
+            <strong>{{ value }}</strong>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if item.comparison.rows %}
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>ETF</th>
+            <th>排名</th>
+            <th>综合得分</th>
+            <th>5日动量</th>
+            <th>10日波动率</th>
+            <th>是否本次推荐</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in item.comparison.rows %}
+        <tr>
+            <td>{{ row.name }}<br><span class="muted">{{ row.symbol }}</span></td>
+            <td>{{ row.rank }}</td>
+            <td>{{ "%.1f"|format(row.score) }}</td>
+            <td>{{ "%.2f"|format(row.momentum_5d) }}%</td>
+            <td>{{ "%.2f"|format(row.volatility_10d) }}%</td>
+            <td>{{ "是" if row.selected else "否" }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <div class="card-grid two">
+        <article class="sub-card">
+            <h4>为什么建议这个金额</h4>
+            <p>{{ item.allocation_reason }}</p>
+        </article>
+        <article class="sub-card">
+            <h4>主要风险</h4>
+            <ul class="plain-list">
+                {% for risk in item.risks %}
+                <li>{{ risk }}</li>
+                {% endfor %}
+            </ul>
+        </article>
+    </div>
+</section>
+{% endfor %}
+{% else %}
+<section class="card">
+    <p>还没有找到解释内容。</p>
+</section>
+{% endif %}
+{% endblock %}

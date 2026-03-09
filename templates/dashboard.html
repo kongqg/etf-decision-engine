@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero split">
+    <div>
+        <div class="eyebrow">仪表盘</div>
+        <h2>今天重点不是研究，而是决定要不要动手</h2>
+        <p>系统会自动分析白名单 ETF，给出今天可执行建议，或者在非交易时段给你明日预案。</p>
+    </div>
+    <div class="action-cluster">
+        <form action="/actions/refresh-data" method="post">
+            <button class="secondary" type="submit">更新数据</button>
+        </form>
+        <form action="/actions/decide-now" method="post">
+            <button class="primary xl" type="submit">{{ session_button_label }}</button>
+        </form>
+    </div>
+</section>
+
+<section class="card-grid metrics">
+    <article class="card metric">
+        <div class="eyebrow">总资金</div>
+        <strong>{{ fmt_money(portfolio.total_asset) }}</strong>
+    </article>
+    <article class="card metric">
+        <div class="eyebrow">可用现金</div>
+        <strong>{{ fmt_money(portfolio.cash_balance) }}</strong>
+    </article>
+    <article class="card metric">
+        <div class="eyebrow">持仓市值</div>
+        <strong>{{ fmt_money(portfolio.market_value) }}</strong>
+    </article>
+    <article class="card metric">
+        <div class="eyebrow">累计收益</div>
+        <strong>{{ fmt_pct(performance.cumulative_return_pct) }}</strong>
+    </article>
+</section>
+
+<section class="card-grid two">
+    <article class="card">
+        <div class="section-head">
+            <div>
+                <div class="eyebrow">今日状态</div>
+                <h3>{{ advice.action if advice else "暂未生成" }}</h3>
+            </div>
+            <span class="pill">{{ advice.market_regime if advice else "等待数据" }}</span>
+        </div>
+        {% if advice %}
+        <p>{{ advice.summary_text }}</p>
+        <div class="evidence-list">
+            <div><span>建议仓位</span><strong>{{ fmt_pct(advice.target_position_pct * 100) }}</strong></div>
+            <div><span>当前仓位</span><strong>{{ fmt_pct(advice.current_position_pct * 100) }}</strong></div>
+        </div>
+        <a class="text-link" href="/advice/{{ advice.id }}">查看今天为什么这样建议</a>
+        <a class="text-link" href="/evidence/{{ advice.id }}">查看这次用的原始数据</a>
+        {% else %}
+        <p>先刷新数据，然后生成第一条建议。</p>
+        {% endif %}
+    </article>
+
+    <article class="card">
+        <div class="section-head">
+            <div>
+                <div class="eyebrow">账户设置</div>
+                <h3>{{ preferences.risk_level }} 风格</h3>
+            </div>
+        </div>
+        <div class="evidence-list">
+            <div><span>黄金 ETF</span><strong>{{ "已开启" if preferences.allow_gold else "未开启" }}</strong></div>
+            <div><span>债券 ETF</span><strong>{{ "已开启" if preferences.allow_bond else "未开启" }}</strong></div>
+            <div><span>跨境 ETF</span><strong>{{ "已开启" if preferences.allow_overseas else "未开启" }}</strong></div>
+        </div>
+        <a class="text-link" href="/portfolio">查看我的持仓</a>
+    </article>
+</section>
+{% endblock %}

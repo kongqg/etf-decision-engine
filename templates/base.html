@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }} - ETF 实时决策助手</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
+</head>
+<body>
+<div class="shell">
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-mark">ETF</div>
+            <div>
+                <h1>ETF 实时决策助手</h1>
+                <p>面向投资小白的可解释决策系统</p>
+            </div>
+        </div>
+        <nav class="nav">
+            <a href="/">仪表盘</a>
+            <a href="/advice">今日建议</a>
+            <a href="/evidence">数据证据</a>
+            <a href="/portfolio">持仓</a>
+            <a href="/performance">绩效</a>
+        </nav>
+        <div class="mode-card">
+            <div class="eyebrow">当前模式</div>
+            <strong>{{ session_button_label }}</strong>
+            <p>{{ session_hint }}</p>
+        </div>
+    </aside>
+
+    <main class="content">
+        {% if status_message %}
+        <div class="status-banner">{{ status_message }}</div>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+</div>
+<script src="{{ url_for('static', path='js/app.js') }}"></script>
+</body>
+</html>

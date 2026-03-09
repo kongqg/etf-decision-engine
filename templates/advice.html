@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero split">
+    <div>
+        <div class="eyebrow">今日建议</div>
+        <h2>{{ advice.action if advice else "还没有建议记录" }}</h2>
+        <p>{{ advice.summary_text if advice else "先去首页刷新数据，再生成建议。" }}</p>
+    </div>
+    {% if advice %}
+    <div class="action-cluster">
+        <span class="pill big">{{ advice.market_regime }}</span>
+        <span class="pill big">{{ session_button_label }}</span>
+        <a class="primary-link" href="/explanation/{{ advice.id }}">查看完整解释</a>
+        <a class="primary-link" href="/evidence/{{ advice.id }}">查看数据证据</a>
+    </div>
+    {% endif %}
+</section>
+
+{% if advice %}
+<section class="card-grid metrics">
+    <article class="card metric">
+        <div class="eyebrow">建议总仓位</div>
+        <strong>{{ fmt_pct(advice.target_position_pct * 100) }}</strong>
+    </article>
+    <article class="card metric">
+        <div class="eyebrow">当前仓位</div>
+        <strong>{{ fmt_pct(advice.current_position_pct * 100) }}</strong>
+    </article>
+    <article class="card metric">
+        <div class="eyebrow">生成时间</div>
+        <strong>{{ advice.created_at[:16].replace("T", " ") }}</strong>
+    </article>
+    <article class="card metric">
+        <div class="eyebrow">主要风险</div>
+        <strong>{{ advice.risk_text }}</strong>
+    </article>
+</section>
+
+{% if explanation and explanation["overall"] %}
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">为什么这样建议</div>
+            <h3>{{ explanation["overall"]["headline"] }}</h3>
+        </div>
+    </div>
+    <div class="evidence-list">
+        {% for item in explanation["overall"]["evidence"] %}
+        <div><span>{{ item.label }}</span><strong>{{ item.value }}</strong></div>
+        {% endfor %}
+    </div>
+    <div class="evidence-list" style="margin-top: 14px;">
+        {% for item in explanation["overall"]["source_info"] %}
+        <div><span>{{ item.label }}</span><strong>{{ item.value }}</strong></div>
+        {% endfor %}
+    </div>
+    <ul class="plain-list">
+        {% for reason in explanation["overall"]["reasons"] %}
+        <li>{{ reason }}</li>
+        {% endfor %}
+    </ul>
+    <div class="evidence-list" style="margin-top: 14px;">
+        <div><span>系统出手规则</span><strong>{{ explanation["overall"]["execution_rule"]["result"] }}</strong></div>
+        <div><span>当前最高分</span><strong>{{ "%.1f"|format(explanation["overall"]["execution_rule"]["top_score"]) }}</strong></div>
+        <div><span>分数阈值</span><strong>{{ "%.1f"|format(explanation["overall"]["execution_rule"]["threshold"]) }}</strong></div>
+    </div>
+    <p class="muted">{{ explanation["overall"]["source_note"] }}</p>
+    <p class="muted">{{ explanation["overall"]["session_hint"] }}</p>
+</section>
+{% endif %}
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">推荐 ETF</div>
+            <h3>今天重点看这几只</h3>
+        </div>
+    </div>
+    {% if advice["items"] %}
+    <div class="card-grid three">
+        {% for item in advice["items"] %}
+        <article class="pick-card">
+            <div class="pick-head">
+                <div>
+                    <h4>{{ item.name }}</h4>
+                    <p>{{ item.symbol }}</p>
+                </div>
+                <span class="pill">{{ item.risk_level }}</span>
+            </div>
+            <div class="pick-metrics">
+                <div><span>建议金额</span><strong>{{ fmt_money(item.suggested_amount) }}</strong></div>
+                <div><span>综合得分</span><strong>{{ "%.1f"|format(item.score) }}</strong></div>
+            </div>
+            <p>{{ item.reason_short }}</p>
+            <a class="primary-link" href="/explanation/{{ advice.id }}">查看为什么推荐它</a>
+        </article>
+        {% endfor %}
+    </div>
+    <div class="score-compare">
+        {% for item in advice["items"] %}
+        <div class="bar-row">
+            <span>{{ item.name }}</span>
+            <div class="bar-track"><div class="bar-fill" style="width: {{ item.score }}%;"></div></div>
+            <strong>{{ "%.1f"|format(item.score) }}</strong>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p>本次没有建议你立刻买卖具体 ETF，但这不代表系统没有判断。下面是当前值得关注的候选。</p>
+    {% if explanation and explanation["overall"]["watchlist"] %}
+    <div class="card-grid three">
+        {% for item in explanation["overall"]["watchlist"] %}
+        <article class="pick-card">
+            <div class="pick-head">
+                <div>
+                    <h4>{{ item.name }}</h4>
+                    <p>{{ item.symbol }}</p>
+                </div>
+                <span class="pill">候选第 {{ item.rank }}</span>
+            </div>
+            <div class="pick-metrics">
+                <div><span>综合得分</span><strong>{{ "%.1f"|format(item.score) }}</strong></div>
+                <div><span>5日动量</span><strong>{{ "%.2f"|format(item.momentum_5d) }}%</strong></div>
+            </div>
+            <p>{{ item.note }}</p>
+        </article>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endif %}
+</section>
+{% else %}
+<section class="card">
+    <p>暂无建议记录。去首页点击“{{ session_button_label }}”。</p>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero split">
+    <div>
+        <div class="eyebrow">持仓</div>
+        <h2>当前仓位 {{ fmt_pct(portfolio.current_position_pct * 100) }}</h2>
+        <p>这里记录你的实际成交和持仓变化，系统会据此更新收益和后续建议。</p>
+    </div>
+</section>
+
+<section class="card-grid metrics">
+    <article class="card metric">
+        <div class="eyebrow">现金</div>
+        <strong>{{ fmt_money(portfolio.cash_balance) }}</strong>
+    </article>
+    <article class="card metric">
+        <div class="eyebrow">持仓市值</div>
+        <strong>{{ fmt_money(portfolio.market_value) }}</strong>
+    </article>
+    <article class="card metric">
+        <div class="eyebrow">总资产</div>
+        <strong>{{ fmt_money(portfolio.total_asset) }}</strong>
+    </article>
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">当前持仓列表</div>
+            <h3>实际持仓</h3>
+        </div>
+    </div>
+    {% if portfolio.holdings %}
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>ETF</th>
+            <th>持仓份额</th>
+            <th>成本</th>
+            <th>现价</th>
+            <th>市值</th>
+            <th>浮盈亏</th>
+            <th>建议动作</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in portfolio.holdings %}
+        <tr>
+            <td>{{ row.name }}<br><span class="muted">{{ row.symbol }}</span></td>
+            <td>{{ "%.0f"|format(row.quantity) }}</td>
+            <td>{{ "%.3f"|format(row.avg_cost) }}</td>
+            <td>{{ "%.3f"|format(row.last_price) }}</td>
+            <td>{{ fmt_money(row.market_value) }}</td>
+            <td>{{ fmt_money(row.unrealized_pnl) }}</td>
+            <td>{{ row.last_action_suggestion }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>你当前还没有持仓。</p>
+    {% endif %}
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">记录成交</div>
+            <h3>记录我今天的成交</h3>
+        </div>
+    </div>
+    <form action="/actions/record-trade" method="post" class="form-grid">
+        <label>
+            <span>ETF 代码</span>
+            <input type="text" name="symbol" placeholder="例如 510300" required>
+        </label>
+        <label>
+            <span>ETF 名称</span>
+            <input type="text" name="name" placeholder="例如 沪深300ETF" required>
+        </label>
+        <label>
+            <span>买入或卖出</span>
+            <select name="side">
+                <option value="buy">买入</option>
+                <option value="sell">卖出</option>
+            </select>
+        </label>
+        <label>
+            <span>成交价格</span>
+            <input type="number" name="price" min="0.001" step="0.001" required>
+        </label>
+        <label>
+            <span>成交金额</span>
+            <input type="number" name="amount" min="1" step="1" required>
+        </label>
+        <label>
+            <span>成交份额（可选）</span>
+            <input type="number" name="quantity" min="1" step="1">
+        </label>
+        <label>
+            <span>手续费</span>
+            <input type="number" name="fee" min="0" step="0.01" value="0">
+        </label>
+        <label>
+            <span>关联建议 ID（可选）</span>
+            <input type="number" name="related_advice_id" min="1" value="{{ advice.id if advice else '' }}">
+        </label>
+        <label class="wide-field">
+            <span>备注</span>
+            <input type="text" name="note" placeholder="例如：按系统建议执行">
+        </label>
+        <label>
+            <span>成交时间</span>
+            <input type="datetime-local" name="executed_at" value="{{ now_iso }}" required>
+        </label>
+        <div class="form-actions">
+            <button class="primary" type="submit">记录我已买入 / 卖出</button>
+        </div>
+    </form>
+</section>
+{% endblock %}

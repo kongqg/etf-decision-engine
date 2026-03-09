@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+    <div>
+        <div class="eyebrow">绩效</div>
+        <h2>看结果，不看术语堆砌</h2>
+        <p>这里展示你的累计收益、回撤、建议命中和交易记录。</p>
+    </div>
+</section>
+
+<section class="card-grid metrics">
+    <article class="card metric">
+        <div class="eyebrow">累计收益率</div>
+        <strong>{{ fmt_pct(performance.cumulative_return_pct) }}</strong>
+    </article>
+    <article class="card metric">
+        <div class="eyebrow">胜率</div>
+        <strong>{{ fmt_pct(performance.win_rate) }}</strong>
+    </article>
+    <article class="card metric">
+        <div class="eyebrow">最大回撤</div>
+        <strong>{{ fmt_pct(performance.max_drawdown_pct) }}</strong>
+    </article>
+    <article class="card metric">
+        <div class="eyebrow">建议命中率</div>
+        <strong>{{ fmt_pct(performance.advice_hit_rate) }}</strong>
+    </article>
+</section>
+
+<section class="card-grid two">
+    <article class="card wide">
+        <div class="section-head">
+            <div>
+                <div class="eyebrow">累计收益曲线</div>
+                <h3>资产变化</h3>
+            </div>
+        </div>
+        <div class="chart-box" data-line-chart='{{ performance.curve | tojson }}'></div>
+    </article>
+
+    <article class="card">
+        <div class="section-head">
+            <div>
+                <div class="eyebrow">资产分布</div>
+                <h3>现金 vs 持仓</h3>
+            </div>
+        </div>
+        <div class="donut-chart" data-cash="{{ portfolio.cash_balance }}" data-market="{{ portfolio.market_value }}"></div>
+        <div class="evidence-list">
+            <div><span>现金</span><strong>{{ fmt_money(portfolio.cash_balance) }}</strong></div>
+            <div><span>持仓</span><strong>{{ fmt_money(portfolio.market_value) }}</strong></div>
+        </div>
+    </article>
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">累计交易记录</div>
+            <h3>最近成交</h3>
+        </div>
+    </div>
+    {% if performance.trades %}
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>时间</th>
+            <th>ETF</th>
+            <th>方向</th>
+            <th>价格</th>
+            <th>金额</th>
+            <th>份额</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for trade in performance.trades %}
+        <tr>
+            <td>{{ trade.executed_at[:16].replace("T", " ") }}</td>
+            <td>{{ trade.name }}<br><span class="muted">{{ trade.symbol }}</span></td>
+            <td>{{ trade.side }}</td>
+            <td>{{ "%.3f"|format(trade.price) }}</td>
+            <td>{{ fmt_money(trade.amount) }}</td>
+            <td>{{ "%.0f"|format(trade.quantity) }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>还没有成交记录。</p>
+    {% endif %}
+</section>
+{% endblock %}

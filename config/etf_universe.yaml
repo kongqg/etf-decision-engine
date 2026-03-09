@@ -1,0 +1,193 @@
+etfs:
+  - symbol: "510300"
+    name: "沪深300ETF"
+    category: "宽基"
+    market: "SH"
+    benchmark: "沪深300"
+    risk_level: "中"
+    enabled: true
+    allow_gold: false
+    allow_bond: false
+    allow_overseas: false
+    min_avg_amount: 80000000
+    settlement_note: "场内 ETF 交易规则以券商和基金公告为准。"
+  - symbol: "510500"
+    name: "中证500ETF"
+    category: "宽基"
+    market: "SH"
+    benchmark: "中证500"
+    risk_level: "中高"
+    enabled: true
+    allow_gold: false
+    allow_bond: false
+    allow_overseas: false
+    min_avg_amount: 50000000
+    settlement_note: "波动高于大盘宽基，适合有一定承受能力的用户。"
+  - symbol: "159915"
+    name: "创业板ETF"
+    category: "宽基"
+    market: "SZ"
+    benchmark: "创业板指"
+    risk_level: "高"
+    enabled: true
+    allow_gold: false
+    allow_bond: false
+    allow_overseas: false
+    min_avg_amount: 50000000
+    settlement_note: "成长风格波动较大，建议分批执行。"
+  - symbol: "588000"
+    name: "科创50ETF"
+    category: "宽基"
+    market: "SH"
+    benchmark: "科创50"
+    risk_level: "高"
+    enabled: true
+    allow_gold: false
+    allow_bond: false
+    allow_overseas: false
+    min_avg_amount: 40000000
+    settlement_note: "科技成长属性明显，回撤可能更大。"
+  - symbol: "159949"
+    name: "创业板50ETF"
+    category: "宽基"
+    market: "SZ"
+    benchmark: "创业板50"
+    risk_level: "高"
+    enabled: true
+    allow_gold: false
+    allow_bond: false
+    allow_overseas: false
+    min_avg_amount: 20000000
+    settlement_note: "高波动品种，适合激进风格或小比例配置。"
+  - symbol: "512100"
+    name: "中证1000ETF"
+    category: "宽基"
+    market: "SH"
+    benchmark: "中证1000"
+    risk_level: "高"
+    enabled: true
+    allow_gold: false
+    allow_bond: false
+    allow_overseas: false
+    min_avg_amount: 30000000
+    settlement_note: "小盘成长风格，波动较大。"
+  - symbol: "512660"
+    name: "军工ETF"
+    category: "行业"
+    market: "SH"
+    benchmark: "中证军工"
+    risk_level: "高"
+    enabled: true
+    allow_gold: false
+    allow_bond: false
+    allow_overseas: false
+    min_avg_amount: 30000000
+    settlement_note: "行业主题波动高，适合小仓位参与。"
+  - symbol: "512480"
+    name: "半导体ETF"
+    category: "行业"
+    market: "SH"
+    benchmark: "中证全指半导体"
+    risk_level: "高"
+    enabled: true
+    allow_gold: false
+    allow_bond: false
+    allow_overseas: false
+    min_avg_amount: 30000000
+    settlement_note: "景气变化快，建议严格执行止损。"
+  - symbol: "512690"
+    name: "酒ETF"
+    category: "行业"
+    market: "SH"
+    benchmark: "中证酒"
+    risk_level: "中高"
+    enabled: true
+    allow_gold: false
+    allow_bond: false
+    allow_overseas: false
+    min_avg_amount: 15000000
+    settlement_note: "消费主题受情绪影响较大。"
+  - symbol: "515790"
+    name: "光伏ETF"
+    category: "行业"
+    market: "SH"
+    benchmark: "中证光伏产业"
+    risk_level: "高"
+    enabled: true
+    allow_gold: false
+    allow_bond: false
+    allow_overseas: false
+    min_avg_amount: 15000000
+    settlement_note: "主题波动较高，不建议重仓。"
+  - symbol: "518880"
+    name: "黄金ETF"
+    category: "黄金"
+    market: "SH"
+    benchmark: "上海金"
+    risk_level: "中"
+    enabled: true
+    allow_gold: true
+    allow_bond: false
+    allow_overseas: false
+    min_avg_amount: 15000000
+    settlement_note: "常用于防守配置，具体交易规则以基金公告为准。"
+  - symbol: "511010"
+    name: "国债ETF"
+    category: "债券"
+    market: "SH"
+    benchmark: "上证5年期国债"
+    risk_level: "低"
+    enabled: true
+    allow_gold: false
+    allow_bond: true
+    allow_overseas: false
+    min_avg_amount: 10000000
+    settlement_note: "适合作为防守仓位或现金替代。"
+  - symbol: "511260"
+    name: "十年国债ETF"
+    category: "债券"
+    market: "SH"
+    benchmark: "十年国债"
+    risk_level: "低"
+    enabled: true
+    allow_gold: false
+    allow_bond: true
+    allow_overseas: false
+    min_avg_amount: 5000000
+    settlement_note: "利率敏感，波动通常低于权益 ETF。"
+  - symbol: "513100"
+    name: "纳指ETF"
+    category: "跨境"
+    market: "SH"
+    benchmark: "纳斯达克100"
+    risk_level: "高"
+    enabled: true
+    allow_gold: false
+    allow_bond: false
+    allow_overseas: true
+    min_avg_amount: 30000000
+    settlement_note: "跨境 ETF 可能受汇率和外盘影响。"
+  - symbol: "513500"
+    name: "标普500ETF"
+    category: "跨境"
+    market: "SH"
+    benchmark: "标普500"
+    risk_level: "中高"
+    enabled: true
+    allow_gold: false
+    allow_bond: false
+    allow_overseas: true
+    min_avg_amount: 15000000
+    settlement_note: "跨境 ETF 易受外盘与汇率共同影响。"
+  - symbol: "513060"
+    name: "恒生科技ETF"
+    category: "跨境"
+    market: "SH"
+    benchmark: "恒生科技"
+    risk_level: "高"
+    enabled: true
+    allow_gold: false
+    allow_bond: false
+    allow_overseas: true
+    min_avg_amount: 15000000
+    settlement_note: "弹性较大，波动高于一般宽基。"

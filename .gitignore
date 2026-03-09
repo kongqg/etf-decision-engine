@@ -1,0 +1,15 @@
+.venv/
+.run/
+.pytest_tmp/
+.pytest_cache/
+pytest-cache-files-*/
+__pycache__/
+*.py[cod]
+
+.idea/
+
+data/cache/
+data/exports/
+data/*.db
+data/*.sqlite
+data/*.sqlite3

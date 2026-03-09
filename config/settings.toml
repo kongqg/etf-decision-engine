@@ -1,0 +1,19 @@
+[app]
+name = "ETF 实时决策助手"
+timezone = "Asia/Shanghai"
+database_url = "sqlite:///./data/app.db"
+default_user_id = 1
+data_cache_days = 2
+min_refresh_history_days = 40
+data_stale_minutes = 10
+
+[decision]
+top_n_default = 3
+min_score_to_buy = 55.0
+min_score_gap_for_single = 8.0
+initial_build_ratio = 0.6
+default_min_trade_amount = 1000.0
+
+[ui]
+currency_symbol = "¥"
+show_debug_badges = false

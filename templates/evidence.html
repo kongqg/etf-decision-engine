@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero split">
+    <div>
+        <div class="eyebrow">数据证据</div>
+        <h2>{{ evidence.headline if evidence else "还没有数据证据" }}</h2>
+        <p>
+            {% if evidence %}
+            这里展示本次建议真正使用的原始数据摘要、抓取时间、质检结果和候选 ETF 的最近价格序列。
+            {% else %}
+            先生成一条建议，系统才能把这次决策对应的数据证据展示出来。
+            {% endif %}
+        </p>
+    </div>
+    {% if advice %}
+    <div class="action-cluster">
+        <span class="pill big">{{ advice.action }}</span>
+        <span class="pill big">{{ advice.market_regime }}</span>
+        <a class="primary-link" href="/explanation/{{ advice.id }}">回到解释页</a>
+    </div>
+    {% endif %}
+</section>
+
+{% if evidence %}
+<section class="card-grid metrics">
+    {% for item in evidence.trust_summary %}
+    <article class="card metric">
+        <div class="eyebrow">{{ item.label }}</div>
+        <strong style="font-size: 22px;">{{ item.value }}</strong>
+    </article>
+    {% endfor %}
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">可信度说明</div>
+            <h3>这份数据为什么能用，为什么不能冒充实时</h3>
+        </div>
+    </div>
+    <ul class="plain-list">
+        <li>{{ evidence.freshness_note }}</li>
+        <li>{{ evidence.live_execution_note }}</li>
+        <li>{{ evidence.source_note }}</li>
+    </ul>
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">请求摘要</div>
+            <h3>这次抓数是怎么发起的</h3>
+        </div>
+    </div>
+    <div class="evidence-list">
+        <div><span>来源</span><strong>{{ evidence.request_summary.provider }}</strong></div>
+        <div><span>接口</span><strong>{{ evidence.request_summary.api }}</strong></div>
+        <div><span>请求交易日</span><strong>{{ evidence.request_summary.requested_trade_date }}</strong></div>
+        <div><span>抓取时间</span><strong>{{ evidence.request_summary.captured_at }}</strong></div>
+        <div><span>覆盖 ETF 数量</span><strong>{{ evidence.request_summary.symbols_count }}</strong></div>
+    </div>
+    <table class="data-table" style="margin-top: 16px;">
+        <thead>
+        <tr>
+            <th>参数</th>
+            <th>值</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for key, value in evidence.request_summary.default_params.items() %}
+        <tr>
+            <td>{{ key }}</td>
+            <td>{{ value }}</td>
+        </tr>
+        {% endfor %}
+        {% for key, value in evidence.request_summary.source_counts.items() %}
+        <tr>
+            <td>source_count.{{ key }}</td>
+            <td>{{ value }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">质检结果</div>
+            <h3>系统对抓到的数据做了哪些基本验证</h3>
+        </div>
+    </div>
+    <div class="evidence-list">
+        <div><span>通过检查数</span><strong>{{ evidence.quality_overview.passed_checks }}</strong></div>
+        <div><span>失败检查数</span><strong>{{ evidence.quality_overview.failed_checks }}</strong></div>
+        <div><span>存在异常的 ETF</span><strong>{{ evidence.quality_overview.failed_symbols|join("、") if evidence.quality_overview.failed_symbols else "无" }}</strong></div>
+    </div>
+    <table class="data-table" style="margin-top: 16px;">
+        <thead>
+        <tr>
+            <th>ETF</th>
+            <th>来源</th>
+            <th>最新日期</th>
+            <th>行数</th>
+            <th>状态</th>
+            <th>失败项</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in evidence.quality_checks %}
+        <tr>
+            <td>{{ row.name }}<br><span class="muted">{{ row.symbol }}</span></td>
+            <td>{{ row.source }}</td>
+            <td>{{ row.latest_row_date }}</td>
+            <td>{{ row.row_count }}</td>
+            <td>{{ row.status }}</td>
+            <td>
+                {% set failed = row.checks | selectattr("passed", "equalto", false) | list %}
+                {% if failed %}
+                {% for item in failed %}
+                <div>{{ item.label }}：{{ item.detail }}</div>
+                {% endfor %}
+                {% else %}
+                无
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">市场判断原始序列</div>
+            <h3>宽基、黄金、债券等判断市场状态时实际用到的价格序列</h3>
+        </div>
+    </div>
+    <div class="card-grid two">
+        {% for card in evidence.benchmark_series %}
+        <article class="sub-card">
+            <div class="section-head">
+                <div>
+                    <h4>{{ card.name }}</h4>
+                    <p>{{ card.symbol }} · {{ card.category }} · {{ card.source }}</p>
+                </div>
+                {% if card.rank_in_pool %}
+                <span class="pill">候选第 {{ card.rank_in_pool }}</span>
+                {% endif %}
+            </div>
+            <div class="evidence-list">
+                <div><span>最新样本日期</span><strong>{{ card.latest_row_date }}</strong></div>
+                {% for item in card.metrics[:4] %}
+                <div><span>{{ item.label }}</span><strong>{{ item.value }}</strong></div>
+                {% endfor %}
+            </div>
+            <table class="data-table" style="margin-top: 16px;">
+                <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>收盘价</th>
+                    <th>成交额</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for row in card.rows %}
+                <tr>
+                    <td>{{ row.date }}</td>
+                    <td>{{ "%.4f"|format(row.close) }}</td>
+                    <td>{{ fmt_money(row.amount) }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">候选 ETF 原始数据</div>
+            <h3>当前最强的 ETF，系统到底用了哪些原始数据</h3>
+        </div>
+    </div>
+    <div class="card-grid two">
+        {% for card in evidence.candidate_series %}
+        <article class="sub-card">
+            <div class="section-head">
+                <div>
+                    <h4>{{ card.name }}</h4>
+                    <p>{{ card.symbol }} · {{ card.category }} · {{ card.source }}</p>
+                </div>
+                {% if card.rank_in_pool %}
+                <span class="pill">综合分 {{ "%.1f"|format(card.score) }}</span>
+                {% endif %}
+            </div>
+            <div class="evidence-list">
+                <div><span>候选池排名</span><strong>{{ card.rank_in_pool if card.rank_in_pool else "-" }}</strong></div>
+                <div><span>是否通过筛选</span><strong>{{ "是" if card.filter_pass else "否" }}</strong></div>
+                {% for item in card.metrics %}
+                <div><span>{{ item.label }}</span><strong>{{ item.value }}</strong></div>
+                {% endfor %}
+            </div>
+            <p class="muted" style="margin-top: 14px;"><strong>综合分代入结果：</strong>{{ card.score_substitution }}</p>
+            <table class="data-table" style="margin-top: 16px;">
+                <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>收盘价</th>
+                    <th>成交额</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for row in card.rows %}
+                <tr>
+                    <td>{{ row.date }}</td>
+                    <td>{{ "%.4f"|format(row.close) }}</td>
+                    <td>{{ fmt_money(row.amount) }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <table class="data-table" style="margin-top: 16px;">
+                <thead>
+                <tr>
+                    <th>请求参数</th>
+                    <th>值</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for key, value in card.request_params.items() %}
+                <tr>
+                    <td>{{ key }}</td>
+                    <td>{{ value }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% else %}
+<section class="card">
+    <p>还没有可展示的数据证据。先去首页生成建议。</p>
+</section>
+{% endif %}
+{% endblock %}

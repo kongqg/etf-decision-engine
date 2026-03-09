@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+    <div>
+        <div class="eyebrow">首次使用</div>
+        <h2>先告诉系统你的资金和偏好</h2>
+        <p>你只需要填一次。之后系统会记住你的资金、偏好、持仓和历史表现。</p>
+    </div>
+</section>
+
+<section class="card wide">
+    <form action="/actions/init-user" method="post" class="form-grid">
+        <label>
+            <span>初始总资金</span>
+            <input type="number" name="initial_capital" min="1000" step="1000" placeholder="例如 100000" required>
+        </label>
+        <label>
+            <span>风险偏好</span>
+            <select name="risk_level">
+                <option value="保守">保守</option>
+                <option value="中性" selected>中性</option>
+                <option value="激进">激进</option>
+            </select>
+        </label>
+        <label>
+            <span>最小交易金额</span>
+            <input type="number" name="min_trade_amount" min="100" step="100" value="1000" required>
+        </label>
+        <label class="check">
+            <input type="checkbox" name="allow_gold" checked>
+            <span>允许黄金 ETF</span>
+        </label>
+        <label class="check">
+            <input type="checkbox" name="allow_bond" checked>
+            <span>允许债券 ETF</span>
+        </label>
+        <label class="check">
+            <input type="checkbox" name="allow_overseas" checked>
+            <span>允许跨境 ETF</span>
+        </label>
+        <div class="form-actions">
+            <button class="primary" type="submit">初始化资金</button>
+        </div>
+    </form>
+</section>
+{% endblock %}

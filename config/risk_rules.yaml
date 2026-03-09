@@ -1,0 +1,32 @@
+position_by_regime:
+  进攻: 0.80
+  中性: 0.55
+  防守: 0.25
+  观望: 0.05
+
+risk_adjustment_by_preference:
+  保守: -0.10
+  中性: 0.00
+  激进: 0.10
+
+max_volatility_by_preference:
+  保守: 3.5
+  中性: 5.0
+  激进: 7.5
+
+stop_loss_by_category:
+  宽基: 0.05
+  行业: 0.07
+  黄金: 0.05
+  债券: 0.03
+  跨境: 0.08
+
+take_profit_by_category:
+  宽基: 0.10
+  行业: 0.12
+  黄金: 0.08
+  债券: 0.05
+  跨境: 0.12
+
+anomaly_pct_change_threshold: 8.0
+anomaly_volatility_threshold: 8.5
