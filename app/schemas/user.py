@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+from app.core.config import get_settings
+
 
 class InitUserRequest(BaseModel):
     initial_capital: float = Field(gt=0)
@@ -9,7 +11,7 @@ class InitUserRequest(BaseModel):
     allow_gold: bool = True
     allow_bond: bool = True
     allow_overseas: bool = True
-    min_trade_amount: float = Field(default=1000.0, gt=0)
+    min_trade_amount: float = Field(default_factory=lambda: get_settings().default_min_advice_amount, gt=0)
 
 
 class UserProfileResponse(BaseModel):

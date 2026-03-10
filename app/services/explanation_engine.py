@@ -41,6 +41,8 @@ class ExplanationEngine:
         total_count = int(len(filtered_df))
         top_score = float(scored_df.iloc[0]["total_score"]) if not scored_df.empty else 0.0
         facts = plan.get("facts", {})
+        executable_recommendations = advice.get("executable_recommendations", advice["items"])
+        watchlist_recommendations = advice.get("watchlist_recommendations", [])
         raw = market_snapshot.get("raw", {})
         source = raw.get("source", {})
         quality_summary = raw.get("quality_summary", {})
@@ -71,28 +73,42 @@ class ExplanationEngine:
                 {"label": "趋势分", "value": round(market_snapshot["trend_score"], 1)},
                 {"label": "当前仓位", "value": f"{portfolio_summary['current_position_pct'] * 100:.1f}%"},
                 {"label": "目标仓位", "value": f"{advice['target_position_pct'] * 100:.1f}%"},
+                {"label": "可用现金", "value": f"{facts.get('available_cash', 0):.0f} 元"},
                 {"label": "通过筛选数量", "value": f"{candidate_count}/{total_count}"},
                 {"label": "候选池最高分", "value": f"{top_score:.1f}" if candidate_count else "-"},
                 {"label": "出手阈值", "value": f"{facts.get('buy_score_threshold', 0):.1f}"},
+                {"label": "最小建议金额", "value": f"{facts.get('min_advice_amount', 0):.0f} 元"},
+                {"label": "默认一手份额", "value": f"{facts.get('lot_size', 0):.0f} 份"},
+                {"label": "可执行标的", "value": str(len(executable_recommendations))},
+                {"label": "关注标的", "value": str(len(watchlist_recommendations))},
             ],
-            "execution_rule": self._execution_rule(advice, facts, top_score),
+            "execution_rule": self._execution_rule(
+                advice,
+                facts,
+                top_score,
+                executable_recommendations,
+                watchlist_recommendations,
+            ),
             "source_info": self._source_info(source, quality_summary),
             "source_note": source.get("note", ""),
             "market_score_details": self._market_score_details(market_snapshot),
             "etf_score_formula": ETF_SCORE_FORMULA,
             "etf_input_formulas": ETF_INPUT_FORMULAS,
-            "watchlist": self._watchlist(scored_df, plan),
+            "executable_recommendations": executable_recommendations,
+            "watchlist_recommendations": watchlist_recommendations,
+            "watchlist": self._watchlist(scored_df, plan, watchlist_recommendations),
             "rejected_summary": self._rejected_summary(filtered_df),
             "session_hint": SESSION_MODE_HINTS[advice["session_mode"]],
         }
 
         items = []
-        for item in advice["items"]:
+        for item in [*executable_recommendations, *watchlist_recommendations]:
             row = scored_df[scored_df["symbol"] == item["symbol"]]
             if row.empty:
                 continue
             data = row.iloc[0].to_dict()
             breakdown = self._parse_breakdown(data.get("breakdown_json"))
+            is_executable = bool(item.get("is_executable", True))
             comparison_rows = []
             for _, peer in scored_df.head(3).iterrows():
                 comparison_rows.append(
@@ -116,12 +132,20 @@ class ExplanationEngine:
             items.append(
                 {
                     "symbol": item["symbol"],
-                    "title": f"{item['name']} 为什么入选",
-                    "summary": item["reason_short"],
+                    "title": f"{item['name']} 为什么{'可执行' if is_executable else '先关注'}",
+                    "summary": item.get("execution_note") or item["reason_short"],
+                    "execution_status": item.get("execution_status", "可执行买入"),
+                    "execution_note": item.get("execution_note", ""),
+                    "recommendation_bucket": item.get("recommendation_bucket", "executable_recommendations"),
                     "why_selected": [
                         f"近 5 日动量 {data['momentum_5d']:.2f}%，说明它最近一周比多数候选 ETF 更强。",
                         f"综合得分 {data['total_score']:.1f}，候选池排名 {int(data['rank_in_pool'])}/{len(scored_df)}。",
                         comparison_text,
+                        (
+                            f"这次纳入主执行建议，因为系统给它分配的建议金额 {item['suggested_amount']:.2f} 元，已经覆盖 1 手所需的 {item.get('min_order_amount', 0):.2f} 元。"
+                            if is_executable
+                            else f"这次没有进入主执行建议，不是因为它差，而是系统给它分配的建议金额只有 {item['suggested_amount']:.2f} 元，低于 1 手所需的 {item.get('min_order_amount', 0):.2f} 元。"
+                        ),
                     ],
                     "score_formula": ETF_SCORE_FORMULA,
                     "score_breakdown": breakdown,
@@ -138,6 +162,10 @@ class ExplanationEngine:
                         {"label": "20日回撤", "value": f"{data['drawdown_20d']:.2f}%"},
                         {"label": "近20日平均成交额", "value": f"{data['avg_amount_20d'] / 100000000:.2f} 亿元"},
                         {"label": "综合得分", "value": f"{data['total_score']:.1f}"},
+                        {"label": "最新价格", "value": f"{item.get('latest_price', 0):.3f} 元"},
+                        {"label": "一手份额", "value": f"{item.get('lot_size', 0):.0f} 份"},
+                        {"label": "最小可买金额", "value": f"{item.get('min_order_amount', 0):.2f} 元"},
+                        {"label": "本次建议金额", "value": f"{item['suggested_amount']:.2f} 元"},
                     ],
                     "comparison": {
                         "rank_in_pool": int(data["rank_in_pool"]),
@@ -146,10 +174,17 @@ class ExplanationEngine:
                     },
                     "allocation_reason": (
                         f"建议金额 {item['suggested_amount']:.2f} 元，是按目标仓位、分批建仓比例和候选排名共同算出来的。"
+                        if is_executable
+                        else f"系统原始建议金额是 {item['suggested_amount']:.2f} 元，但至少买入 1 手需要约 {item.get('min_order_amount', 0):.2f} 元，所以本次转入关注标的。"
                     ),
                     "risks": [
                         f"风险等级：{item['risk_level']}。",
                         f"默认止损 {item['stop_loss_pct'] * 100:.1f}%，默认止盈 {item['take_profit_pct'] * 100:.1f}%。",
+                        (
+                            "这不是因为它质量差，而是当前预算下还不够形成一笔可执行的场内交易。"
+                            if not is_executable
+                            else "即使可执行，也仍要注意分批建仓，避免一次性重仓。"
+                        ),
                     ],
                 }
             )
@@ -190,33 +225,72 @@ class ExplanationEngine:
         elif code == "near_target_position":
             reasons.append("虽然有可关注的 ETF，但你当前仓位已经接近目标仓位，没有必要今天硬做一笔。")
             reasons.append(f"候选池最高分是 {top_score:.1f}，但仓位差距不大，所以系统优先选择不折腾。")
-        elif code == "amount_below_min_trade":
+        elif code == "amount_below_min_advice":
             reasons.append(
-                f"本次建议实际可投入金额约 {facts.get('deploy_amount', 0):.0f} 元，但拆分后单笔可能低于最小交易金额 {facts.get('min_trade_amount', 0):.0f} 元。"
+                f"本次建议实际可投入金额约 {facts.get('deploy_amount', 0):.0f} 元，但拆分后单笔低于最小建议金额 {facts.get('min_advice_amount', 0):.0f} 元。"
+            )
+        elif code == "watchlist_only_budget_limited":
+            reasons.append(
+                f"候选池里虽然有高分 ETF，但按当前可用现金 {facts.get('available_cash', 0):.0f} 元和本次分配金额，暂时没有标的能覆盖 1 手最小可买金额。"
+            )
+            reasons.append(
+                f"因此系统把 {facts.get('watchlist_count', 0)} 只 ETF 先列入关注标的，而不是误导你去执行一笔实际上买不了的交易。"
+            )
+        elif code == "buy_candidates_one_lot_override":
+            reasons.append(
+                f"按常规分批节奏，这次计划投入约 {facts.get('deploy_amount', 0):.0f} 元，直接拆分后很难形成一笔可执行交易。"
+            )
+            reasons.append(
+                f"但你当前现金 {facts.get('available_cash', 0):.0f} 元足够买入 1 手 {facts.get('fallback_symbol', '')}，"
+                f"所以系统切换成小资金可执行方案，优先给出这只当前买得起的高分 ETF。"
             )
         elif code == "buy_candidates":
             reasons.append(f"候选池最高分 {top_score:.1f}，高于出手阈值 {facts.get('buy_score_threshold', 0):.1f}。")
             reasons.append(f"当前仓位低于目标仓位，系统计划先分批投入约 {facts.get('deploy_amount', 0):.0f} 元，而不是一次满仓。")
+            if facts.get("watchlist_count", 0):
+                reasons.append(
+                    f"其中有 {facts.get('watchlist_count', 0)} 只高分 ETF 因当前建议金额还不够买 1 手，被单独放进了关注标的。"
+                )
         elif code == "trim_positions":
             reasons.append(f"当前仓位高于目标仓位，系统建议先回收约 {facts.get('reduction_amount', 0):.0f} 元，把风险降下来。")
         elif code == "no_positions_to_reduce":
             reasons.append("系统判断仓位应更低，但你当前没有持仓可减，所以最终给出不操作。")
-        elif code == "trim_amount_below_min_trade":
-            reasons.append(f"理论上应该减仓，但这次可减金额低于最小交易金额 {facts.get('min_trade_amount', 0):.0f} 元。")
+        elif code == "trim_amount_below_min_advice":
+            reasons.append(f"理论上应该减仓，但这次可减金额低于最小建议金额 {facts.get('min_advice_amount', 0):.0f} 元。")
 
         return reasons
 
-    def _execution_rule(self, advice: dict[str, Any], facts: dict[str, Any], top_score: float) -> dict[str, Any]:
+    def _execution_rule(
+        self,
+        advice: dict[str, Any],
+        facts: dict[str, Any],
+        top_score: float,
+        executable_recommendations: list[dict[str, Any]],
+        watchlist_recommendations: list[dict[str, Any]],
+    ) -> dict[str, Any]:
         threshold = float(facts.get("buy_score_threshold", 0))
         market_passed = advice["market_regime"] != "观望"
         score_passed = top_score >= threshold
+        budget_passed = bool(executable_recommendations) or advice["action"] != "不操作"
         return {
-            "rule": "只有当市场不是“观望”，并且候选池最高分不低于出手阈值时，系统才会给出买入建议。",
+            "rule": "系统先判断市场和分数是否达标，再检查单笔建议金额是否达到最小建议金额，以及是否足够覆盖 1 手最小可买金额。",
             "threshold": round(threshold, 2),
             "top_score": round(top_score, 2),
+            "min_advice_amount": round(float(facts.get("min_advice_amount", 0)), 2),
+            "lot_size": round(float(facts.get("lot_size", 0)), 2),
+            "available_cash": round(float(facts.get("available_cash", 0)), 2),
             "market_passed": market_passed,
             "score_passed": score_passed,
-            "result": "满足出手条件" if market_passed and score_passed else "暂不满足出手条件",
+            "budget_passed": budget_passed,
+            "executable_count": len(executable_recommendations),
+            "watchlist_count": len(watchlist_recommendations),
+            "result": (
+                "满足出手条件，且存在可执行标的"
+                if market_passed and score_passed and executable_recommendations
+                else "高分标的存在，但当前预算下暂时不可执行"
+                if market_passed and score_passed and watchlist_recommendations
+                else "暂不满足出手条件"
+            ),
         }
 
     def _source_info(self, source: dict[str, Any], quality_summary: dict[str, Any]) -> list[dict[str, Any]]:
@@ -300,7 +374,38 @@ class ExplanationEngine:
             },
         ]
 
-    def _watchlist(self, scored_df: pd.DataFrame, plan: dict[str, Any]) -> list[dict[str, Any]]:
+    def _watchlist(
+        self,
+        scored_df: pd.DataFrame,
+        plan: dict[str, Any],
+        watchlist_recommendations: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        if watchlist_recommendations:
+            watchlist = []
+            for item in watchlist_recommendations:
+                row = scored_df[scored_df["symbol"] == item["symbol"]]
+                if row.empty:
+                    continue
+                data = row.iloc[0].to_dict()
+                breakdown = self._parse_breakdown(data.get("breakdown_json"))
+                watchlist.append(
+                    {
+                        "symbol": item["symbol"],
+                        "name": item["name"],
+                        "rank": item["rank"],
+                        "score": round(float(item["score"]), 1),
+                        "momentum_5d": round(float(data["momentum_5d"]), 2),
+                        "volatility_10d": round(float(data["volatility_10d"]), 2),
+                        "drawdown_20d": round(float(data["drawdown_20d"]), 2),
+                        "note": item.get("execution_note", ""),
+                        "min_order_amount": round(float(item.get("min_order_amount", 0)), 2),
+                        "suggested_amount": round(float(item.get("suggested_amount", 0)), 2),
+                        "budget_gap_to_min_order": round(float(item.get("budget_gap_to_min_order", 0)), 2),
+                        "score_substitution": self._etf_score_substitution(breakdown),
+                        "score_calculation": self._etf_score_calculation(data, breakdown),
+                    }
+                )
+            return watchlist
         watchlist = []
         for _, row in scored_df.head(3).iterrows():
             data = row.to_dict()

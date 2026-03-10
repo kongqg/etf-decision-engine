@@ -12,7 +12,10 @@ top_n_default = 3
 min_score_to_buy = 55.0
 min_score_gap_for_single = 8.0
 initial_build_ratio = 0.6
-default_min_trade_amount = 1000.0
+default_min_advice_amount = 100.0
+budget_filter_enabled = true
+default_lot_size = 100
+show_watchlist_recommendations = true
 
 [ui]
 currency_symbol = "¥"

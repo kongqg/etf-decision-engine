@@ -1,4 +1,5 @@
 .venv/
+.pyuser/
 .run/
 .pytest_tmp/
 .pytest_cache/

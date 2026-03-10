@@ -27,7 +27,10 @@ class Settings:
     min_score_to_buy: float
     min_score_gap_for_single: float
     initial_build_ratio: float
-    default_min_trade_amount: float
+    default_min_advice_amount: float
+    budget_filter_enabled: bool
+    default_lot_size: float
+    show_watchlist_recommendations: bool
     currency_symbol: str
     show_debug_badges: bool
     base_dir: Path = BASE_DIR
@@ -47,6 +50,7 @@ def load_yaml_config(path: Path) -> dict[str, Any]:
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     raw = _load_toml(CONFIG_DIR / "settings.toml")
+    decision = raw["decision"]
 
     database_url = os.getenv("ETF_ASSISTANT_DATABASE_URL", raw["app"]["database_url"])
     return Settings(
@@ -57,11 +61,14 @@ def get_settings() -> Settings:
         data_cache_days=int(raw["app"]["data_cache_days"]),
         min_refresh_history_days=int(raw["app"]["min_refresh_history_days"]),
         data_stale_minutes=int(raw["app"]["data_stale_minutes"]),
-        top_n_default=int(raw["decision"]["top_n_default"]),
-        min_score_to_buy=float(raw["decision"]["min_score_to_buy"]),
-        min_score_gap_for_single=float(raw["decision"]["min_score_gap_for_single"]),
-        initial_build_ratio=float(raw["decision"]["initial_build_ratio"]),
-        default_min_trade_amount=float(raw["decision"]["default_min_trade_amount"]),
+        top_n_default=int(decision["top_n_default"]),
+        min_score_to_buy=float(decision["min_score_to_buy"]),
+        min_score_gap_for_single=float(decision["min_score_gap_for_single"]),
+        initial_build_ratio=float(decision["initial_build_ratio"]),
+        default_min_advice_amount=float(decision.get("default_min_advice_amount", decision.get("default_min_trade_amount", 1000.0))),
+        budget_filter_enabled=bool(decision.get("budget_filter_enabled", True)),
+        default_lot_size=float(decision.get("default_lot_size", 100.0)),
+        show_watchlist_recommendations=bool(decision.get("show_watchlist_recommendations", True)),
         currency_symbol=raw["ui"]["currency_symbol"],
         show_debug_badges=bool(raw["ui"]["show_debug_badges"]),
     )

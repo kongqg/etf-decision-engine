@@ -73,32 +73,36 @@
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">推荐 ETF</div>
-            <h3>今天重点看这几只</h3>
+            <div class="eyebrow">可执行推荐</div>
+            <h3>今天优先看当前买得起的 ETF</h3>
         </div>
     </div>
-    {% if advice["items"] %}
+    {% if advice["executable_recommendations"] %}
     <div class="card-grid three">
-        {% for item in advice["items"] %}
+        {% for item in advice["executable_recommendations"] %}
         <article class="pick-card">
             <div class="pick-head">
                 <div>
                     <h4>{{ item.name }}</h4>
                     <p>{{ item.symbol }}</p>
                 </div>
-                <span class="pill">{{ item.risk_level }}</span>
+                <div class="action-cluster">
+                    <span class="pill">{{ item.execution_status }}</span>
+                    <span class="pill">{{ item.risk_level }}</span>
+                </div>
             </div>
             <div class="pick-metrics">
                 <div><span>建议金额</span><strong>{{ fmt_money(item.suggested_amount) }}</strong></div>
+                <div><span>1手门槛</span><strong>{{ fmt_money(item.min_order_amount) }}</strong></div>
                 <div><span>综合得分</span><strong>{{ "%.1f"|format(item.score) }}</strong></div>
             </div>
-            <p>{{ item.reason_short }}</p>
+            <p>{{ item.execution_note or item.reason_short }}</p>
             <a class="primary-link" href="/explanation/{{ advice.id }}">查看为什么推荐它</a>
         </article>
         {% endfor %}
     </div>
     <div class="score-compare">
-        {% for item in advice["items"] %}
+        {% for item in advice["executable_recommendations"] %}
         <div class="bar-row">
             <span>{{ item.name }}</span>
             <div class="bar-track"><div class="bar-fill" style="width: {{ item.score }}%;"></div></div>
@@ -107,8 +111,50 @@
         {% endfor %}
     </div>
     {% else %}
-    <p>本次没有建议你立刻买卖具体 ETF，但这不代表系统没有判断。下面是当前值得关注的候选。</p>
-    {% if explanation and explanation["overall"]["watchlist"] %}
+    <p>本次没有生成可直接执行的 ETF 买入建议。下面如果有“关注标的”，说明它们评分不错，但按当前预算还不够形成一笔可执行交易。</p>
+    {% endif %}
+</section>
+
+{% if advice["show_watchlist_recommendations"] and advice["watchlist_recommendations"] %}
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">关注标的</div>
+            <h3>这些 ETF 值得看，但当前预算还买不起 1 手</h3>
+        </div>
+    </div>
+    <div class="card-grid three">
+        {% for item in advice["watchlist_recommendations"] %}
+        <article class="pick-card">
+            <div class="pick-head">
+                <div>
+                    <h4>{{ item.name }}</h4>
+                    <p>{{ item.symbol }}</p>
+                </div>
+                <div class="action-cluster">
+                    <span class="pill">{{ item.execution_status }}</span>
+                    <span class="pill">{{ item.risk_level }}</span>
+                </div>
+            </div>
+            <div class="pick-metrics">
+                <div><span>建议金额</span><strong>{{ fmt_money(item.suggested_amount) }}</strong></div>
+                <div><span>1手门槛</span><strong>{{ fmt_money(item.min_order_amount) }}</strong></div>
+                <div><span>还差金额</span><strong>{{ fmt_money(item.budget_gap_to_min_order) }}</strong></div>
+            </div>
+            <p>{{ item.not_executable_reason or item.execution_note }}</p>
+            <a class="primary-link" href="/explanation/{{ advice.id }}">查看为什么先关注它</a>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% elif not advice["executable_recommendations"] and explanation and explanation["overall"]["watchlist"] %}
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">候选池</div>
+            <h3>当前值得继续观察的 ETF</h3>
+        </div>
+    </div>
     <div class="card-grid three">
         {% for item in explanation["overall"]["watchlist"] %}
         <article class="pick-card">
@@ -127,9 +173,8 @@
         </article>
         {% endfor %}
     </div>
-    {% endif %}
-    {% endif %}
 </section>
+{% endif %}
 {% else %}
 <section class="card">
     <p>暂无建议记录。去首页点击“{{ session_button_label }}”。</p>

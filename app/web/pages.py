@@ -146,7 +146,7 @@ def init_user_action(
     allow_gold: bool = Form(default=False),
     allow_bond: bool = Form(default=False),
     allow_overseas: bool = Form(default=False),
-    min_trade_amount: float = Form(default=1000.0),
+    min_trade_amount: float = Form(default=settings.default_min_advice_amount),
     db: Session = Depends(get_db),
 ):
     user_service.init_user(

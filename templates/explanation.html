@@ -51,8 +51,14 @@
     <div class="evidence-list">
         <div><span>出手阈值</span><strong>{{ "%.1f"|format(explanation["overall"]["execution_rule"]["threshold"]) }}</strong></div>
         <div><span>当前最高分</span><strong>{{ "%.1f"|format(explanation["overall"]["execution_rule"]["top_score"]) }}</strong></div>
+        <div><span>最小建议金额</span><strong>{{ fmt_money(explanation["overall"]["execution_rule"]["min_advice_amount"]) }}</strong></div>
+        <div><span>可用现金</span><strong>{{ fmt_money(explanation["overall"]["execution_rule"]["available_cash"]) }}</strong></div>
+        <div><span>默认一手</span><strong>{{ "%.0f"|format(explanation["overall"]["execution_rule"]["lot_size"]) }} 份</strong></div>
         <div><span>市场条件</span><strong>{{ "已通过" if explanation["overall"]["execution_rule"]["market_passed"] else "未通过" }}</strong></div>
         <div><span>分数条件</span><strong>{{ "已通过" if explanation["overall"]["execution_rule"]["score_passed"] else "未通过" }}</strong></div>
+        <div><span>预算条件</span><strong>{{ "已通过" if explanation["overall"]["execution_rule"]["budget_passed"] else "未通过" }}</strong></div>
+        <div><span>可执行标的</span><strong>{{ explanation["overall"]["execution_rule"]["executable_count"] }}</strong></div>
+        <div><span>关注标的</span><strong>{{ explanation["overall"]["execution_rule"]["watchlist_count"] }}</strong></div>
         <div><span>结论</span><strong>{{ explanation["overall"]["execution_rule"]["result"] }}</strong></div>
     </div>
 </section>
@@ -126,8 +132,8 @@
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">候选池对比</div>
-            <h3>当前更值得关注的 ETF</h3>
+            <div class="eyebrow">关注标的</div>
+            <h3>这些 ETF 评分不错，但当前预算还不够买 1 手</h3>
         </div>
     </div>
     <table class="data-table">
@@ -136,6 +142,9 @@
             <th>ETF</th>
             <th>排名</th>
             <th>综合得分</th>
+            <th>建议金额</th>
+            <th>1手门槛</th>
+            <th>还差金额</th>
             <th>5日动量</th>
             <th>10日波动率</th>
             <th>20日回撤</th>
@@ -147,6 +156,9 @@
             <td>{{ row.name }}<br><span class="muted">{{ row.symbol }}</span></td>
             <td>{{ row.rank }}</td>
             <td>{{ "%.1f"|format(row.score) }}</td>
+            <td>{{ fmt_money(row.suggested_amount) }}</td>
+            <td>{{ fmt_money(row.min_order_amount) }}</td>
+            <td>{{ fmt_money(row.budget_gap_to_min_order) }}</td>
             <td>{{ "%.2f"|format(row.momentum_5d) }}%</td>
             <td>{{ "%.2f"|format(row.volatility_10d) }}%</td>
             <td>{{ "%.2f"|format(row.drawdown_20d) }}%</td>
@@ -208,8 +220,12 @@
             <div class="eyebrow">{{ item.symbol }}</div>
             <h3>{{ item.title }}</h3>
         </div>
+        <span class="pill">{{ item.execution_status }}</span>
     </div>
     <p>{{ item.summary }}</p>
+    {% if item.execution_note %}
+    <p class="muted">{{ item.execution_note }}</p>
+    {% endif %}
 
     <div class="card-grid two">
         <article class="sub-card">
@@ -229,6 +245,11 @@
             </div>
         </article>
     </div>
+
+    <article class="sub-card" style="margin-top: 18px;">
+        <h4>为什么这次{{ "可以执行" if item.recommendation_bucket == "executable_recommendations" else "先关注" }}</h4>
+        <p>{{ item.allocation_reason }}</p>
+    </article>
 
     <article class="sub-card" style="margin-top: 18px;">
         <h4>综合分怎么算</h4>

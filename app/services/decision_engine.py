@@ -93,10 +93,30 @@ class DecisionEngine:
             scored_df=scored_df,
             positions_df=positions_ranked,
             total_asset=portfolio_summary["total_asset"],
+            available_cash=portfolio_summary["cash_balance"],
             current_position_pct=portfolio_summary["current_position_pct"],
             preferences=preferences,
             market_regime=market_snapshot["market_regime"],
         )
+
+        executable_payloads = self._build_advice_items(
+            plan_items=plan.get("items", []),
+            scored_df=scored_df,
+            full_df=feature_df,
+            default_action=plan["action"],
+        )
+        watchlist_payloads = self._build_advice_items(
+            plan_items=plan.get("watchlist_items", []),
+            scored_df=scored_df,
+            full_df=feature_df,
+            default_action="关注",
+        )
+        recommendation_groups = {
+            "executable_recommendations": executable_payloads,
+            "watchlist_recommendations": watchlist_payloads,
+            "show_watchlist_recommendations": self.allocation_service.settings.show_watchlist_recommendations,
+            "budget_filter_enabled": self.allocation_service.settings.budget_filter_enabled,
+        }
 
         advice_record = AdviceRecord(
             advice_date=latest_trade,
@@ -116,6 +136,7 @@ class DecisionEngine:
                     "reason_code": plan.get("reason_code"),
                     "candidate_count": int(filtered_df["filter_pass"].sum()) if not filtered_df.empty else 0,
                     "universe_count": int(len(filtered_df)),
+                    "recommendation_groups": recommendation_groups,
                 },
                 ensure_ascii=False,
             ),
@@ -123,8 +144,31 @@ class DecisionEngine:
         session.add(advice_record)
         session.flush()
 
-        item_payloads = self._build_advice_items(plan, scored_df, feature_df)
-        session.add_all([AdviceItem(advice_id=advice_record.id, **payload) for payload in item_payloads])
+        db_item_keys = {
+            "symbol",
+            "name",
+            "rank",
+            "action",
+            "suggested_amount",
+            "suggested_pct",
+            "trigger_price_low",
+            "trigger_price_high",
+            "stop_loss_pct",
+            "take_profit_pct",
+            "score",
+            "score_gap",
+            "reason_short",
+            "risk_level",
+        }
+        session.add_all(
+            [
+                AdviceItem(
+                    advice_id=advice_record.id,
+                    **{key: value for key, value in payload.items() if key in db_item_keys},
+                )
+                for payload in executable_payloads
+            ]
+        )
         session.flush()
 
         advice_dict = {
@@ -138,7 +182,15 @@ class DecisionEngine:
             "current_position_pct": advice_record.current_position_pct,
             "summary_text": advice_record.summary_text,
             "risk_text": advice_record.risk_text,
-            "items": item_payloads,
+            "items": executable_payloads,
+            "executable_recommendations": executable_payloads,
+            "watchlist_recommendations": watchlist_payloads,
+            "show_watchlist_recommendations": recommendation_groups["show_watchlist_recommendations"],
+            "budget_filter_enabled": recommendation_groups["budget_filter_enabled"],
+            "recommendation_counts": {
+                "executable": len(executable_payloads),
+                "watchlist": len(watchlist_payloads),
+            },
             "reason_code": plan.get("reason_code"),
         }
         explanation_payload = self.explanation_engine.build(
@@ -278,12 +330,18 @@ class DecisionEngine:
             position.last_action_suggestion = self.risk_service.position_action_hint(row, market_regime)
         session.commit()
 
-    def _build_advice_items(self, plan: dict, scored_df: pd.DataFrame, full_df: pd.DataFrame) -> list[dict[str, Any]]:
-        if not plan["items"]:
+    def _build_advice_items(
+        self,
+        plan_items: list[dict[str, Any]],
+        scored_df: pd.DataFrame,
+        full_df: pd.DataFrame,
+        default_action: str,
+    ) -> list[dict[str, Any]]:
+        if not plan_items:
             return []
         top_score = float(scored_df.iloc[0]["total_score"]) if not scored_df.empty else 0.0
         items = []
-        for item in plan["items"]:
+        for item in plan_items:
             row = full_df[full_df["symbol"] == item["symbol"]]
             if row.empty:
                 continue
@@ -298,7 +356,7 @@ class DecisionEngine:
                     "symbol": item["symbol"],
                     "name": enriched["name"],
                     "rank": rank_value,
-                    "action": plan["action"],
+                    "action": item.get("action", default_action),
                     "suggested_amount": float(item["suggested_amount"]),
                     "suggested_pct": float(item["suggested_pct"]),
                     "trigger_price_low": round(current_price * 0.995, 3),
@@ -309,6 +367,18 @@ class DecisionEngine:
                     "score_gap": round(top_score - score_value, 2),
                     "reason_short": self._reason_short(enriched, rank_value, len(scored_df)),
                     "risk_level": enriched["risk_level"],
+                    "latest_price": float(item.get("latest_price", current_price)),
+                    "lot_size": float(item.get("lot_size", self.allocation_service.settings.default_lot_size)),
+                    "min_advice_amount": float(item.get("min_advice_amount", 0.0)),
+                    "min_order_amount": float(item.get("min_order_amount", 0.0)),
+                    "available_cash": float(item.get("available_cash", 0.0)),
+                    "budget_gap_to_min_order": float(item.get("budget_gap_to_min_order", 0.0)),
+                    "is_executable": bool(item.get("is_executable", True)),
+                    "execution_status": str(item.get("execution_status", "可执行买入")),
+                    "recommendation_bucket": str(item.get("recommendation_bucket", "executable_recommendations")),
+                    "not_executable_reason": str(item.get("not_executable_reason", "")),
+                    "execution_note": str(item.get("execution_note", "")),
+                    "small_account_override": bool(item.get("small_account_override", False)),
                 }
             )
         return items

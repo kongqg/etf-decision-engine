@@ -24,8 +24,16 @@
             </select>
         </label>
         <label>
-            <span>最小交易金额</span>
-            <input type="number" name="min_trade_amount" min="100" step="100" value="1000" required>
+            <span>最小建议金额</span>
+            <input
+                type="number"
+                name="min_trade_amount"
+                min="100"
+                step="100"
+                value="{{ default_min_advice_amount }}"
+                required
+            >
+            <small class="muted">这是系统愿不愿意生成建议的门槛，不是交易所的真实下单门槛。场内 ETF 默认按 {{ "%.0f"|format(default_lot_size) }} 份一手计算。</small>
         </label>
         <label class="check">
             <input type="checkbox" name="allow_gold" checked>
