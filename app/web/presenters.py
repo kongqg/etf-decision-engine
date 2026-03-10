@@ -15,7 +15,9 @@ def serialize_advice_record(advice) -> dict[str, Any] | None:
     recommendation_groups = evidence.get("recommendation_groups", {})
     portfolio_review_items = _normalize_recommendation_items(evidence.get("portfolio_review_items"))
     transition_plan = _normalize_recommendation_items(evidence.get("transition_plan"))
+    daily_action_plan = _normalize_recommendation_items(evidence.get("daily_action_plan")) or transition_plan
     target_portfolio = evidence.get("target_portfolio", {}) if isinstance(evidence.get("target_portfolio"), dict) else {}
+    action_counts = evidence.get("action_counts", {}) if isinstance(evidence.get("action_counts"), dict) else {}
     has_structured_groups = bool(recommendation_groups)
     legacy_items = [
         _normalize_recommendation_item(
@@ -25,6 +27,9 @@ def serialize_advice_record(advice) -> dict[str, Any] | None:
             "rank": item.rank,
             "action": item.action,
             "action_code": getattr(item, "action_code", ""),
+            "position_action": "",
+            "position_action_label": item.action,
+            "action_reason": item.reason_short,
             "suggested_amount": item.suggested_amount,
             "suggested_pct": item.suggested_pct,
             "trigger_price_low": item.trigger_price_low,
@@ -73,6 +78,13 @@ def serialize_advice_record(advice) -> dict[str, Any] | None:
             "best_unaffordable_reason": "",
             "is_affordable_but_weak": False,
             "weak_signal_reason": "",
+            "scores": {
+                "entry_score": getattr(item, "entry_score", 0.0),
+                "hold_score": getattr(item, "hold_score", 0.0),
+                "exit_score": getattr(item, "exit_score", 0.0),
+                "decision_score": getattr(item, "decision_score", item.score),
+                "category_score": getattr(item, "category_score", 0.0),
+            },
         }
         )
         for item in advice.items
@@ -120,7 +132,9 @@ def serialize_advice_record(advice) -> dict[str, Any] | None:
         "cost_inefficient_recommendations": cost_inefficient_items,
         "portfolio_review_items": portfolio_review_items,
         "transition_plan": transition_plan,
+        "daily_action_plan": daily_action_plan,
         "target_portfolio": target_portfolio,
+        "action_counts": action_counts,
         "show_watchlist_recommendations": recommendation_groups.get("show_watchlist_recommendations", True),
         "show_cost_inefficient_recommendations": recommendation_groups.get("show_cost_inefficient_recommendations", True),
         "budget_filter_enabled": recommendation_groups.get("budget_filter_enabled", True),
@@ -153,6 +167,9 @@ def _normalize_recommendation_item(item: Any) -> dict[str, Any] | None:
     normalized.setdefault("rank", 0)
     normalized.setdefault("action", "")
     normalized.setdefault("action_code", "")
+    normalized.setdefault("position_action", "")
+    normalized.setdefault("position_action_label", normalized.get("action", ""))
+    normalized.setdefault("action_reason", normalized.get("reason_short", ""))
     normalized.setdefault("suggested_amount", 0.0)
     normalized.setdefault("suggested_pct", 0.0)
     normalized.setdefault("trigger_price_low", None)
@@ -221,15 +238,30 @@ def _normalize_recommendation_item(item: Any) -> dict[str, Any] | None:
     normalized.setdefault("planned_exit_rule_summary", "")
     normalized.setdefault("transition_label", "")
     normalized.setdefault("is_current_holding", False)
+    normalized.setdefault("is_held", bool(normalized.get("is_current_holding", False)))
     normalized.setdefault("current_weight", 0.0)
     normalized.setdefault("target_weight", 0.0)
     normalized.setdefault("delta_weight", 0.0)
     normalized.setdefault("current_amount", 0.0)
     normalized.setdefault("target_amount", 0.0)
     normalized.setdefault("current_return_pct", 0.0)
+    normalized.setdefault("rank_in_category", normalized.get("rank", 0))
+    normalized.setdefault("previous_rank_in_category", normalized.get("rank", 0))
+    normalized.setdefault("rank_drop", 0)
+    normalized.setdefault("days_held", 0)
     normalized.setdefault("entry_eligible", True)
     normalized.setdefault("filter_pass", True)
     normalized.setdefault("filter_reasons", [])
+    normalized.setdefault(
+        "scores",
+        {
+            "entry_score": normalized.get("entry_score", 0.0),
+            "hold_score": normalized.get("hold_score", 0.0),
+            "exit_score": normalized.get("exit_score", 0.0),
+            "decision_score": normalized.get("decision_score", normalized.get("score", 0.0)),
+            "category_score": normalized.get("category_score", 0.0),
+        },
+    )
     normalized.setdefault("score_breakdown", None)
     return normalized
 

@@ -18,15 +18,11 @@ from app.services.explanation_engine import ExplanationEngine
 from app.services.market_data_service import MarketDataService
 from app.services.performance_service import PerformanceService
 from app.services.portfolio_service import PortfolioService
+from app.services.position_action_service import BUY_ACTIONS, ORDER_ACTIONS, SELL_ACTIONS, PositionActionService
 from app.services.risk_service import RiskService
 from app.services.scoring_service import ScoringService
 from app.services.universe_filter_service import UniverseFilterService
 from app.utils.dates import detect_session_mode, get_now, latest_market_date
-
-
-ORDER_ACTIONS = {"buy_open", "buy_add", "reduce", "sell_exit", "park_in_money_etf"}
-BUY_ACTIONS = {"buy_open", "buy_add", "park_in_money_etf"}
-SELL_ACTIONS = {"reduce", "sell_exit"}
 
 
 class DecisionEngine:
@@ -36,6 +32,7 @@ class DecisionEngine:
         self.performance_service = PerformanceService()
         self.filter_service = UniverseFilterService()
         self.scoring_service = ScoringService()
+        self.position_action_service = PositionActionService()
         self.risk_service = RiskService()
         self.explanation_engine = ExplanationEngine()
         self.policy = get_decision_policy_service()
@@ -177,7 +174,9 @@ class DecisionEngine:
                     "recommendation_groups": recommendation_groups,
                     "target_portfolio": decision_context["target_portfolio"],
                     "transition_plan": decision_context["transition_plan"],
+                    "daily_action_plan": decision_context["daily_action_plan"],
                     "portfolio_review_items": decision_context["portfolio_review_items"],
+                    "action_counts": decision_context["action_counts"],
                 },
                 ensure_ascii=False,
             ),
@@ -227,7 +226,9 @@ class DecisionEngine:
             "planned_exit_rule_summary": advice_record.planned_exit_rule_summary,
             "portfolio_review_items": decision_context["portfolio_review_items"],
             "transition_plan": decision_context["transition_plan"],
+            "daily_action_plan": decision_context["daily_action_plan"],
             "target_portfolio": decision_context["target_portfolio"],
+            "action_counts": decision_context["action_counts"],
         }
 
         explanation_payload = self.explanation_engine.build(
@@ -501,6 +502,7 @@ class DecisionEngine:
         primary_item = primary_items[0] if primary_items else None
         executable_now = bool(primary_item and primary_item.get("executable_now", False))
         blocked_reason = str(primary_item.get("blocked_reason", "")) if primary_item else ""
+        action_counts = self._count_position_actions(transition_plan)
         summary_text = self._summary_text(
             action_code=action_code,
             winning_category_label=winning_category_label,
@@ -525,6 +527,7 @@ class DecisionEngine:
             "transition_count": len(transition_plan),
             "holding_review_count": len(portfolio_review_items),
             "target_portfolio_mode": target_portfolio["mode"],
+            "action_counts": action_counts,
         }
 
         return {
@@ -556,7 +559,9 @@ class DecisionEngine:
             "category_scores": self._category_score_cards(evaluation["category_scores_df"]),
             "target_portfolio": target_portfolio,
             "transition_plan": transition_plan,
+            "daily_action_plan": transition_plan,
             "portfolio_review_items": portfolio_review_items,
+            "action_counts": action_counts,
             "facts": facts,
         }
 
@@ -601,6 +606,8 @@ class DecisionEngine:
                 selected_category=selected_category,
                 offensive_edge=offensive_edge,
                 fallback_action=fallback_action,
+                trade_context=trade_context,
+                current_time=current_time,
             )
             route_payload = self._route_action(
                 symbol=str(row["symbol"]),
@@ -639,7 +646,25 @@ class DecisionEngine:
         selected_category: str,
         offensive_edge: bool,
         fallback_action: str,
+        trade_context: dict[str, Any],
+        current_time: datetime,
     ) -> dict[str, Any]:
+        return self.position_action_service.decide(
+            row=row,
+            position=position,
+            preferences=preferences,
+            total_asset=total_asset,
+            available_cash=available_cash,
+            current_position_pct=current_position_pct,
+            target_position_pct=target_position_pct,
+            target_weight=target_weight,
+            selected_category=selected_category,
+            offensive_edge=offensive_edge,
+            fallback_action=fallback_action,
+            trade_context=trade_context,
+            current_time=current_time,
+        )
+
         decision_thresholds = self.thresholds.get("decision_thresholds", {})
         reduce_fraction = float(self.thresholds.get("position_rules", {}).get("reduce_fraction", 0.5))
         full_exit_fraction = float(self.thresholds.get("position_rules", {}).get("full_exit_fraction", 1.0))
@@ -927,6 +952,11 @@ class DecisionEngine:
         delta_weight = float(action_payload["delta_weight"])
         current_amount = float(action_payload["current_amount"])
         target_amount = float(action_payload["target_amount"])
+        position_action = str(action_payload.get("position_action", "no_trade"))
+        position_action_label = str(action_payload.get("position_action_label", self.policy.action_label(action_code)))
+        action_reason = str(action_payload.get("action_reason", action_payload.get("reason", "")))
+        rank_drop = int(action_payload.get("rank_drop", row.get("rank_drop", 0)) or 0)
+        days_held = int(action_payload.get("days_held", row.get("days_held", 0)) or 0)
         filter_reasons = list(row.get("filter_reasons", [])) if isinstance(row.get("filter_reasons"), list) else []
         entry_eligible = bool(row.get("entry_eligible", row.get("filter_pass", False)))
         budget_blocked = action_code in BUY_ACTIONS and (suggested_amount < min_trade_amount or suggested_amount < min_order_amount)
@@ -951,9 +981,9 @@ class DecisionEngine:
             "park_in_money_etf": "可执行转入货币ETF" if executable_now else "等待转入货币ETF",
             "no_trade": "暂不交易",
         }[action_code]
-        execution_note = action_payload["reason"]
+        execution_note = action_reason
         if blocked_reason:
-            execution_note = f"{action_payload['reason']} {blocked_reason}"
+            execution_note = f"{action_reason} {blocked_reason}"
         if position is not None and not entry_eligible:
             filter_summary = "、".join(filter_reasons) if filter_reasons else "未通过本轮新开仓筛选"
             execution_note = (
@@ -971,8 +1001,11 @@ class DecisionEngine:
             "symbol": row["symbol"],
             "name": row.get("name", row["symbol"]),
             "rank": int(row["rank_in_category"]),
-            "action": self.policy.action_label(action_code),
+            "action": position_action_label,
             "action_code": action_code,
+            "position_action": position_action,
+            "position_action_label": position_action_label,
+            "action_reason": action_reason,
             "suggested_amount": suggested_amount,
             "suggested_pct": float(action_payload["suggested_pct"]),
             "trigger_price_low": round(float(row["close_price"]) * 0.995, 3),
@@ -982,7 +1015,7 @@ class DecisionEngine:
             "score": float(row["decision_score"]),
             "decision_score": float(row["decision_score"]),
             "score_gap": round(float(row["score_gap"]), 2),
-            "reason_short": self._reason_short(row, action_payload["reason"]),
+            "reason_short": self._reason_short(row, action_reason),
             "risk_level": str(row["risk_level"]),
             "category": str(row["decision_category"]),
             "asset_class": self.policy.get_category_label(str(row["decision_category"])),
@@ -1022,16 +1055,28 @@ class DecisionEngine:
             "planned_exit_rule_summary": route_payload["planned_exit_rule_summary"],
             "current_position": position or {},
             "is_current_holding": position is not None,
+            "is_held": position is not None,
             "current_weight": current_weight,
             "target_weight": target_weight,
             "delta_weight": delta_weight,
             "current_amount": round(current_amount, 2),
             "target_amount": round(target_amount, 2),
             "current_return_pct": current_return_pct,
+            "rank_in_category": int(row["rank_in_category"]),
+            "previous_rank_in_category": int(row.get("previous_rank_in_category", row["rank_in_category"])),
+            "rank_drop": rank_drop,
+            "days_held": days_held,
             "entry_eligible": entry_eligible,
             "filter_pass": bool(row.get("filter_pass", False)),
             "filter_reasons": filter_reasons,
             "requires_order": requires_order,
+            "scores": {
+                "entry_score": float(row["entry_score"]),
+                "hold_score": float(row["hold_score"]),
+                "exit_score": float(row["exit_score"]),
+                "decision_score": float(row["decision_score"]),
+                "category_score": float(row["category_score"]),
+            },
             "score_breakdown": self._parse_breakdown(row["breakdown_json"]),
         }
 
@@ -1330,6 +1375,13 @@ class DecisionEngine:
         if latest_advice is None:
             return {}
         return {str(item.symbol): int(item.rank) for item in latest_advice.items}
+
+    def _count_position_actions(self, items: list[dict[str, Any]]) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for item in items:
+            action = str(item.get("position_action", item.get("action_code", "no_trade")))
+            counts[action] = counts.get(action, 0) + 1
+        return counts
 
     def _category_score_cards(self, category_scores_df: pd.DataFrame) -> list[dict[str, Any]]:
         if category_scores_df.empty:

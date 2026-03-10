@@ -294,7 +294,14 @@ def test_core_flow(monkeypatch):
         assert "recommendation_counts" in advice
         assert "mapped_horizon_profile" in advice
         assert "transition_plan" in advice
+        assert "daily_action_plan" in advice
+        assert "action_counts" in advice
         assert "target_portfolio" in advice
+        assert advice["daily_action_plan"]
+        assert "position_action" in advice["daily_action_plan"][0]
+        assert "current_weight" in advice["daily_action_plan"][0]
+        assert "target_weight" in advice["daily_action_plan"][0]
+        assert "delta_weight" in advice["daily_action_plan"][0]
 
         explanation = serialize_explanations(get_explanations_by_advice(session, advice["id"]))
         assert explanation["overall"]["reasons"]
@@ -302,6 +309,7 @@ def test_core_flow(monkeypatch):
         assert explanation["overall"]["source_info"]
         assert explanation["overall"]["execution_rule"]
         assert explanation["overall"]["category_scores"]
+        assert explanation["overall"]["action_counts"] == advice["action_counts"]
         assert explanation["overall"]["portfolio_transition"]["rows"] is not None
         if explanation["items"]:
             assert explanation["items"][0]["score_breakdown"]["entry_details"]
@@ -375,8 +383,10 @@ def test_existing_holding_stays_in_formal_review_even_when_not_entry_eligible(mo
         holding_item = next(item for item in advice["portfolio_review_items"] if item["symbol"] == "510300")
 
         assert holding_item["is_current_holding"] is True
+        assert holding_item["is_held"] is True
         assert holding_item["entry_eligible"] is False
         assert holding_item["action_code"] in {"hold", "reduce", "sell_exit", "buy_add"}
+        assert holding_item["position_action"] in {"hold_position", "reduce_position", "exit_position", "add_position"}
         assert "filter_reasons" in holding_item
 
 

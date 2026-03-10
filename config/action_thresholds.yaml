@@ -21,6 +21,15 @@ position_rules:
   full_exit_fraction: 1.00
   rebalance_tolerance_pct: 0.01
 
+position_action_rules:
+  minimum_action_delta_pct: 0.01
+  hold_exit_score_buffer: 6.0
+  rank_drop_to_reduce: 1
+  rank_drop_to_exit: 2
+  reopen_cooldown_days_after_exit: 2
+  reopen_score_buffer: 4.0
+  minimum_holding_days_before_reduce: 1
+
 t0_controls:
   max_decisions_per_symbol_per_day: 4
   max_round_trips_per_day: 2

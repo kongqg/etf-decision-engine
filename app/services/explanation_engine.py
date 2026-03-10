@@ -31,6 +31,7 @@ class ExplanationEngine:
         source = raw.get("source", {})
         quality_summary = raw.get("quality_summary", {})
         category_scores = plan.get("category_scores", [])
+        action_counts = plan.get("action_counts", {})
 
         overall = {
             "mode": advice["session_mode"],
@@ -52,6 +53,8 @@ class ExplanationEngine:
             "portfolio_transition": self._portfolio_transition_summary(target_portfolio, transition_plan),
             "portfolio_review_items": portfolio_review_items,
             "transition_plan": transition_plan,
+            "daily_action_plan": transition_plan,
+            "action_counts": action_counts,
             "executable_recommendations": recommendation_groups["executable_recommendations"],
             "watchlist_recommendations": recommendation_groups["watchlist_recommendations"],
         }
@@ -72,7 +75,7 @@ class ExplanationEngine:
                 {
                     "symbol": payload["symbol"],
                     "title": f"{payload['name']} 当前为什么是这个动作",
-                    "summary": payload.get("execution_note") or payload["reason_short"],
+                    "summary": payload.get("action_reason") or payload.get("execution_note") or payload["reason_short"],
                     "category": payload["category"],
                     "category_label": payload["asset_class"],
                     "category_breakdown": category_breakdown,
@@ -89,6 +92,9 @@ class ExplanationEngine:
                     "execution": {
                         "action": payload["action"],
                         "action_code": payload["action_code"],
+                        "position_action": payload.get("position_action", ""),
+                        "position_action_label": payload.get("position_action_label", payload["action"]),
+                        "action_reason": payload.get("action_reason", payload.get("execution_note", "")),
                         "tradability_mode": payload["trade_mode"],
                         "executable_now": payload["executable_now"],
                         "blocked_reason": payload["blocked_reason"],
@@ -103,6 +109,8 @@ class ExplanationEngine:
                         "current_amount": float(payload.get("current_amount", 0.0)),
                         "target_amount": float(payload.get("target_amount", 0.0)),
                         "current_return_pct": float(payload.get("current_return_pct", 0.0)),
+                        "days_held": int(payload.get("days_held", 0) or 0),
+                        "rank_drop": int(payload.get("rank_drop", 0) or 0),
                         "entry_eligible": bool(payload.get("entry_eligible", True)),
                         "filter_reasons": list(payload.get("filter_reasons", [])),
                         "transition_label": payload.get("transition_label", ""),

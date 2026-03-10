@@ -11,6 +11,9 @@ class AdviceItemResponse(BaseModel):
     rank: int
     action: str
     action_code: str | None = None
+    position_action: str | None = None
+    position_action_label: str | None = None
+    action_reason: str | None = None
     suggested_amount: float
     suggested_pct: float
     trigger_price_low: float | None
@@ -76,6 +79,13 @@ class AdviceItemResponse(BaseModel):
     blocked_reason: str | None = None
     planned_exit_days: int | None = None
     planned_exit_rule_summary: str | None = None
+    is_held: bool = False
+    current_weight: float | None = None
+    target_weight: float | None = None
+    delta_weight: float | None = None
+    rank_drop: int | None = None
+    days_held: int | None = None
+    scores: dict | None = None
     score_breakdown: dict | None = None
 
 
@@ -100,6 +110,8 @@ class AdviceResponse(BaseModel):
     planned_exit_days: int | None = None
     planned_exit_rule_summary: str | None = None
     items: list[AdviceItemResponse]
+    daily_action_plan: list[AdviceItemResponse] = Field(default_factory=list)
+    action_counts: dict[str, int] = Field(default_factory=dict)
     executable_recommendations: list[AdviceItemResponse] = Field(default_factory=list)
     best_unaffordable_recommendation: AdviceItemResponse | None = None
     affordable_but_weak_recommendations: list[AdviceItemResponse] = Field(default_factory=list)
