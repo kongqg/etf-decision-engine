@@ -10,13 +10,16 @@ from app.db.models import ETFUniverse
 def seed_universe(session: Session) -> None:
     settings = get_settings()
     config = load_yaml_config(settings.config_dir / "etf_universe.yaml")
-    existing_symbols = {
-        row[0] for row in session.execute(select(ETFUniverse.symbol)).all()
+    existing_rows = {
+        row.symbol: row for row in session.scalars(select(ETFUniverse))
     }
 
     for item in config.get("etfs", []):
-        if item["symbol"] in existing_symbols:
+        existing = existing_rows.get(item["symbol"])
+        if existing is None:
+            session.add(ETFUniverse(**item))
             continue
-        session.add(ETFUniverse(**item))
+        for key, value in item.items():
+            setattr(existing, key, value)
 
     session.commit()

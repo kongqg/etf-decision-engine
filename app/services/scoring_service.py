@@ -34,6 +34,13 @@ class ScoringService:
         )
         df = df.sort_values(["total_score", "momentum_5d"], ascending=[False, False]).reset_index(drop=True)
         df["rank_in_pool"] = df.index + 1
+        if "asset_class" in df.columns:
+            group_values = df["asset_class"].fillna("全部")
+        elif "category" in df.columns:
+            group_values = df["category"].fillna("全部")
+        else:
+            group_values = pd.Series(["全部"] * len(df), index=df.index)
+        df["rank_in_asset_class"] = df.groupby(group_values)["total_score"].rank(method="first", ascending=False).astype(int)
 
         breakdowns = []
         for _, row in df.iterrows():
@@ -49,6 +56,7 @@ class ScoringService:
                         "drawdown_penalty": round(float(row["score_dd_penalty"]), 2),
                         "liquidity_score": round(float(row["score_liquidity"]), 2),
                         "formula_score": round(float(row["total_score"]), 2),
+                        "rank_in_asset_class": int(row["rank_in_asset_class"]),
                     },
                     ensure_ascii=False,
                 )

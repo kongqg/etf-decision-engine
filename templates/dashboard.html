@@ -51,7 +51,9 @@
             <div><span>建议仓位</span><strong>{{ fmt_pct(advice.target_position_pct * 100) }}</strong></div>
             <div><span>当前仓位</span><strong>{{ fmt_pct(advice.current_position_pct * 100) }}</strong></div>
             <div><span>可执行标的</span><strong>{{ advice.recommendation_counts.executable }}</strong></div>
+            <div><span>买得起但不建议买</span><strong>{{ advice.recommendation_counts.affordable_but_weak }}</strong></div>
             <div><span>关注标的</span><strong>{{ advice.recommendation_counts.watchlist }}</strong></div>
+            <div><span>手续费偏高</span><strong>{{ advice.recommendation_counts.cost_inefficient }}</strong></div>
         </div>
         <a class="text-link" href="/advice/{{ advice.id }}">查看今天为什么这样建议</a>
         <a class="text-link" href="/evidence/{{ advice.id }}">查看这次用的原始数据</a>
@@ -72,6 +74,7 @@
             <div><span>债券 ETF</span><strong>{{ "已开启" if preferences.allow_bond else "未开启" }}</strong></div>
             <div><span>跨境 ETF</span><strong>{{ "已开启" if preferences.allow_overseas else "未开启" }}</strong></div>
             <div><span>最小建议金额</span><strong>{{ fmt_money(preferences.min_trade_amount) }}</strong></div>
+            <div><span>手续费上限</span><strong>{{ "%.2f"|format(max_fee_rate_for_execution * 100) }}%</strong></div>
         </div>
         <a class="text-link" href="/portfolio">查看我的持仓</a>
     </article>

@@ -20,7 +20,7 @@ class MarketRegimeService:
 
         broad_df = features_df[features_df["category"] == "宽基"].copy()
         offense_df = features_df[features_df["category"].isin(["宽基", "行业", "跨境"])].copy()
-        defense_df = features_df[features_df["category"].isin(["债券", "黄金"])].copy()
+        defense_df = features_df[features_df["category"].isin(["债券", "黄金", "货币"])].copy()
 
         broad_momentum = float(broad_df[["momentum_5d", "momentum_10d"]].mean().mean()) if not broad_df.empty else 0.0
         broad_ma_gap = float(broad_df["ma_gap_10"].mean()) if not broad_df.empty else 0.0

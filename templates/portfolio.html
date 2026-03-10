@@ -22,6 +22,49 @@
         <div class="eyebrow">总资产</div>
         <strong>{{ fmt_money(portfolio.total_asset) }}</strong>
     </article>
+    <article class="card metric">
+        <div class="eyebrow">累计净入金</div>
+        <strong>{{ fmt_money(portfolio.net_capital_flow_amount) }}</strong>
+    </article>
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">调整资金</div>
+            <h3>增加或减少可用资金</h3>
+        </div>
+    </div>
+    <p>这里用于记录你后续追加资金或转出现金。记录完成后，系统下一次会按新的总资产、现金和当前仓位重新计算建议。出金只允许从当前可用现金里扣，不会自动替你卖出持仓。</p>
+    <form action="/actions/adjust-capital" method="post" class="form-grid">
+        <label>
+            <span>资金动作</span>
+            <select name="flow_type">
+                <option value="deposit">增加资金</option>
+                <option value="withdraw">减少资金</option>
+            </select>
+        </label>
+        <label>
+            <span>金额</span>
+            <input type="number" name="amount" min="1" step="1" required>
+        </label>
+        <label>
+            <span>生效时间</span>
+            <input type="datetime-local" name="executed_at" value="{{ now_iso }}" required>
+        </label>
+        <label class="wide-field">
+            <span>备注</span>
+            <input type="text" name="note" placeholder="例如：本月追加 2000 元">
+        </label>
+        <div class="form-actions">
+            <button class="primary" type="submit">记录资金调整</button>
+        </div>
+    </form>
+    <div class="evidence-list" style="margin-top: 14px;">
+        <div><span>累计入金</span><strong>{{ fmt_money(portfolio.cumulative_deposit_amount) }}</strong></div>
+        <div><span>累计出金</span><strong>{{ fmt_money(portfolio.cumulative_withdraw_amount) }}</strong></div>
+        <div><span>当前净投入本金</span><strong>{{ fmt_money(portfolio.current_capital_base) }}</strong></div>
+    </div>
 </section>
 
 <section class="card wide">
@@ -118,5 +161,42 @@
             <button class="primary" type="submit">记录我已买入 / 卖出</button>
         </div>
     </form>
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">资金变动记录</div>
+            <h3>最近的入金和出金</h3>
+        </div>
+    </div>
+    {% if portfolio.capital_flows %}
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>时间</th>
+            <th>动作</th>
+            <th>金额</th>
+            <th>调整后现金</th>
+            <th>调整后总资产</th>
+            <th>备注</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in portfolio.capital_flows %}
+        <tr>
+            <td>{{ row.executed_at[:16].replace("T", " ") }}</td>
+            <td>{{ row.flow_label }}</td>
+            <td>{{ fmt_money(row.amount) }}</td>
+            <td>{{ fmt_money(row.cash_balance_after) }}</td>
+            <td>{{ fmt_money(row.total_asset_after) }}</td>
+            <td>{{ row.note or "-" }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>还没有资金调整记录。</p>
+    {% endif %}
 </section>
 {% endblock %}

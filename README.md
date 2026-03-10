@@ -9,6 +9,7 @@
 ## V1 能做什么
 
 - 初始化用户资金与风险偏好
+- 后续追加或转出资金，并让策略按新总资产重算
 - 刷新 ETF 数据
 - 生成一次今日建议 / 开盘计划 / 明日预案 / 下一交易日预案
 - 展示推荐 ETF、建议金额、仓位、风险和解释
@@ -75,7 +76,7 @@ uvicorn app.main:app --reload
 - 解释详情页
   - 显示整体市场判断、ETF 分项得分、数据证明、风险说明
 - 持仓页
-  - 显示当前持仓和成交录入表单
+  - 显示当前持仓、资金调整入口和成交录入表单
 - 绩效页
   - 显示累计收益曲线、资产分布、交易记录
 
@@ -85,6 +86,7 @@ uvicorn app.main:app --reload
 - `POST /api/refresh-data`
 - `POST /api/decide-now`
 - `POST /api/record-trade`
+- `POST /api/adjust-capital`
 - `GET /api/portfolio`
 - `GET /api/performance`
 - `GET /api/last-advice`

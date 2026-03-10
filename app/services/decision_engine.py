@@ -11,6 +11,7 @@ from app.db.models import AdviceItem, AdviceRecord, ETFFeature, ETFUniverse, Exp
 from app.repositories.market_repo import get_latest_market_snapshot, get_latest_trade_date
 from app.repositories.user_repo import get_preferences, get_user
 from app.services.allocation_service import AllocationService
+from app.services.execution_timing_service import ExecutionTimingService
 from app.services.explanation_engine import ExplanationEngine
 from app.services.market_data_service import MarketDataService
 from app.services.performance_service import PerformanceService
@@ -29,6 +30,7 @@ class DecisionEngine:
         self.filter_service = UniverseFilterService()
         self.scoring_service = ScoringService()
         self.allocation_service = AllocationService()
+        self.execution_timing_service = ExecutionTimingService()
         self.risk_service = RiskService()
         self.explanation_engine = ExplanationEngine()
 
@@ -111,11 +113,53 @@ class DecisionEngine:
             full_df=feature_df,
             default_action="关注",
         )
+        best_unaffordable_payloads = self._build_advice_items(
+            plan_items=[plan["best_unaffordable_item"]] if plan.get("best_unaffordable_item") else [],
+            scored_df=scored_df,
+            full_df=feature_df,
+            default_action="关注",
+        )
+        affordable_but_weak_payloads = self._build_advice_items(
+            plan_items=plan.get("affordable_but_weak_items", []),
+            scored_df=scored_df,
+            full_df=feature_df,
+            default_action="不建议执行",
+        )
+        cost_inefficient_payloads = self._build_advice_items(
+            plan_items=plan.get("cost_inefficient_items", []),
+            scored_df=scored_df,
+            full_df=feature_df,
+            default_action="不建议执行",
+        )
+
+        executable_payloads = self.execution_timing_service.annotate_items(executable_payloads, session_mode, current_time)
+        watchlist_payloads = self.execution_timing_service.annotate_items(watchlist_payloads, session_mode, current_time)
+        affordable_but_weak_payloads = self.execution_timing_service.annotate_items(
+            affordable_but_weak_payloads,
+            session_mode,
+            current_time,
+        )
+        cost_inefficient_payloads = self.execution_timing_service.annotate_items(
+            cost_inefficient_payloads,
+            session_mode,
+            current_time,
+        )
+        best_unaffordable_payloads = self.execution_timing_service.annotate_items(
+            best_unaffordable_payloads,
+            session_mode,
+            current_time,
+        )
+        best_unaffordable_recommendation = best_unaffordable_payloads[0] if best_unaffordable_payloads else None
         recommendation_groups = {
             "executable_recommendations": executable_payloads,
+            "best_unaffordable_recommendation": best_unaffordable_recommendation,
+            "affordable_but_weak_recommendations": affordable_but_weak_payloads,
             "watchlist_recommendations": watchlist_payloads,
+            "cost_inefficient_recommendations": cost_inefficient_payloads,
             "show_watchlist_recommendations": self.allocation_service.settings.show_watchlist_recommendations,
+            "show_cost_inefficient_recommendations": self.allocation_service.settings.show_cost_inefficient_recommendations,
             "budget_filter_enabled": self.allocation_service.settings.budget_filter_enabled,
+            "fee_filter_enabled": self.allocation_service.settings.fee_filter_enabled,
         }
 
         advice_record = AdviceRecord(
@@ -184,12 +228,19 @@ class DecisionEngine:
             "risk_text": advice_record.risk_text,
             "items": executable_payloads,
             "executable_recommendations": executable_payloads,
+            "best_unaffordable_recommendation": best_unaffordable_recommendation,
+            "affordable_but_weak_recommendations": affordable_but_weak_payloads,
             "watchlist_recommendations": watchlist_payloads,
+            "cost_inefficient_recommendations": cost_inefficient_payloads,
             "show_watchlist_recommendations": recommendation_groups["show_watchlist_recommendations"],
+            "show_cost_inefficient_recommendations": recommendation_groups["show_cost_inefficient_recommendations"],
             "budget_filter_enabled": recommendation_groups["budget_filter_enabled"],
+            "fee_filter_enabled": recommendation_groups["fee_filter_enabled"],
             "recommendation_counts": {
                 "executable": len(executable_payloads),
+                "affordable_but_weak": len(affordable_but_weak_payloads),
                 "watchlist": len(watchlist_payloads),
+                "cost_inefficient": len(cost_inefficient_payloads),
             },
             "reason_code": plan.get("reason_code"),
         }
@@ -239,11 +290,16 @@ class DecisionEngine:
         enriched = feature_df.copy()
         enriched["name"] = enriched["symbol"].map(lambda symbol: universe[symbol].name)
         enriched["category"] = enriched["symbol"].map(lambda symbol: universe[symbol].category)
+        enriched["asset_class"] = enriched["symbol"].map(lambda symbol: universe[symbol].asset_class)
         enriched["market"] = enriched["symbol"].map(lambda symbol: universe[symbol].market)
         enriched["benchmark"] = enriched["symbol"].map(lambda symbol: universe[symbol].benchmark)
         enriched["risk_level"] = enriched["symbol"].map(lambda symbol: universe[symbol].risk_level)
         enriched["min_avg_amount"] = enriched["symbol"].map(lambda symbol: universe[symbol].min_avg_amount)
         enriched["settlement_note"] = enriched["symbol"].map(lambda symbol: universe[symbol].settlement_note)
+        enriched["trade_mode"] = enriched["symbol"].map(lambda symbol: universe[symbol].trade_mode)
+        enriched["lot_size"] = enriched["symbol"].map(lambda symbol: universe[symbol].lot_size)
+        enriched["fee_rate"] = enriched["symbol"].map(lambda symbol: universe[symbol].fee_rate)
+        enriched["min_fee"] = enriched["symbol"].map(lambda symbol: universe[symbol].min_fee)
         return enriched
 
     def _sync_feature_scores(self, session: Session, feature_rows: list[ETFFeature], scored_df: pd.DataFrame) -> None:
@@ -367,18 +423,39 @@ class DecisionEngine:
                     "score_gap": round(top_score - score_value, 2),
                     "reason_short": self._reason_short(enriched, rank_value, len(scored_df)),
                     "risk_level": enriched["risk_level"],
+                    "category": enriched["category"],
+                    "asset_class": enriched.get("asset_class", enriched["category"]),
+                    "trade_mode": str(item.get("trade_mode", enriched.get("trade_mode", ""))),
+                    "trade_mode_note": str(item.get("trade_mode_note", "")),
                     "latest_price": float(item.get("latest_price", current_price)),
                     "lot_size": float(item.get("lot_size", self.allocation_service.settings.default_lot_size)),
+                    "fee_rate": float(item.get("fee_rate", self.allocation_service.settings.default_fee_rate)),
+                    "min_fee": float(item.get("min_fee", self.allocation_service.settings.default_min_fee)),
+                    "estimated_fee": float(item.get("estimated_fee", 0.0)),
+                    "estimated_cost_rate": float(item.get("estimated_cost_rate", 0.0)),
+                    "is_cost_efficient": bool(item.get("is_cost_efficient", True)),
+                    "cost_reason": str(item.get("cost_reason", "")),
                     "min_advice_amount": float(item.get("min_advice_amount", 0.0)),
                     "min_order_amount": float(item.get("min_order_amount", 0.0)),
                     "available_cash": float(item.get("available_cash", 0.0)),
                     "budget_gap_to_min_order": float(item.get("budget_gap_to_min_order", 0.0)),
+                    "is_budget_executable": bool(item.get("is_budget_executable", True)),
+                    "passes_min_advice": bool(item.get("passes_min_advice", True)),
                     "is_executable": bool(item.get("is_executable", True)),
                     "execution_status": str(item.get("execution_status", "可执行买入")),
                     "recommendation_bucket": str(item.get("recommendation_bucket", "executable_recommendations")),
                     "not_executable_reason": str(item.get("not_executable_reason", "")),
                     "execution_note": str(item.get("execution_note", "")),
                     "small_account_override": bool(item.get("small_account_override", False)),
+                    "is_budget_substitute": bool(item.get("is_budget_substitute", False)),
+                    "primary_asset_class": str(item.get("primary_asset_class", "")),
+                    "budget_substitute_reason": str(item.get("budget_substitute_reason", "")),
+                    "is_best_unaffordable": bool(item.get("is_best_unaffordable", False)),
+                    "best_unaffordable_reason": str(item.get("best_unaffordable_reason", "")),
+                    "is_affordable_but_weak": bool(item.get("is_affordable_but_weak", False)),
+                    "weak_signal_reason": str(item.get("weak_signal_reason", "")),
+                    "asset_allocation_weight": float(item.get("asset_allocation_weight", 0.0)),
+                    "asset_class_signal_score": float(item.get("asset_class_signal_score", 0.0)),
                 }
             )
         return items

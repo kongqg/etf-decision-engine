@@ -16,6 +16,17 @@ default_min_advice_amount = 100.0
 budget_filter_enabled = true
 default_lot_size = 100
 show_watchlist_recommendations = true
+fee_filter_enabled = true
+default_fee_rate = 0.0003
+default_min_fee = 1.0
+max_fee_rate_for_execution = 0.015
+show_cost_inefficient_recommendations = true
+budget_substitute_enabled = true
+budget_substitute_top_n = 2
+
+[execution]
+timing_optimization_enabled = true
+show_timing_suggestions = true
 
 [ui]
 currency_symbol = "¥"

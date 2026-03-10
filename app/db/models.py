@@ -56,6 +56,7 @@ class ETFUniverse(Base):
     symbol: Mapped[str] = mapped_column(String(10), primary_key=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     category: Mapped[str] = mapped_column(String(20), nullable=False)
+    asset_class: Mapped[str] = mapped_column(String(20), nullable=False, default="股票")
     market: Mapped[str] = mapped_column(String(10), nullable=False)
     benchmark: Mapped[str] = mapped_column(String(50), nullable=False)
     risk_level: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -65,6 +66,10 @@ class ETFUniverse(Base):
     allow_overseas: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     min_avg_amount: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     settlement_note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    trade_mode: Mapped[str] = mapped_column(String(10), nullable=False, default="T+1")
+    lot_size: Mapped[float] = mapped_column(Float, nullable=False, default=100.0)
+    fee_rate: Mapped[float] = mapped_column(Float, nullable=False, default=0.0003)
+    min_fee: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
@@ -214,6 +219,19 @@ class Trade(Base):
     realized_pnl: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     related_advice_id: Mapped[int | None] = mapped_column(ForeignKey("advice_records.id"), nullable=True)
     note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+
+class CapitalFlow(Base):
+    __tablename__ = "capital_flows"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    executed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    flow_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    amount: Mapped[float] = mapped_column(Float, nullable=False)
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    cash_balance_after: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    total_asset_after: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class PerformanceSnapshot(Base):

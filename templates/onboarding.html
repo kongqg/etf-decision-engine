@@ -33,7 +33,7 @@
                 value="{{ default_min_advice_amount }}"
                 required
             >
-            <small class="muted">这是系统愿不愿意生成建议的门槛，不是交易所的真实下单门槛。场内 ETF 默认按 {{ "%.0f"|format(default_lot_size) }} 份一手计算。</small>
+            <small class="muted">这是系统愿不愿意生成建议的门槛，不是交易所的真实下单门槛。场内 ETF 默认按 {{ "%.0f"|format(default_lot_size) }} 份一手计算，系统还会额外检查 1 手门槛和手续费占比。</small>
         </label>
         <label class="check">
             <input type="checkbox" name="allow_gold" checked>

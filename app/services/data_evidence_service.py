@@ -82,7 +82,7 @@ class DataEvidenceService:
         }
 
     def _benchmark_symbols(self, series_samples: dict[str, Any]) -> list[str]:
-        by_category: dict[str, list[str]] = {"宽基": [], "黄金": [], "债券": [], "行业": [], "跨境": []}
+        by_category: dict[str, list[str]] = {"宽基": [], "黄金": [], "债券": [], "货币": [], "行业": [], "跨境": []}
         for symbol, payload in series_samples.items():
             category = payload.get("category", "")
             by_category.setdefault(category, []).append(symbol)
@@ -91,6 +91,7 @@ class DataEvidenceService:
         selected.extend(by_category.get("宽基", [])[:3])
         selected.extend(by_category.get("黄金", [])[:1])
         selected.extend(by_category.get("债券", [])[:1])
+        selected.extend(by_category.get("货币", [])[:1])
         if len(selected) < 6:
             leftovers = []
             for category in ["行业", "跨境"]:

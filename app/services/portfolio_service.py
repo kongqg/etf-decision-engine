@@ -7,11 +7,39 @@ from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
 from app.db.models import ETFFeature
-from app.repositories.portfolio_repo import list_positions
+from app.repositories.portfolio_repo import list_capital_flows, list_positions
 from app.repositories.user_repo import get_user
 
 
 class PortfolioService:
+    def capital_flow_summary(self, session: Session, limit: int = 20) -> dict[str, Any]:
+        user = get_user(session)
+        flows = list_capital_flows(session, limit=limit)
+        cumulative_flows = list_capital_flows(session, limit=10000)
+        cumulative_deposit_amount = sum(flow.amount for flow in cumulative_flows if flow.flow_type == "deposit")
+        cumulative_withdraw_amount = sum(flow.amount for flow in cumulative_flows if flow.flow_type == "withdraw")
+        net_capital_flow_amount = cumulative_deposit_amount - cumulative_withdraw_amount
+        current_capital_base = (user.initial_capital + net_capital_flow_amount) if user is not None else net_capital_flow_amount
+        return {
+            "cumulative_deposit_amount": cumulative_deposit_amount,
+            "cumulative_withdraw_amount": cumulative_withdraw_amount,
+            "net_capital_flow_amount": net_capital_flow_amount,
+            "current_capital_base": current_capital_base,
+            "capital_flows": [
+                {
+                    "id": flow.id,
+                    "executed_at": flow.executed_at.isoformat(),
+                    "flow_type": flow.flow_type,
+                    "flow_label": "入金" if flow.flow_type == "deposit" else "出金",
+                    "amount": flow.amount,
+                    "note": flow.note,
+                    "cash_balance_after": flow.cash_balance_after,
+                    "total_asset_after": flow.total_asset_after,
+                }
+                for flow in flows
+            ],
+        }
+
     def update_market_prices(self, session: Session) -> None:
         positions = list_positions(session)
         user = get_user(session)
@@ -75,6 +103,7 @@ class PortfolioService:
             "total_asset": total_asset,
             "current_position_pct": current_position_pct,
             "holdings": holdings,
+            **self.capital_flow_summary(session),
         }
 
     def positions_dataframe(self, session: Session) -> pd.DataFrame:

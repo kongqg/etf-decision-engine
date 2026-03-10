@@ -8,6 +8,8 @@ def test_scoring_prefers_stronger_momentum_and_trend():
         [
             {
                 "symbol": "A",
+                "category": "宽基",
+                "asset_class": "股票",
                 "momentum_3d": 4.0,
                 "momentum_5d": 6.0,
                 "momentum_10d": 8.0,
@@ -20,6 +22,8 @@ def test_scoring_prefers_stronger_momentum_and_trend():
             },
             {
                 "symbol": "B",
+                "category": "宽基",
+                "asset_class": "股票",
                 "momentum_3d": 1.0,
                 "momentum_5d": 1.2,
                 "momentum_10d": 1.5,
@@ -37,3 +41,4 @@ def test_scoring_prefers_stronger_momentum_and_trend():
 
     assert scored.iloc[0]["symbol"] == "A"
     assert scored.iloc[0]["total_score"] > scored.iloc[1]["total_score"]
+    assert scored.iloc[0]["rank_in_asset_class"] == 1

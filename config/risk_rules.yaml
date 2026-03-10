@@ -4,6 +4,81 @@ position_by_regime:
   防守: 0.25
   观望: 0.05
 
+asset_class_allocation_by_regime:
+  进攻:
+    股票: 0.60
+    跨境: 0.20
+    黄金: 0.10
+    债券: 0.05
+    货币: 0.05
+  中性:
+    股票: 0.40
+    跨境: 0.15
+    黄金: 0.15
+    债券: 0.20
+    货币: 0.10
+  防守:
+    股票: 0.20
+    跨境: 0.05
+    黄金: 0.20
+    债券: 0.35
+    货币: 0.20
+  观望:
+    股票: 0.05
+    跨境: 0.00
+    黄金: 0.20
+    债券: 0.35
+    货币: 0.40
+
+asset_class_signal_threshold_by_class:
+  股票: 54.0
+  债券: 48.0
+  黄金: 50.0
+  货币: 45.0
+  跨境: 55.0
+
+asset_class_signal_min_positive_ratio:
+  股票: 0.50
+  债券: 0.50
+  黄金: 0.50
+  货币: 0.40
+  跨境: 0.50
+
+absolute_trend_filter:
+  default:
+    min_momentum_5d: 0.0
+    min_momentum_10d: 0.0
+    min_ma_gap_10: 0.0
+    min_trend_strength: 0.0
+  by_regime:
+    防守:
+      债券:
+        min_momentum_5d: -0.3
+        min_momentum_10d: -0.5
+        min_ma_gap_10: -0.2
+        min_trend_strength: -0.2
+      黄金:
+        min_momentum_5d: -0.3
+        min_momentum_10d: -0.5
+        min_ma_gap_10: -0.2
+        min_trend_strength: -0.2
+      货币:
+        min_momentum_5d: -0.2
+        min_momentum_10d: -0.3
+        min_ma_gap_10: -0.1
+        min_trend_strength: -0.1
+    观望:
+      债券:
+        min_momentum_5d: -0.4
+        min_momentum_10d: -0.6
+        min_ma_gap_10: -0.3
+        min_trend_strength: -0.25
+      货币:
+        min_momentum_5d: -0.3
+        min_momentum_10d: -0.4
+        min_ma_gap_10: -0.15
+        min_trend_strength: -0.15
+
 risk_adjustment_by_preference:
   保守: -0.10
   中性: 0.00
@@ -19,6 +94,7 @@ stop_loss_by_category:
   行业: 0.07
   黄金: 0.05
   债券: 0.03
+  货币: 0.01
   跨境: 0.08
 
 take_profit_by_category:
@@ -26,7 +102,74 @@ take_profit_by_category:
   行业: 0.12
   黄金: 0.08
   债券: 0.05
+  货币: 0.02
   跨境: 0.12
 
 anomaly_pct_change_threshold: 8.0
 anomaly_volatility_threshold: 8.5
+
+execution_timing:
+  asset_class_modes:
+    股票: "stock_windowed"
+    债券: "allocation_first"
+    黄金: "defensive_allocation"
+    货币: "cash_management"
+    跨境: "cross_border_pending"
+  display_by_asset_class:
+    股票: true
+    债券: true
+    黄金: true
+    货币: true
+    跨境: true
+  asset_classes:
+    股票:
+      label: "时间段优化"
+      timing_rule_applied: true
+      avoid_execution_windows:
+        - "09:15-09:30"
+      recommended_execution_windows:
+        - "09:35-10:30"
+        - "13:30-14:30"
+      notes:
+        preopen: "股票类 ETF 按 T+1 节奏理解，更适合趋势持有。今天如果要执行，优先等开盘后 09:35-10:30 或 13:30-14:30，再看盘面是否稳定，不建议在 09:15-09:30 集合竞价或刚开盘机械追价。"
+        early_open: "股票类 ETF 刚开盘波动通常更大，先别机械追价。更适合等 09:35-10:30 再分批执行。"
+        morning_window: "股票类 ETF 当前处于较适合执行的上午窗口。若要下单，优先在 09:35-10:30 内分批执行，不要一次性追价。"
+        late_morning: "股票类 ETF 上午优先窗口已过，如果不是必须立即执行，可以等下午 13:30-14:30 再看。"
+        midday_break: "股票类 ETF 不需要抢在午间前后机械下单。若今天还要执行，更适合等下午 13:30-14:30。"
+        afternoon_window: "股票类 ETF 当前处于较适合执行的下午窗口。可以结合盘面稳定度分批执行，不建议临近收盘再追价。"
+        late_session: "股票类 ETF 已接近收盘，除非是纪律性执行，否则不建议临近收盘匆忙追价。"
+        after_close: "股票类 ETF 今天已经收盘，当前更适合把它当成明日执行预案，明天优先关注 09:35-10:30 或 13:30-14:30。"
+        closed: "股票类 ETF 当前处于休市阶段，先保留为下一交易日预案，执行时优先关注 09:35-10:30 或 13:30-14:30。"
+    债券:
+      label: "配置优先"
+      timing_rule_applied: false
+      avoid_execution_windows: []
+      recommended_execution_windows: []
+      notes:
+        default: "债券 ETF 按 T+0 节奏理解，但不需要像股票类那样强行卡时间窗口。更应优先看它是不是当前主配置首选、是否买得起 1 手，以及这笔交易的手续费是否划算。"
+        preopen: "债券 ETF 不强调像股票那样等固定买点。开盘前更适合先确认今天是否仍是主配置首选，以及预算和 1 手门槛是否匹配。"
+        intraday: "债券 ETF 盘中不需要像股票那样强调固定时间窗口。更重要的是确认它仍然适合作为当前主配置、是否覆盖 1 手门槛，以及这笔金额是否值得执行。"
+    黄金:
+      label: "避险配置"
+      timing_rule_applied: false
+      avoid_execution_windows: []
+      recommended_execution_windows: []
+      notes:
+        default: "黄金 ETF 更偏避险配置，执行时间优化弱于股票类。更重要的是确认当前是否真的需要防守配置，而不是机械追某个时点。"
+        intraday: "黄金 ETF 盘中不需要像股票类那样严格卡窗口，更适合结合避险配置逻辑分批执行。"
+    货币:
+      label: "现金管理"
+      timing_rule_applied: false
+      avoid_execution_windows: []
+      recommended_execution_windows: []
+      notes:
+        default: "货币 ETF 更偏现金管理和资金停泊工具，不强调择时买点。重点是流动性管理，而不是抓某个盘中窗口。"
+        intraday: "货币 ETF 不强调盘中择时窗口，更适合作为场内现金管理工具来理解。"
+    跨境:
+      label: "单独规则待扩展"
+      timing_rule_applied: false
+      avoid_execution_windows: []
+      recommended_execution_windows: []
+      notes:
+        default: "跨境 ETF 先单独标记处理。第一版不直接照搬股票类时间规则，还要额外关注外盘节奏和汇率影响。"
+        intraday: "跨境 ETF 暂不直接套用股票类盘中窗口。当前更适合先确认外盘和汇率因素，再决定是否执行。"

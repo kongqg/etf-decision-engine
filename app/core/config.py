@@ -31,6 +31,15 @@ class Settings:
     budget_filter_enabled: bool
     default_lot_size: float
     show_watchlist_recommendations: bool
+    fee_filter_enabled: bool
+    default_fee_rate: float
+    default_min_fee: float
+    max_fee_rate_for_execution: float
+    show_cost_inefficient_recommendations: bool
+    budget_substitute_enabled: bool
+    budget_substitute_top_n: int
+    timing_optimization_enabled: bool
+    show_timing_suggestions: bool
     currency_symbol: str
     show_debug_badges: bool
     base_dir: Path = BASE_DIR
@@ -51,6 +60,7 @@ def load_yaml_config(path: Path) -> dict[str, Any]:
 def get_settings() -> Settings:
     raw = _load_toml(CONFIG_DIR / "settings.toml")
     decision = raw["decision"]
+    execution = raw.get("execution", {})
 
     database_url = os.getenv("ETF_ASSISTANT_DATABASE_URL", raw["app"]["database_url"])
     return Settings(
@@ -69,6 +79,15 @@ def get_settings() -> Settings:
         budget_filter_enabled=bool(decision.get("budget_filter_enabled", True)),
         default_lot_size=float(decision.get("default_lot_size", 100.0)),
         show_watchlist_recommendations=bool(decision.get("show_watchlist_recommendations", True)),
+        fee_filter_enabled=bool(decision.get("fee_filter_enabled", True)),
+        default_fee_rate=float(decision.get("default_fee_rate", 0.0003)),
+        default_min_fee=float(decision.get("default_min_fee", 1.0)),
+        max_fee_rate_for_execution=float(decision.get("max_fee_rate_for_execution", 0.015)),
+        show_cost_inefficient_recommendations=bool(decision.get("show_cost_inefficient_recommendations", True)),
+        budget_substitute_enabled=bool(decision.get("budget_substitute_enabled", True)),
+        budget_substitute_top_n=max(1, int(decision.get("budget_substitute_top_n", 1))),
+        timing_optimization_enabled=bool(execution.get("timing_optimization_enabled", True)),
+        show_timing_suggestions=bool(execution.get("show_timing_suggestions", True)),
         currency_symbol=raw["ui"]["currency_symbol"],
         show_debug_badges=bool(raw["ui"]["show_debug_badges"]),
     )

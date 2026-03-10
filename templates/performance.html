@@ -28,6 +28,22 @@
     </article>
 </section>
 
+<section class="card">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">收益口径</div>
+            <h3>这份收益率已经把入金和出金单独拆开</h3>
+        </div>
+    </div>
+    <p>{{ performance.return_basis_note }}</p>
+    <div class="evidence-list">
+        <div><span>累计入金</span><strong>{{ fmt_money(performance.cumulative_deposit_amount) }}</strong></div>
+        <div><span>累计出金</span><strong>{{ fmt_money(performance.cumulative_withdraw_amount) }}</strong></div>
+        <div><span>累计净入金</span><strong>{{ fmt_money(performance.net_capital_flow_amount) }}</strong></div>
+        <div><span>当前净投入本金</span><strong>{{ fmt_money(performance.current_capital_base) }}</strong></div>
+    </div>
+</section>
+
 <section class="card-grid two">
     <article class="card wide">
         <div class="section-head">

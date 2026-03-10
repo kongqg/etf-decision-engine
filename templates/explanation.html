@@ -53,15 +53,69 @@
         <div><span>当前最高分</span><strong>{{ "%.1f"|format(explanation["overall"]["execution_rule"]["top_score"]) }}</strong></div>
         <div><span>最小建议金额</span><strong>{{ fmt_money(explanation["overall"]["execution_rule"]["min_advice_amount"]) }}</strong></div>
         <div><span>可用现金</span><strong>{{ fmt_money(explanation["overall"]["execution_rule"]["available_cash"]) }}</strong></div>
+        <div><span>当前安全单笔上限</span><strong>{{ fmt_money(explanation["overall"]["execution_rule"]["practical_buy_cap_amount"]) }}</strong></div>
         <div><span>默认一手</span><strong>{{ "%.0f"|format(explanation["overall"]["execution_rule"]["lot_size"]) }} 份</strong></div>
+        <div><span>活跃资产类别</span><strong>{{ explanation["overall"]["execution_rule"]["active_asset_class_count"] }}</strong></div>
+        <div><span>手续费上限</span><strong>{{ "%.2f"|format(explanation["overall"]["execution_rule"]["max_fee_rate_for_execution"]) }}%</strong></div>
         <div><span>市场条件</span><strong>{{ "已通过" if explanation["overall"]["execution_rule"]["market_passed"] else "未通过" }}</strong></div>
         <div><span>分数条件</span><strong>{{ "已通过" if explanation["overall"]["execution_rule"]["score_passed"] else "未通过" }}</strong></div>
         <div><span>预算条件</span><strong>{{ "已通过" if explanation["overall"]["execution_rule"]["budget_passed"] else "未通过" }}</strong></div>
+        <div><span>成本条件</span><strong>{{ "已通过" if explanation["overall"]["execution_rule"]["fee_passed"] else "未通过" }}</strong></div>
         <div><span>可执行标的</span><strong>{{ explanation["overall"]["execution_rule"]["executable_count"] }}</strong></div>
+        <div><span>买得起但不建议买</span><strong>{{ explanation["overall"]["execution_rule"]["affordable_but_weak_count"] }}</strong></div>
         <div><span>关注标的</span><strong>{{ explanation["overall"]["execution_rule"]["watchlist_count"] }}</strong></div>
+        <div><span>手续费偏高</span><strong>{{ explanation["overall"]["execution_rule"]["cost_inefficient_count"] }}</strong></div>
         <div><span>结论</span><strong>{{ explanation["overall"]["execution_rule"]["result"] }}</strong></div>
     </div>
 </section>
+
+{% if explanation["overall"]["asset_class_plan"] %}
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">资产配置层</div>
+            <h3>系统先决定今天优先配置哪一类资产</h3>
+        </div>
+    </div>
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>资产类别</th>
+            <th>策略权重</th>
+            <th>类趋势分</th>
+            <th>趋势通过数</th>
+            <th>本轮分配权重</th>
+            <th>类内优选</th>
+            <th>状态</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in explanation["overall"]["asset_class_plan"] %}
+        <tr>
+            <td>{{ row.asset_class }}</td>
+            <td>{{ "%.1f"|format(row.base_weight_pct) }}%</td>
+            <td>{{ "%.1f"|format(row.signal_score) }}</td>
+            <td>{{ row.trend_pass_count }}/{{ row.candidate_count }}</td>
+            <td>{{ "%.1f"|format(row.allocation_weight_pct) }}%</td>
+            <td>
+                {% if row.candidate_name %}
+                {{ row.candidate_name }}<br><span class="muted">{{ row.candidate_symbol }}</span>
+                {% else %}
+                -
+                {% endif %}
+            </td>
+            <td>
+                {{ "已激活" if row.is_active else "暂不参与" }}
+                {% if not row.is_active and row.inactive_reason %}
+                <br><span class="muted">{{ row.inactive_reason }}</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endif %}
 
 <section class="card wide">
     <div class="section-head">
@@ -128,6 +182,71 @@
     </table>
 </section>
 
+{% if explanation["overall"]["best_unaffordable_recommendation"] %}
+{% set item = explanation["overall"]["best_unaffordable_recommendation"] %}
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">当前最优但暂时买不起</div>
+            <h3>{{ item.name }} 仍然是当前更优先的一只 ETF</h3>
+        </div>
+    </div>
+    <div class="evidence-list">
+        <div><span>资产类别</span><strong>{{ item.asset_class }}</strong></div>
+        <div><span>交易模式</span><strong>{{ item.trade_mode }}</strong></div>
+        <div><span>执行节奏</span><strong>{{ item.execution_timing_label or item.execution_timing_mode or "执行提示" }}</strong></div>
+        <div><span>综合得分</span><strong>{{ "%.1f"|format(item.score) }}</strong></div>
+        <div><span>建议金额</span><strong>{{ fmt_money(item.suggested_amount) }}</strong></div>
+        <div><span>1手门槛</span><strong>{{ fmt_money(item.min_order_amount) }}</strong></div>
+        <div><span>还差金额</span><strong>{{ fmt_money(item.budget_gap_to_min_order) }}</strong></div>
+    </div>
+    <p>{{ item.best_unaffordable_reason or item.not_executable_reason or item.execution_note }}</p>
+    <p class="muted">{{ item.trade_mode_note|default("") }}</p>
+    {% if item.timing_note %}
+    <p class="muted">{{ item.timing_note }}</p>
+    {% endif %}
+    <div class="evidence-list">
+        <div><span>是否启用时间优化</span><strong>{{ "是" if item.timing_rule_applied else "否" }}</strong></div>
+        <div><span>建议执行时段</span><strong>{{ item.recommended_execution_windows|join(" / ") if item.recommended_execution_windows else "-" }}</strong></div>
+        <div><span>尽量避开时段</span><strong>{{ item.avoid_execution_windows|join(" / ") if item.avoid_execution_windows else "-" }}</strong></div>
+    </div>
+</section>
+{% endif %}
+
+{% if explanation["overall"]["affordable_but_weak_recommendations"] %}
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">买得起但当前不建议买</div>
+            <h3>这些 ETF 在当前仓位内买得起 1 手，但系统仍没把它们列入主执行建议</h3>
+        </div>
+    </div>
+    <div class="card-grid three">
+        {% for row in explanation["overall"]["affordable_but_weak_recommendations"] %}
+        <article class="sub-card">
+            <h4>{{ row.name }}<br><span class="muted">{{ row.symbol }}</span></h4>
+            <p>{{ row.execution_note or row.reason_short }}</p>
+            {% if row.weak_signal_reason %}
+            <p class="muted">{{ row.weak_signal_reason }}</p>
+            {% endif %}
+            <div class="evidence-list">
+                <div><span>资产类别</span><strong>{{ row.asset_class }}</strong></div>
+                <div><span>交易模式</span><strong>{{ row.trade_mode }}</strong></div>
+                <div><span>综合得分</span><strong>{{ "%.1f"|format(row.score) }}</strong></div>
+                <div><span>建议金额</span><strong>{{ fmt_money(row.suggested_amount) }}</strong></div>
+                <div><span>1手门槛</span><strong>{{ fmt_money(row.min_order_amount) }}</strong></div>
+                <div><span>预计手续费</span><strong>{{ fmt_money(row.estimated_fee|default(0)) }}</strong></div>
+            </div>
+            <p class="muted">{{ row.trade_mode_note|default("") }}</p>
+            {% if row.timing_note %}
+            <p class="muted">{{ row.timing_note }}</p>
+            {% endif %}
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
 {% if explanation["overall"]["watchlist"] %}
 <section class="card wide">
     <div class="section-head">
@@ -140,11 +259,14 @@
         <thead>
         <tr>
             <th>ETF</th>
+            <th>资产类别</th>
+            <th>交易模式</th>
             <th>排名</th>
             <th>综合得分</th>
             <th>建议金额</th>
             <th>1手门槛</th>
             <th>还差金额</th>
+            <th>预计手续费</th>
             <th>5日动量</th>
             <th>10日波动率</th>
             <th>20日回撤</th>
@@ -154,11 +276,14 @@
         {% for row in explanation["overall"]["watchlist"] %}
         <tr>
             <td>{{ row.name }}<br><span class="muted">{{ row.symbol }}</span></td>
+            <td>{{ row.asset_class }}</td>
+            <td>{{ row.trade_mode }}</td>
             <td>{{ row.rank }}</td>
             <td>{{ "%.1f"|format(row.score) }}</td>
             <td>{{ fmt_money(row.suggested_amount) }}</td>
             <td>{{ fmt_money(row.min_order_amount) }}</td>
             <td>{{ fmt_money(row.budget_gap_to_min_order) }}</td>
+            <td>{{ fmt_money(row.estimated_fee) }}</td>
             <td>{{ "%.2f"|format(row.momentum_5d) }}%</td>
             <td>{{ "%.2f"|format(row.volatility_10d) }}%</td>
             <td>{{ "%.2f"|format(row.drawdown_20d) }}%</td>
@@ -197,6 +322,45 @@
 </section>
 {% endif %}
 
+{% if explanation["overall"]["cost_inefficient_recommendations"] %}
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">手续费暂不划算</div>
+            <h3>这些 ETF 趋势和分数都不差，但这次金额太小，交易成本偏高</h3>
+        </div>
+    </div>
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>ETF</th>
+            <th>资产类别</th>
+            <th>交易模式</th>
+            <th>综合得分</th>
+            <th>建议金额</th>
+            <th>预计手续费</th>
+            <th>成本占比</th>
+            <th>说明</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in explanation["overall"]["cost_inefficient_recommendations"] %}
+        <tr>
+            <td>{{ row.name }}<br><span class="muted">{{ row.symbol }}</span></td>
+            <td>{{ row.asset_class }}</td>
+            <td>{{ row.trade_mode }}</td>
+            <td>{{ "%.1f"|format(row.score) }}</td>
+            <td>{{ fmt_money(row.suggested_amount) }}</td>
+            <td>{{ fmt_money(row.estimated_fee) }}</td>
+            <td>{{ "%.2f"|format(row.estimated_cost_rate * 100) }}%</td>
+            <td>{{ row.cost_reason or row.execution_note }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endif %}
+
 {% if explanation["overall"]["rejected_summary"] %}
 <section class="card wide">
     <div class="section-head">
@@ -223,8 +387,18 @@
         <span class="pill">{{ item.execution_status }}</span>
     </div>
     <p>{{ item.summary }}</p>
+    <p class="muted">{{ item.asset_class|default("未知类别") }} / {{ item.trade_mode|default("-") }}{% if item.trade_mode_note %} · {{ item.trade_mode_note }}{% endif %}</p>
+    {% if item.is_budget_substitute %}
+    <p class="muted">主配置首选是 {{ item.primary_asset_class }}，这只是预算内替代执行。</p>
+    {% endif %}
+    {% if item.is_best_unaffordable %}
+    <p class="muted">它仍是当前更优先的一只 ETF，只是你这次还买不起 1 手。</p>
+    {% endif %}
     {% if item.execution_note %}
     <p class="muted">{{ item.execution_note }}</p>
+    {% endif %}
+    {% if item.timing_note %}
+    <p class="muted">{{ item.timing_note }}</p>
     {% endif %}
 
     <div class="card-grid two">
@@ -245,6 +419,17 @@
             </div>
         </article>
     </div>
+
+    <article class="sub-card" style="margin-top: 18px;">
+        <h4>执行时间建议</h4>
+        <p>{{ item.timing_note or "这类 ETF 当前不强调额外的时间段优化。" }}</p>
+        <div class="evidence-list">
+            <div><span>执行节奏</span><strong>{{ item.execution_timing_label or item.execution_timing_mode or "执行提示" }}</strong></div>
+            <div><span>是否启用时间优化</span><strong>{{ "是" if item.timing_rule_applied else "否" }}</strong></div>
+            <div><span>建议执行时段</span><strong>{{ item.recommended_execution_windows|join(" / ") if item.recommended_execution_windows else "-" }}</strong></div>
+            <div><span>尽量避开时段</span><strong>{{ item.avoid_execution_windows|join(" / ") if item.avoid_execution_windows else "-" }}</strong></div>
+        </div>
+    </article>
 
     <article class="sub-card" style="margin-top: 18px;">
         <h4>为什么这次{{ "可以执行" if item.recommendation_bucket == "executable_recommendations" else "先关注" }}</h4>
@@ -293,6 +478,7 @@
         <tr>
             <th>ETF</th>
             <th>排名</th>
+            <th>所属类别</th>
             <th>综合得分</th>
             <th>5日动量</th>
             <th>10日波动率</th>
@@ -304,6 +490,7 @@
         <tr>
             <td>{{ row.name }}<br><span class="muted">{{ row.symbol }}</span></td>
             <td>{{ row.rank }}</td>
+            <td>{{ item.asset_class }}</td>
             <td>{{ "%.1f"|format(row.score) }}</td>
             <td>{{ "%.2f"|format(row.momentum_5d) }}%</td>
             <td>{{ "%.2f"|format(row.volatility_10d) }}%</td>

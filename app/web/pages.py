@@ -14,6 +14,7 @@ from app.repositories.advice_repo import get_advice_by_id, get_explanations_by_a
 from app.repositories.user_repo import get_preferences, get_user
 from app.services.decision_engine import DecisionEngine
 from app.services.data_evidence_service import DataEvidenceService
+from app.services.capital_flow_service import CapitalFlowService
 from app.services.market_data_service import MarketDataService
 from app.services.performance_service import PerformanceService
 from app.services.portfolio_service import PortfolioService
@@ -33,6 +34,7 @@ decision_engine = DecisionEngine()
 data_evidence_service = DataEvidenceService()
 portfolio_service = PortfolioService()
 trade_service = TradeService()
+capital_flow_service = CapitalFlowService()
 performance_service = PerformanceService()
 
 
@@ -207,5 +209,31 @@ def record_trade_action(
         portfolio_service.update_market_prices(db)
         performance_service.capture_snapshot(db, snapshot_date=trade.executed_at.date())
         return RedirectResponse(url="/portfolio?status=成交已记录", status_code=303)
+    except ValueError as exc:
+        return RedirectResponse(url=f"/portfolio?status={exc}", status_code=303)
+
+
+@router.post("/actions/adjust-capital")
+def adjust_capital_action(
+    flow_type: str = Form(...),
+    amount: float = Form(...),
+    note: str = Form(default=""),
+    executed_at: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    try:
+        flow = capital_flow_service.record_adjustment(
+            db,
+            {
+                "flow_type": flow_type,
+                "amount": amount,
+                "note": note,
+                "executed_at": datetime.fromisoformat(executed_at),
+            },
+        )
+        portfolio_service.update_market_prices(db)
+        performance_service.capture_snapshot(db, snapshot_date=flow.executed_at.date())
+        action_label = "入金" if flow.flow_type == "deposit" else "出金"
+        return RedirectResponse(url=f"/portfolio?status={action_label}已记录", status_code=303)
     except ValueError as exc:
         return RedirectResponse(url=f"/portfolio?status={exc}", status_code=303)
