@@ -18,6 +18,36 @@ from app.db.models import (
 
 
 class UserService:
+    def _risk_profile_defaults(self, risk_level: str) -> dict[str, float]:
+        return {
+            "max_total_position_pct": {
+                "保守": 0.55,
+                "中性": 0.70,
+                "激进": 0.85,
+            }.get(risk_level, 0.70),
+            "max_single_position_pct": {
+                "保守": 0.25,
+                "中性": 0.35,
+                "激进": 0.45,
+            }.get(risk_level, 0.35),
+            "cash_reserve_pct": {
+                "保守": 0.35,
+                "中性": 0.20,
+                "激进": 0.10,
+            }.get(risk_level, 0.20),
+        }
+
+    def _validate_preferences(
+        self,
+        max_total_position_pct: float,
+        max_single_position_pct: float,
+        cash_reserve_pct: float,
+    ) -> None:
+        if max_single_position_pct > max_total_position_pct:
+            raise ValueError("单笔仓位上限不能高于总仓位上限。")
+        if max_total_position_pct + cash_reserve_pct > 1:
+            raise ValueError("总仓位上限加现金保留比例不能超过 100%。")
+
     def init_user(
         self,
         session: Session,
@@ -27,23 +57,14 @@ class UserService:
         allow_bond: bool,
         allow_overseas: bool,
         min_trade_amount: float,
+        target_holding_days: int = 5,
     ) -> UserProfile:
         settings = get_settings()
-        max_total_position_pct = {
-            "保守": 0.55,
-            "中性": 0.70,
-            "激进": 0.85,
-        }.get(risk_level, 0.70)
-        max_single_position_pct = {
-            "保守": 0.25,
-            "中性": 0.35,
-            "激进": 0.45,
-        }.get(risk_level, 0.35)
-        cash_reserve_pct = {
-            "保守": 0.35,
-            "中性": 0.20,
-            "激进": 0.10,
-        }.get(risk_level, 0.20)
+        defaults = self._risk_profile_defaults(risk_level)
+        max_total_position_pct = defaults["max_total_position_pct"]
+        max_single_position_pct = defaults["max_single_position_pct"]
+        cash_reserve_pct = defaults["cash_reserve_pct"]
+        self._validate_preferences(max_total_position_pct, max_single_position_pct, cash_reserve_pct)
 
         user = session.get(UserProfile, settings.default_user_id)
         if user is None:
@@ -76,6 +97,7 @@ class UserService:
                 allow_bond=allow_bond,
                 allow_overseas=allow_overseas,
                 min_trade_amount=min_trade_amount,
+                target_holding_days=target_holding_days,
                 max_total_position_pct=max_total_position_pct,
                 max_single_position_pct=max_single_position_pct,
                 cash_reserve_pct=cash_reserve_pct,
@@ -87,6 +109,7 @@ class UserService:
             preferences.allow_bond = allow_bond
             preferences.allow_overseas = allow_overseas
             preferences.min_trade_amount = min_trade_amount
+            preferences.target_holding_days = target_holding_days
             preferences.max_total_position_pct = max_total_position_pct
             preferences.max_single_position_pct = max_single_position_pct
             preferences.cash_reserve_pct = cash_reserve_pct
@@ -94,3 +117,40 @@ class UserService:
         session.commit()
         session.refresh(user)
         return user
+
+    def update_preferences(
+        self,
+        session: Session,
+        risk_level: str,
+        allow_gold: bool,
+        allow_bond: bool,
+        allow_overseas: bool,
+        min_trade_amount: float,
+        target_holding_days: int,
+        max_total_position_pct: float,
+        max_single_position_pct: float,
+        cash_reserve_pct: float,
+    ) -> UserPreferences:
+        user = session.get(UserProfile, get_settings().default_user_id)
+        if user is None:
+            raise ValueError("请先初始化用户。")
+
+        self._validate_preferences(max_total_position_pct, max_single_position_pct, cash_reserve_pct)
+        preferences = session.query(UserPreferences).filter(UserPreferences.user_id == user.id).one_or_none()
+        if preferences is None:
+            preferences = UserPreferences(user_id=user.id)
+            session.add(preferences)
+
+        preferences.risk_level = risk_level
+        preferences.allow_gold = allow_gold
+        preferences.allow_bond = allow_bond
+        preferences.allow_overseas = allow_overseas
+        preferences.min_trade_amount = min_trade_amount
+        preferences.target_holding_days = target_holding_days
+        preferences.max_total_position_pct = max_total_position_pct
+        preferences.max_single_position_pct = max_single_position_pct
+        preferences.cash_reserve_pct = cash_reserve_pct
+
+        session.commit()
+        session.refresh(preferences)
+        return preferences

@@ -5,9 +5,10 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.repositories.advice_repo import get_advice_by_id, get_explanations_by_advice, get_latest_advice
+from app.repositories.advice_repo import get_advice_by_id, get_explanations_by_advice, get_latest_advice, list_advices
+from app.repositories.portfolio_repo import trade_stats_by_advice
 from app.services.decision_engine import DecisionEngine
-from app.web.presenters import serialize_advice_record, serialize_explanations
+from app.web.presenters import serialize_advice_history, serialize_advice_record, serialize_explanations
 
 
 router = APIRouter(prefix="/api", tags=["advice"])
@@ -28,6 +29,11 @@ def last_advice(db: Session = Depends(get_db)):
     if advice is None:
         raise HTTPException(status_code=404, detail="暂无建议记录。")
     return jsonable_encoder(serialize_advice_record(advice))
+
+
+@router.get("/advices")
+def advice_history(db: Session = Depends(get_db)):
+    return jsonable_encoder(serialize_advice_history(list_advices(db), trade_stats_by_advice(db)))
 
 
 @router.get("/advice/{advice_id}")

@@ -10,9 +10,8 @@ from app.repositories.market_repo import get_features_by_trade_date
 
 
 ETF_SCORE_FORMULA = (
-    "综合分 = 0.20×3日动量分位 + 0.25×5日动量分位 + 0.25×10日动量分位 + "
-    "0.15×趋势强度分位 + 0.10×均线位置分位 - 0.03×波动率惩罚 - "
-    "0.02×回撤惩罚 + 0.10×流动性分位"
+    "先按类别算 category_score，再按持有周期和阶段计算 "
+    "entry_score / hold_score / exit_score，最后用 phase 权重组合成 decision_score。"
 )
 
 
@@ -167,18 +166,15 @@ class DataEvidenceService:
     def _score_substitution(self, breakdown: dict[str, Any]) -> str:
         if not breakdown:
             return "当前没有可用分项数据。"
-        return " ".join(
-            [
-                self._term_formula(0.20, float(breakdown.get("momentum_3d_score", 0))),
-                self._term_formula(0.25, float(breakdown.get("momentum_5d_score", 0))),
-                self._term_formula(0.25, float(breakdown.get("momentum_10d_score", 0))),
-                self._term_formula(0.15, float(breakdown.get("trend_score", 0))),
-                self._term_formula(0.10, float(breakdown.get("ma_score", 0))),
-                self._term_formula(-0.03, float(breakdown.get("volatility_penalty", 0))),
-                self._term_formula(-0.02, float(breakdown.get("drawdown_penalty", 0))),
-                self._term_formula(0.10, float(breakdown.get("liquidity_score", 0))),
-            ]
-        ) + f" = {float(breakdown.get('formula_score', 0)):.2f}"
+        if "decision_score" in breakdown:
+            weights = breakdown.get("phase_weights", {})
+            return (
+                f"{weights.get('entry', 0):.2f} × {breakdown.get('entry_score', 0):.2f}"
+                f" + {weights.get('hold', 0):.2f} × {breakdown.get('hold_score', 0):.2f}"
+                f" - {weights.get('exit', 0):.2f} × {breakdown.get('exit_score', 0):.2f}"
+                f" = {float(breakdown.get('decision_score', 0)):.2f}"
+            )
+        return "当前分项结构属于旧版本，无法按新公式回放。"
 
     def _term_formula(self, weight: float, score_value: float) -> str:
         sign = "+" if weight >= 0 else "-"

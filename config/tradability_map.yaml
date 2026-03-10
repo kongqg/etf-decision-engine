@@ -1,0 +1,52 @@
+category_aliases:
+  stock_etf:
+    universe_categories:
+      - "宽基"
+      - "行业"
+    asset_classes:
+      - "股票"
+  bond_etf:
+    universe_categories:
+      - "债券"
+    asset_classes:
+      - "债券"
+  gold_etf:
+    universe_categories:
+      - "黄金"
+    asset_classes:
+      - "黄金"
+  cross_border_etf:
+    universe_categories:
+      - "跨境"
+    asset_classes:
+      - "跨境"
+  money_etf:
+    universe_categories:
+      - "货币"
+    asset_classes:
+      - "货币"
+
+display_names:
+  stock_etf: "股票ETF"
+  bond_etf: "债券ETF"
+  gold_etf: "黄金ETF"
+  cross_border_etf: "跨境ETF"
+  money_etf: "货币ETF"
+
+tradability_defaults:
+  stock_etf: t1
+  bond_etf: t0
+  gold_etf: t0
+  cross_border_etf: t0
+  money_etf: t0
+
+symbol_overrides:
+  "513100":
+    category: cross_border_etf
+    tradability_mode: t0
+  "513500":
+    category: cross_border_etf
+    tradability_mode: t0
+  "513060":
+    category: cross_border_etf
+    tradability_mode: t0

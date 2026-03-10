@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings, load_yaml_config
 from app.db.models import ETFFeature, MarketSnapshot
 from app.repositories.market_repo import add_market_snapshot, list_universe, replace_features_for_date
+from app.services.decision_policy_service import get_decision_policy_service
 from app.services.feature_engine import FeatureEngine
 from app.services.market_regime_service import MarketRegimeService
 from app.utils.dates import detect_session_mode, get_now, latest_market_date
@@ -64,6 +65,7 @@ class MarketDataService:
         self.settings = settings
         self.feature_engine = FeatureEngine()
         self.market_regime_service = MarketRegimeService()
+        self.policy = get_decision_policy_service()
         self.risk_rules = load_yaml_config(settings.config_dir / "risk_rules.yaml")
 
     def refresh_data(self, session: Session, now=None) -> dict[str, Any]:
@@ -104,11 +106,13 @@ class MarketDataService:
                     "symbol": etf.symbol,
                     "name": etf.name,
                     "category": etf.category,
+                    "asset_class": etf.asset_class,
                     "market": etf.market,
                     "benchmark": etf.benchmark,
                     "risk_level": etf.risk_level,
                     "min_avg_amount": etf.min_avg_amount,
                     "settlement_note": etf.settlement_note,
+                    "trade_mode": etf.trade_mode,
                     "anomaly_flag": anomaly_flag,
                     **features,
                 }
@@ -126,7 +130,7 @@ class MarketDataService:
             }
 
         features_df = pd.DataFrame(rows)
-        features_df["liquidity_score"] = features_df["avg_amount_20d"].rank(pct=True).fillna(0.0) * 100.0
+        features_df = self._apply_decision_metadata(features_df)
         snapshot_payload = self.market_regime_service.evaluate(features_df)
 
         data_source = self._resolve_data_source(source_counter)
@@ -153,12 +157,26 @@ class MarketDataService:
                 momentum_3d=float(row["momentum_3d"]),
                 momentum_5d=float(row["momentum_5d"]),
                 momentum_10d=float(row["momentum_10d"]),
+                momentum_20d=float(row["momentum_20d"]),
+                ma5=float(row["ma5"]),
+                ma10=float(row["ma10"]),
+                ma20=float(row["ma20"]),
                 ma_gap_5=float(row["ma_gap_5"]),
                 ma_gap_10=float(row["ma_gap_10"]),
                 trend_strength=float(row["trend_strength"]),
+                ret_1d=float(row["ret_1d"]),
+                volatility_5d=float(row["volatility_5d"]),
                 volatility_10d=float(row["volatility_10d"]),
+                volatility_20d=float(row["volatility_20d"]),
+                rolling_max_20d=float(row["rolling_max_20d"]),
                 drawdown_20d=float(row["drawdown_20d"]),
                 liquidity_score=float(row["liquidity_score"]),
+                avg_turnover_20d=float(row["avg_turnover_20d"]),
+                category_return_10d=float(row["category_return_10d"]),
+                relative_strength_10d=float(row["relative_strength_10d"]),
+                above_ma20_flag=bool(row["above_ma20_flag"]),
+                decision_category=str(row["decision_category"]),
+                tradability_mode=str(row["tradability_mode"]),
                 anomaly_flag=bool(row["anomaly_flag"]),
                 filter_pass=False,
                 total_score=0.0,
@@ -230,6 +248,29 @@ class MarketDataService:
             "market_regime": snapshot_payload["market_regime"],
             "quality_status": quality_summary["verification_status"],
         }
+
+    def _apply_decision_metadata(self, features_df: pd.DataFrame) -> pd.DataFrame:
+        if features_df.empty:
+            return features_df
+        df = features_df.copy()
+        decision_meta = df.apply(
+            lambda row: self.policy.classify(
+                symbol=str(row["symbol"]),
+                universe_category=str(row["category"]),
+                asset_class=str(row.get("asset_class", row["category"])),
+                trade_mode=str(row.get("trade_mode", "")),
+            ),
+            axis=1,
+            result_type="expand",
+        )
+        df["decision_category"] = decision_meta["category"]
+        df["tradability_mode"] = decision_meta["tradability_mode"]
+        category_return = df.groupby("decision_category")["momentum_10d"].transform("mean")
+        df["category_return_10d"] = category_return.fillna(0.0)
+        df["relative_strength_10d"] = df["momentum_10d"] - df["category_return_10d"]
+        df["avg_turnover_20d"] = df["avg_turnover_20d"].fillna(df["avg_amount_20d"])
+        df["above_ma20_flag"] = df["above_ma20_flag"].fillna(False).astype(bool)
+        return df
 
     def _load_history_bundle(
         self,

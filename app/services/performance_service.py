@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.models import PerformanceSnapshot
+from app.repositories.market_repo import get_latest_trade_date
 from app.repositories.portfolio_repo import list_capital_flows, list_snapshots, list_trades
 from app.repositories.user_repo import get_user
 from app.utils.maths import max_drawdown
@@ -100,10 +101,17 @@ class PerformanceService:
         return snapshot
 
     def get_summary(self, session: Session) -> dict[str, Any]:
+        user = get_user(session)
+        if user is not None:
+            from app.services.portfolio_service import PortfolioService
+
+            PortfolioService().update_market_prices(session)
+            latest_trade_date = get_latest_trade_date(session)
+            self.capture_snapshot(session, snapshot_date=latest_trade_date or date.today())
+
         snapshots = list_snapshots(session, limit=365)
         trades = list_trades(session, limit=200)
         capital_flow_stats = self._capital_flow_stats(session)
-        user = get_user(session)
         latest = snapshots[-1] if snapshots else None
         return {
             "cumulative_return_pct": latest.cumulative_return_pct if latest else 0.0,

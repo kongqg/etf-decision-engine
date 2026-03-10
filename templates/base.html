@@ -19,9 +19,11 @@
         <nav class="nav">
             <a href="/">仪表盘</a>
             <a href="/advice">今日建议</a>
+            <a href="/history">建议历史</a>
             <a href="/evidence">数据证据</a>
             <a href="/portfolio">持仓</a>
             <a href="/performance">绩效</a>
+            <a href="/settings">设置</a>
         </nav>
         <div class="mode-card">
             <div class="eyebrow">当前模式</div>
@@ -33,6 +35,40 @@
     <main class="content">
         {% if status_message %}
         <div class="status-banner">{{ status_message }}</div>
+        {% endif %}
+        {% if data_status %}
+        <section class="data-status-banner {{ data_status.tone }}">
+            <div class="section-head">
+                <div>
+                    <div class="eyebrow">当前数据状态</div>
+                    <h3>{{ data_status.summary }}</h3>
+                </div>
+                <span class="pill">{{ data_status.badge_label }}</span>
+            </div>
+            <div class="evidence-list compact">
+                <div><span>来源</span><strong>{{ data_status.source_label }}</strong></div>
+                <div><span>验证状态</span><strong>{{ data_status.verification_status }}</strong></div>
+                <div><span>数据类型</span><strong>{{ data_status.data_type }}</strong></div>
+                <div><span>最新可用日期</span><strong>{{ data_status.latest_available_date }}</strong></div>
+                <div><span>最新数据抓取时间</span><strong>{{ data_status.captured_at }}</strong></div>
+                {% if data_status.advice_captured_at %}
+                <div><span>当前建议数据时间</span><strong>{{ data_status.advice_captured_at }}</strong></div>
+                {% endif %}
+                <div><span>是否支持实时建议</span><strong>{{ "是" if data_status.supports_live_execution else "否" }}</strong></div>
+            </div>
+            {% if data_status.freshness_note %}
+            <p class="muted">{{ data_status.freshness_note }}</p>
+            {% endif %}
+            {% if data_status.execution_note %}
+            <p class="muted">{{ data_status.execution_note }}</p>
+            {% endif %}
+            {% if data_status.advice_note %}
+            <p class="muted">{{ data_status.advice_note }}</p>
+            {% endif %}
+            {% if data_status.evidence_href %}
+            <a class="text-link" href="{{ data_status.evidence_href }}">查看当前建议对应数据证据</a>
+            {% endif %}
+        </section>
         {% endif %}
         {% block content %}{% endblock %}
     </main>

@@ -14,6 +14,17 @@ def get_latest_advice(session: Session) -> AdviceRecord | None:
     )
 
 
+def list_advices(session: Session, limit: int = 50) -> list[AdviceRecord]:
+    return list(
+        session.scalars(
+            select(AdviceRecord)
+            .options(selectinload(AdviceRecord.items), selectinload(AdviceRecord.explanations))
+            .order_by(desc(AdviceRecord.created_at))
+            .limit(limit)
+        )
+    )
+
+
 def get_advice_by_id(session: Session, advice_id: int) -> AdviceRecord | None:
     return session.scalar(
         select(AdviceRecord)

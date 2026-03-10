@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any
 
 import pandas as pd
@@ -54,14 +55,22 @@ class PortfolioService:
         for feature in session.scalars(
             select(ETFFeature).order_by(desc(ETFFeature.trade_date), desc(ETFFeature.captured_at))
         ):
-            if feature.symbol not in latest_features:
-                latest_features[feature.symbol] = feature
+            normalized_symbol = feature.symbol.strip()
+            if normalized_symbol not in latest_features:
+                latest_features[normalized_symbol] = feature
+
+        normalized_symbols = [position.symbol.strip() for position in positions]
+        normalized_counts = Counter(normalized_symbols)
 
         total_market_value = 0.0
         for position in positions:
-            feature = latest_features.get(position.symbol)
+            normalized_symbol = position.symbol.strip()
+            feature = latest_features.get(normalized_symbol)
             if feature is not None:
                 position.last_price = feature.close_price
+            if position.symbol != normalized_symbol and normalized_counts[normalized_symbol] == 1:
+                position.symbol = normalized_symbol
+            position.name = position.name.strip()
             position.market_value = position.quantity * position.last_price
             position.unrealized_pnl = (position.last_price - position.avg_cost) * position.quantity
             total_market_value += position.market_value

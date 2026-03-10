@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import date, datetime
 from pathlib import Path
 from uuid import uuid4
@@ -62,51 +63,174 @@ def seed_decision_inputs(session_local):
             "symbol": "510300",
             "close_price": 1.2,
             "pct_change": 0.8,
+            "ret_1d": 0.8,
             "latest_amount": 120000000.0,
             "avg_amount_20d": 150000000.0,
+            "avg_turnover_20d": 150000000.0,
             "momentum_3d": 1.8,
-            "momentum_5d": 2.6,
-            "momentum_10d": 3.4,
+            "momentum_5d": 3.6,
+            "momentum_10d": 5.2,
+            "momentum_20d": 8.0,
+            "ma5": 1.16,
+            "ma10": 1.12,
+            "ma20": 1.08,
             "ma_gap_5": 1.2,
             "ma_gap_10": 1.6,
-            "trend_strength": 1.8,
+            "trend_strength": 2.8,
+            "volatility_5d": 1.6,
             "volatility_10d": 2.2,
+            "volatility_20d": 2.8,
+            "rolling_max_20d": 1.23,
             "drawdown_20d": -2.5,
-            "liquidity_score": 80.0,
+            "liquidity_score": 18.8,
+            "category_return_10d": 4.6,
+            "relative_strength_10d": 0.6,
+            "above_ma20_flag": True,
             "anomaly_flag": False,
         },
         {
             "symbol": "510500",
             "close_price": 0.95,
             "pct_change": 0.5,
+            "ret_1d": 0.5,
             "latest_amount": 110000000.0,
             "avg_amount_20d": 130000000.0,
+            "avg_turnover_20d": 130000000.0,
             "momentum_3d": 1.2,
             "momentum_5d": 2.0,
-            "momentum_10d": 2.8,
+            "momentum_10d": 4.0,
+            "momentum_20d": 6.0,
+            "ma5": 0.93,
+            "ma10": 0.91,
+            "ma20": 0.89,
             "ma_gap_5": 0.9,
             "ma_gap_10": 1.1,
-            "trend_strength": 1.3,
+            "trend_strength": 1.9,
+            "volatility_5d": 1.8,
             "volatility_10d": 2.4,
+            "volatility_20d": 3.0,
+            "rolling_max_20d": 0.97,
             "drawdown_20d": -3.0,
-            "liquidity_score": 75.0,
+            "liquidity_score": 18.6,
+            "category_return_10d": 4.6,
+            "relative_strength_10d": -0.6,
+            "above_ma20_flag": True,
             "anomaly_flag": False,
         },
         {
-            "symbol": "512100",
-            "close_price": 5.0,
-            "pct_change": 1.1,
-            "latest_amount": 90000000.0,
-            "avg_amount_20d": 120000000.0,
-            "momentum_3d": 2.1,
-            "momentum_5d": 3.0,
-            "momentum_10d": 4.0,
-            "ma_gap_5": 1.5,
-            "ma_gap_10": 1.8,
-            "trend_strength": 2.0,
-            "volatility_10d": 3.1,
-            "drawdown_20d": -4.5,
-            "liquidity_score": 70.0,
+            "symbol": "511010",
+            "close_price": 100.5,
+            "pct_change": 0.1,
+            "ret_1d": 0.1,
+            "latest_amount": 6000000.0,
+            "avg_amount_20d": 10000000.0,
+            "avg_turnover_20d": 10000000.0,
+            "momentum_3d": 0.2,
+            "momentum_5d": 0.3,
+            "momentum_10d": 0.6,
+            "momentum_20d": 1.2,
+            "ma5": 100.2,
+            "ma10": 100.0,
+            "ma20": 99.8,
+            "ma_gap_5": 0.3,
+            "ma_gap_10": 0.5,
+            "trend_strength": 0.7,
+            "volatility_5d": 0.2,
+            "volatility_10d": 0.4,
+            "volatility_20d": 0.6,
+            "rolling_max_20d": 100.8,
+            "drawdown_20d": -0.3,
+            "liquidity_score": 16.1,
+            "category_return_10d": 0.6,
+            "relative_strength_10d": 0.0,
+            "above_ma20_flag": True,
+            "anomaly_flag": False,
+        },
+        {
+            "symbol": "518880",
+            "close_price": 4.2,
+            "pct_change": 0.2,
+            "ret_1d": 0.2,
+            "latest_amount": 40000000.0,
+            "avg_amount_20d": 50000000.0,
+            "avg_turnover_20d": 50000000.0,
+            "momentum_3d": 0.5,
+            "momentum_5d": 0.8,
+            "momentum_10d": 1.0,
+            "momentum_20d": 1.6,
+            "ma5": 4.15,
+            "ma10": 4.10,
+            "ma20": 4.05,
+            "ma_gap_5": 0.6,
+            "ma_gap_10": 0.9,
+            "trend_strength": 1.2,
+            "volatility_5d": 0.7,
+            "volatility_10d": 1.0,
+            "volatility_20d": 1.2,
+            "rolling_max_20d": 4.25,
+            "drawdown_20d": -1.2,
+            "liquidity_score": 17.4,
+            "category_return_10d": 1.0,
+            "relative_strength_10d": 0.0,
+            "above_ma20_flag": True,
+            "anomaly_flag": False,
+        },
+        {
+            "symbol": "513100",
+            "close_price": 1.1,
+            "pct_change": 0.3,
+            "ret_1d": 0.3,
+            "latest_amount": 35000000.0,
+            "avg_amount_20d": 38000000.0,
+            "avg_turnover_20d": 38000000.0,
+            "momentum_3d": 0.6,
+            "momentum_5d": 1.0,
+            "momentum_10d": 1.4,
+            "momentum_20d": 2.2,
+            "ma5": 1.08,
+            "ma10": 1.07,
+            "ma20": 1.05,
+            "ma_gap_5": 0.8,
+            "ma_gap_10": 1.1,
+            "trend_strength": 1.4,
+            "volatility_5d": 1.3,
+            "volatility_10d": 1.8,
+            "volatility_20d": 2.4,
+            "rolling_max_20d": 1.12,
+            "drawdown_20d": -1.6,
+            "liquidity_score": 17.0,
+            "category_return_10d": 1.4,
+            "relative_strength_10d": 0.0,
+            "above_ma20_flag": True,
+            "anomaly_flag": False,
+        },
+        {
+            "symbol": "511990",
+            "close_price": 100.0,
+            "pct_change": 0.02,
+            "ret_1d": 0.02,
+            "latest_amount": 5000000.0,
+            "avg_amount_20d": 6000000.0,
+            "avg_turnover_20d": 6000000.0,
+            "momentum_3d": 0.02,
+            "momentum_5d": 0.05,
+            "momentum_10d": 0.08,
+            "momentum_20d": 0.15,
+            "ma5": 99.98,
+            "ma10": 99.96,
+            "ma20": 99.95,
+            "ma_gap_5": 0.02,
+            "ma_gap_10": 0.04,
+            "trend_strength": 0.05,
+            "volatility_5d": 0.03,
+            "volatility_10d": 0.05,
+            "volatility_20d": 0.08,
+            "rolling_max_20d": 100.02,
+            "drawdown_20d": -0.02,
+            "liquidity_score": 15.4,
+            "category_return_10d": 0.08,
+            "relative_strength_10d": 0.0,
+            "above_ma20_flag": True,
             "anomaly_flag": False,
         },
     ]
@@ -156,20 +280,32 @@ def test_core_flow(monkeypatch):
         )
 
         advice = DecisionEngine().decide(session, now=datetime(2026, 3, 10, 10, 0, 0))
-        assert advice["action"] in {"买入", "卖出", "不操作"}
+        assert advice["action_code"] in {
+            "buy_open",
+            "buy_add",
+            "hold",
+            "reduce",
+            "sell_exit",
+            "no_trade",
+            "park_in_money_etf",
+        }
         assert "executable_recommendations" in advice
-        assert "affordable_but_weak_recommendations" in advice
         assert "watchlist_recommendations" in advice
         assert "recommendation_counts" in advice
+        assert "mapped_horizon_profile" in advice
+        assert "transition_plan" in advice
+        assert "target_portfolio" in advice
 
         explanation = serialize_explanations(get_explanations_by_advice(session, advice["id"]))
         assert explanation["overall"]["reasons"]
         assert explanation["overall"]["evidence"]
         assert explanation["overall"]["source_info"]
-        assert explanation["overall"]["market_score_details"]
         assert explanation["overall"]["execution_rule"]
-        assert "budget_passed" in explanation["overall"]["execution_rule"]
-        assert explanation["overall"]["etf_input_formulas"]
+        assert explanation["overall"]["category_scores"]
+        assert explanation["overall"]["portfolio_transition"]["rows"] is not None
+        if explanation["items"]:
+            assert explanation["items"][0]["score_breakdown"]["entry_details"]
+            assert explanation["items"][0]["category_breakdown"] is not None
 
         data_evidence = DataEvidenceService().build(session, advice_id=advice["id"])
         assert data_evidence["trust_summary"]
@@ -195,6 +331,77 @@ def test_core_flow(monkeypatch):
         assert "holdings" in portfolio
         performance = PerformanceService().get_summary(session)
         assert "curve" in performance
+
+
+def test_existing_holding_stays_in_formal_review_even_when_not_entry_eligible(monkeypatch):
+    session_local = setup_test_db(monkeypatch)
+    seed_decision_inputs(session_local)
+
+    from sqlalchemy import select
+
+    from app.db.models import ETFFeature
+    from app.services.decision_engine import DecisionEngine
+    from app.services.trade_service import TradeService
+    from app.services.user_service import UserService
+
+    with session_local()() as session:
+        UserService().init_user(
+            session,
+            initial_capital=100000,
+            risk_level="中性",
+            allow_gold=True,
+            allow_bond=True,
+            allow_overseas=True,
+            min_trade_amount=100,
+        )
+        TradeService().record_trade(
+            session,
+            {
+                "executed_at": datetime(2026, 3, 10, 9, 50, 0),
+                "symbol": "510300",
+                "name": "沪深300ETF",
+                "side": "buy",
+                "price": 4.0,
+                "amount": 4000.0,
+                "fee": 0.0,
+                "note": "test",
+            },
+        )
+        feature = session.scalar(select(ETFFeature).where(ETFFeature.symbol == "510300"))
+        feature.avg_amount_20d = 1000.0
+        session.commit()
+
+        advice = DecisionEngine().decide(session, now=datetime(2026, 3, 10, 10, 0, 0))
+        holding_item = next(item for item in advice["portfolio_review_items"] if item["symbol"] == "510300")
+
+        assert holding_item["is_current_holding"] is True
+        assert holding_item["entry_eligible"] is False
+        assert holding_item["action_code"] in {"hold", "reduce", "sell_exit", "buy_add"}
+        assert "filter_reasons" in holding_item
+
+
+def test_decide_now_action_redirects_to_clean_advice_url(monkeypatch):
+    session_local = setup_test_db(monkeypatch)
+    seed_decision_inputs(session_local)
+
+    from app.services.user_service import UserService
+    from app.web.pages import decide_now_action
+
+    with session_local()() as session:
+        UserService().init_user(
+            session,
+            initial_capital=5000,
+            risk_level="中性",
+            allow_gold=True,
+            allow_bond=True,
+            allow_overseas=True,
+            min_trade_amount=100,
+        )
+
+        response = decide_now_action(db=session)
+
+        assert response.status_code == 303
+        assert re.fullmatch(r"/advice/\d+", response.headers["location"])
 
 
 def test_capital_adjustment_updates_portfolio_and_history(monkeypatch):
@@ -267,6 +474,41 @@ def test_capital_adjustment_updates_portfolio_and_history(monkeypatch):
         assert "减少资金" in body
 
 
+def test_portfolio_page_amount_inputs_allow_decimal(monkeypatch):
+    session_local = setup_test_db(monkeypatch)
+
+    from app.main import create_app
+    from app.services.user_service import UserService
+    from app.web.pages import portfolio_page
+
+    with session_local()() as session:
+        UserService().init_user(
+            session,
+            initial_capital=1000,
+            risk_level="中性",
+            allow_gold=True,
+            allow_bond=True,
+            allow_overseas=True,
+            min_trade_amount=100,
+        )
+
+        request = Request(
+            {
+                "type": "http",
+                "method": "GET",
+                "path": "/portfolio",
+                "headers": [],
+                "query_string": b"",
+                "app": create_app(),
+            }
+        )
+        page_response = portfolio_page(request=request, db=session)
+        body = page_response.body.decode("utf-8")
+
+        matches = re.findall(r'<input type="number" name="amount" min="0\.01" step="0\.01" required>', body)
+        assert len(matches) == 2
+
+
 def test_capital_adjustment_rejects_withdraw_above_cash(monkeypatch):
     session_local = setup_test_db(monkeypatch)
 
@@ -299,6 +541,69 @@ def test_capital_adjustment_rejects_withdraw_above_cash(monkeypatch):
             )
         assert exc_info.value.status_code == 400
         assert "当前可用现金不足" in str(exc_info.value.detail)
+
+
+def test_update_preferences_keeps_existing_records(monkeypatch):
+    session_local = setup_test_db(monkeypatch)
+    seed_decision_inputs(session_local)
+
+    from app.api.routes.user import update_preferences
+    from app.repositories.advice_repo import get_latest_advice
+    from app.repositories.portfolio_repo import list_trades
+    from app.schemas.user import UpdatePreferencesRequest
+    from app.services.decision_engine import DecisionEngine
+    from app.services.trade_service import TradeService
+    from app.services.user_service import UserService
+
+    with session_local()() as session:
+        UserService().init_user(
+            session,
+            initial_capital=5000,
+            risk_level="中性",
+            allow_gold=True,
+            allow_bond=True,
+            allow_overseas=True,
+            min_trade_amount=100,
+        )
+        advice = DecisionEngine().decide(session, now=datetime(2026, 3, 10, 10, 0, 0))
+        TradeService().record_trade(
+            session,
+            {
+                "executed_at": datetime(2026, 3, 10, 10, 5, 0),
+                "symbol": "510300",
+                "name": "沪深300ETF",
+                "side": "buy",
+                "price": 4.0,
+                "amount": 400.0,
+                "fee": 1.0,
+                "related_advice_id": advice["id"],
+                "note": "existing record",
+            },
+        )
+
+        payload = update_preferences(
+            UpdatePreferencesRequest(
+                risk_level="保守",
+                allow_gold=False,
+                allow_bond=True,
+                allow_overseas=False,
+                min_trade_amount=200,
+                max_total_position_pct=0.5,
+                max_single_position_pct=0.2,
+                cash_reserve_pct=0.3,
+            ),
+            db=session,
+        )
+
+        latest_advice = get_latest_advice(session)
+        trades = list_trades(session, limit=20)
+        assert payload["risk_level"] == "保守"
+        assert payload["allow_gold"] is False
+        assert payload["max_total_position_pct"] == 0.5
+        assert latest_advice is not None
+        assert latest_advice.id == advice["id"]
+        assert len(trades) == 1
+        assert trades[0].related_advice_id == advice["id"]
 
 
 def test_decision_engine_recalculates_after_capital_adjustment(monkeypatch):
@@ -339,7 +644,224 @@ def test_decision_engine_recalculates_after_capital_adjustment(monkeypatch):
 
         assert before_facts["available_cash"] == 1000.0
         assert after_facts["available_cash"] == 2000.0
-        assert after_facts["practical_buy_cap_amount"] > before_facts["practical_buy_cap_amount"]
+        assert after_facts["total_asset"] > before_facts["total_asset"]
+
+
+def test_history_api_and_page_show_saved_advice(monkeypatch):
+    session_local = setup_test_db(monkeypatch)
+    seed_decision_inputs(session_local)
+
+    from app.api.routes.advice import advice_history
+    from app.main import create_app
+    from app.services.decision_engine import DecisionEngine
+    from app.services.trade_service import TradeService
+    from app.services.user_service import UserService
+    from app.web.pages import history_page
+
+    with session_local()() as session:
+        UserService().init_user(
+            session,
+            initial_capital=5000,
+            risk_level="中性",
+            allow_gold=True,
+            allow_bond=True,
+            allow_overseas=True,
+            min_trade_amount=100,
+        )
+        advice = DecisionEngine().decide(session, now=datetime(2026, 3, 10, 10, 0, 0))
+        TradeService().record_trade(
+            session,
+            {
+                "executed_at": datetime(2026, 3, 10, 10, 6, 0),
+                "symbol": "510300",
+                "name": "沪深300ETF",
+                "side": "buy",
+                "price": 4.0,
+                "amount": 400.0,
+                "fee": 1.0,
+                "related_advice_id": advice["id"],
+                "note": "history link",
+            },
+        )
+
+        payload = advice_history(db=session)
+        assert len(payload) == 1
+        assert payload[0]["id"] == advice["id"]
+        assert payload[0]["source_label"] == "test-seed"
+        assert payload[0]["linked_trade_count"] == 1
+
+        request = Request(
+            {
+                "type": "http",
+                "method": "GET",
+                "path": "/history",
+                "headers": [],
+                "query_string": b"",
+                "app": create_app(),
+            }
+        )
+        page_response = history_page(request=request, db=session)
+        body = page_response.body.decode("utf-8")
+        assert "建议历史" in body
+        assert "test-seed" in body
+        assert "1 笔" in body
+
+
+def test_portfolio_uses_latest_feature_price_even_if_trade_symbol_has_spaces(monkeypatch):
+    session_local = setup_test_db(monkeypatch)
+    seed_decision_inputs(session_local)
+
+    from app.services.performance_service import PerformanceService
+    from app.services.portfolio_service import PortfolioService
+    from app.services.trade_service import TradeService
+    from app.services.user_service import UserService
+
+    with session_local()() as session:
+        UserService().init_user(
+            session,
+            initial_capital=1000,
+            risk_level="中性",
+            allow_gold=True,
+            allow_bond=True,
+            allow_overseas=True,
+            min_trade_amount=100,
+        )
+        TradeService().record_trade(
+            session,
+            {
+                "executed_at": datetime(2026, 3, 10, 10, 5, 0),
+                "symbol": "  510300 ",
+                "name": " 沪深300ETF ",
+                "side": " buy ",
+                "price": 4.0,
+                "amount": 400.0,
+                "fee": 0.0,
+                "note": " spaced symbol ",
+            },
+        )
+
+        portfolio = PortfolioService().get_portfolio_summary(session)
+        holding = portfolio["holdings"][0]
+        performance = PerformanceService().get_summary(session)
+
+        assert holding["symbol"] == "510300"
+        assert holding["name"] == "沪深300ETF"
+        assert holding["last_price"] == pytest.approx(1.2)
+        assert holding["market_value"] == pytest.approx(120.0)
+        assert portfolio["total_asset"] == pytest.approx(720.0)
+        assert performance["cumulative_return_pct"] == pytest.approx(-28.0)
+
+
+def test_dashboard_page_shows_data_status_banner(monkeypatch):
+    session_local = setup_test_db(monkeypatch)
+    seed_decision_inputs(session_local)
+
+    from app.main import create_app
+    from app.services.decision_engine import DecisionEngine
+    from app.services.user_service import UserService
+    from app.web.pages import home
+
+    with session_local()() as session:
+        UserService().init_user(
+            session,
+            initial_capital=5000,
+            risk_level="中性",
+            allow_gold=True,
+            allow_bond=True,
+            allow_overseas=True,
+            min_trade_amount=100,
+        )
+        DecisionEngine().decide(session, now=datetime(2026, 3, 10, 10, 0, 0))
+
+        request = Request(
+            {
+                "type": "http",
+                "method": "GET",
+                "path": "/",
+                "headers": [],
+                "query_string": b"",
+                "app": create_app(),
+            }
+        )
+        page_response = home(request=request, db=session)
+        body = page_response.body.decode("utf-8")
+        assert "当前数据状态" in body
+        assert "test-seed" in body
+        assert "截至 2026-03-10 的日线数据" in body
+        assert "最新数据抓取时间" in body
+
+
+def test_dashboard_page_shows_latest_snapshot_time_and_stale_advice_note(monkeypatch):
+    session_local = setup_test_db(monkeypatch)
+    seed_decision_inputs(session_local)
+
+    from app.db.models import MarketSnapshot
+    from app.main import create_app
+    from app.services.decision_engine import DecisionEngine
+    from app.services.user_service import UserService
+    from app.web.pages import home
+
+    with session_local()() as session:
+        UserService().init_user(
+            session,
+            initial_capital=5000,
+            risk_level="中性",
+            allow_gold=True,
+            allow_bond=True,
+            allow_overseas=True,
+            min_trade_amount=100,
+        )
+        DecisionEngine().decide(session, now=datetime(2026, 3, 10, 10, 0, 0))
+        session.add(
+            MarketSnapshot(
+                trade_date=date(2026, 3, 10),
+                captured_at=datetime(2026, 3, 10, 16, 44, 36),
+                session_mode="after_close",
+                market_regime="中性",
+                broad_index_score=72.0,
+                risk_appetite_score=66.0,
+                trend_score=70.0,
+                recommended_position_pct=0.5,
+                raw_json=json.dumps(
+                    {
+                        "source": {
+                            "code": "akshare",
+                            "label": "latest-seed",
+                            "api": "seed",
+                            "data_type": "日线历史",
+                            "trade_date": "2026-03-10",
+                            "captured_at": "2026-03-10T16:44:36",
+                            "note": "latest snapshot for banner test",
+                        },
+                        "quality_summary": {
+                            "verification_status": "ok",
+                            "latest_available_date": "2026-03-10",
+                            "supports_live_execution": False,
+                        },
+                    },
+                    ensure_ascii=False,
+                ),
+            )
+        )
+        session.commit()
+
+        request = Request(
+            {
+                "type": "http",
+                "method": "GET",
+                "path": "/",
+                "headers": [],
+                "query_string": b"",
+                "app": create_app(),
+            }
+        )
+        page_response = home(request=request, db=session)
+        body = page_response.body.decode("utf-8")
+        assert "latest-seed" in body
+        assert "2026-03-10 16:44" in body
+        assert "当前建议数据时间" in body
+        assert "2026-03-10 09:35" in body
+        assert "如果要让建议与最新数据同步，需要重新生成建议" in body
 
 
 def test_advice_api_and_page_show_recommendation_layers(monkeypatch):
@@ -839,3 +1361,174 @@ def test_advice_page_shows_best_unaffordable_recommendation(monkeypatch):
         assert "当前最优但暂时买不起" in body
         assert "它仍是当前更优先的一只 ETF" in body
         assert "国债ETF" in body
+
+
+def test_advice_page_handles_sparse_watchlist_item_fields(monkeypatch):
+    session_local = setup_test_db(monkeypatch)
+
+    from app.db.models import AdviceRecord
+    from app.main import create_app
+    from app.web.pages import advice_page
+
+    sparse_watchlist_item = {
+        "symbol": "511990",
+        "name": "华宝添益",
+        "rank": 1,
+        "action": "转入货币ETF",
+        "action_code": "park_in_money_etf",
+        "suggested_amount": 1128.02,
+        "reason_short": "防守切换成立，但当前剩余可停车资金还不到最小可执行门槛。",
+        "risk_level": "低",
+        "category": "money_etf",
+        "asset_class": "货币ETF",
+        "trade_mode": "T+0",
+        "execution_status": "等待转入货币ETF",
+        "recommendation_bucket": "watchlist_recommendations",
+        "execution_note": "当前建议金额还不到最小可执行门槛。",
+        "score": 40.0,
+        "decision_score": 40.0,
+    }
+
+    with session_local()() as session:
+        advice = AdviceRecord(
+            advice_date=date(2026, 3, 10),
+            created_at=datetime(2026, 3, 10, 15, 0, 0),
+            session_mode="after_close",
+            action="不操作",
+            market_regime="防守",
+            target_position_pct=0.0,
+            current_position_pct=0.2,
+            summary_text="当前更偏防守，先观察。",
+            risk_text="暂不追单。",
+            status="active",
+            evidence_json=json.dumps(
+                {
+                    "recommendation_groups": {
+                        "executable_recommendations": [],
+                        "watchlist_recommendations": [sparse_watchlist_item],
+                        "show_watchlist_recommendations": True,
+                        "show_cost_inefficient_recommendations": False,
+                        "budget_filter_enabled": True,
+                        "fee_filter_enabled": False,
+                    }
+                },
+                ensure_ascii=False,
+            ),
+        )
+        session.add(advice)
+        session.commit()
+        session.refresh(advice)
+
+        request = Request(
+            {
+                "type": "http",
+                "method": "GET",
+                "path": "/advice",
+                "headers": [],
+                "query_string": b"",
+                "app": create_app(),
+            }
+        )
+        page_response = advice_page(request=request, db=session)
+        body = page_response.body.decode("utf-8")
+        assert "关注标的" in body
+        assert "华宝添益" in body
+        assert "还差金额" in body
+
+
+def test_structured_recommendation_groups_do_not_fallback_watchlist_into_executable(monkeypatch):
+    session_local = setup_test_db(monkeypatch)
+
+    from app.db.models import AdviceItem, AdviceRecord
+    from app.web.presenters import serialize_advice_record
+
+    watchlist_item = {
+        "symbol": "511990",
+        "name": "华宝添益",
+        "rank": 1,
+        "action": "转入货币ETF",
+        "action_code": "park_in_money_etf",
+        "suggested_amount": 1128.02,
+        "score": 40.0,
+        "decision_score": 40.0,
+        "risk_level": "低",
+        "category": "money_etf",
+        "asset_class": "货币ETF",
+        "trade_mode": "T+0",
+        "min_order_amount": 9999.5,
+        "execution_status": "等待转入货币ETF",
+        "recommendation_bucket": "watchlist_recommendations",
+        "is_executable": False,
+        "executable_now": False,
+        "execution_note": "当前剩余可停车资金还不到最小可执行门槛。",
+    }
+
+    with session_local()() as session:
+        advice = AdviceRecord(
+            advice_date=date(2026, 3, 10),
+            created_at=datetime(2026, 3, 10, 15, 30, 0),
+            session_mode="after_close",
+            action="转入货币ETF",
+            market_regime="防守",
+            target_position_pct=0.0,
+            current_position_pct=0.2,
+            summary_text="进攻边不足，先防守。",
+            risk_text="暂不追单。",
+            status="active",
+            evidence_json=json.dumps(
+                {
+                    "recommendation_groups": {
+                        "executable_recommendations": [],
+                        "watchlist_recommendations": [watchlist_item],
+                        "show_watchlist_recommendations": True,
+                        "show_cost_inefficient_recommendations": False,
+                        "budget_filter_enabled": True,
+                        "fee_filter_enabled": False,
+                    }
+                },
+                ensure_ascii=False,
+            ),
+        )
+        session.add(advice)
+        session.flush()
+        session.add(
+            AdviceItem(
+                advice_id=advice.id,
+                rank=1,
+                symbol="511990",
+                name="华宝添益",
+                action="转入货币ETF",
+                suggested_amount=1128.02,
+                suggested_pct=0.56,
+                trigger_price_low=99.49,
+                trigger_price_high=100.99,
+                stop_loss_pct=0.01,
+                take_profit_pct=0.02,
+                score=40.0,
+                score_gap=0.0,
+                reason_short="防守切换成立。",
+                risk_level="低",
+                action_code="park_in_money_etf",
+                category="money_etf",
+                tradability_mode="t0",
+                target_holding_days=5,
+                mapped_horizon_profile="defensive_cash",
+                lifecycle_phase="build_phase",
+                entry_score=50.0,
+                hold_score=50.0,
+                exit_score=50.0,
+                category_score=46.0,
+                decision_score=40.0,
+                executable_now=False,
+                blocked_reason="当前建议金额不足最小可执行门槛。",
+                planned_exit_days=1,
+                planned_exit_rule_summary="当前时段只生成预案，下一交易时段再执行。",
+            )
+        )
+        session.commit()
+        session.refresh(advice)
+
+        payload = serialize_advice_record(advice)
+        assert payload["executable_recommendations"] == []
+        assert payload["watchlist_recommendations"][0]["symbol"] == "511990"
+        assert payload["watchlist_recommendations"][0]["min_order_amount"] == 9999.5

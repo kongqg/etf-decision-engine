@@ -5,7 +5,7 @@
     <div>
         <div class="eyebrow">首次使用</div>
         <h2>先告诉系统你的资金和偏好</h2>
-        <p>你只需要填一次。之后系统会记住你的资金、偏好、持仓和历史表现。</p>
+        <p>先完成初始设置，之后仍然可以在设置页持续调参数，不会重置你的持仓、交易记录和历史表现。</p>
     </div>
 </section>
 
@@ -34,6 +34,11 @@
                 required
             >
             <small class="muted">这是系统愿不愿意生成建议的门槛，不是交易所的真实下单门槛。场内 ETF 默认按 {{ "%.0f"|format(default_lot_size) }} 份一手计算，系统还会额外检查 1 手门槛和手续费占比。</small>
+        </label>
+        <label>
+            <span>目标持有天数</span>
+            <input type="number" name="target_holding_days" min="0" max="40" step="1" value="5" required>
+            <small class="muted">系统不会为每个精确天数单独建公式，而是映射到 T+0 日内、短线波段或中期轮动档位。</small>
         </label>
         <label class="check">
             <input type="checkbox" name="allow_gold" checked>

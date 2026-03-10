@@ -1,0 +1,44 @@
+fallback:
+  offensive_threshold: 55.0
+  weak_offensive_action: park_in_money_etf
+  no_money_candidate_action: no_trade
+
+selection:
+  minimum_category_score_delta: 3.0
+  max_selected_etfs: 1
+
+decision_thresholds:
+  open_threshold: 58.0
+  add_threshold: 64.0
+  hold_threshold: 48.0
+  reduce_threshold: 58.0
+  full_exit_threshold: 72.0
+  strong_entry_threshold: 62.0
+  strong_hold_threshold: 55.0
+
+position_rules:
+  reduce_fraction: 0.50
+  full_exit_fraction: 1.00
+  rebalance_tolerance_pct: 0.01
+
+t0_controls:
+  max_decisions_per_symbol_per_day: 4
+  max_round_trips_per_day: 2
+  cooldown_minutes_after_trade: 30
+  minimum_score_delta_to_flip_signal: 10.0
+  minimum_expected_edge_bps: 20.0
+  score_to_edge_bps_multiplier: 2.0
+
+t1_rules:
+  block_same_day_sell_after_buy: true
+  blocked_reason: planned_exit_next_session_due_to_t1
+  planned_exit_days: 1
+  planned_exit_rule_summary: "T+1标的若当天刚买入，卖出信号延后到下一交易时段执行。"
+
+session_rules:
+  executable_session_modes:
+    - intraday
+  blocked_reason_by_session:
+    preopen: market_not_open_planned_for_open
+    after_close: market_closed_planned_for_next_session
+    closed: market_closed_planned_for_next_session

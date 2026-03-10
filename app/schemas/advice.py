@@ -10,6 +10,7 @@ class AdviceItemResponse(BaseModel):
     name: str
     rank: int
     action: str
+    action_code: str | None = None
     suggested_amount: float
     suggested_pct: float
     trigger_price_low: float | None
@@ -23,6 +24,7 @@ class AdviceItemResponse(BaseModel):
     category: str | None = None
     asset_class: str | None = None
     trade_mode: str | None = None
+    tradability_mode: str | None = None
     trade_mode_note: str | None = None
     execution_timing_mode: str | None = None
     execution_timing_label: str | None = None
@@ -61,6 +63,20 @@ class AdviceItemResponse(BaseModel):
     weak_signal_reason: str | None = None
     asset_allocation_weight: float | None = None
     asset_class_signal_score: float | None = None
+    entry_score: float | None = None
+    hold_score: float | None = None
+    exit_score: float | None = None
+    category_score: float | None = None
+    decision_score: float | None = None
+    target_holding_days: int | None = None
+    mapped_horizon_profile: str | None = None
+    horizon_profile_label: str | None = None
+    lifecycle_phase: str | None = None
+    executable_now: bool = False
+    blocked_reason: str | None = None
+    planned_exit_days: int | None = None
+    planned_exit_rule_summary: str | None = None
+    score_breakdown: dict | None = None
 
 
 class AdviceResponse(BaseModel):
@@ -75,6 +91,14 @@ class AdviceResponse(BaseModel):
     summary_text: str
     risk_text: str
     evidence: dict
+    action_code: str | None = None
+    mapped_horizon_profile: str | None = None
+    lifecycle_phase: str | None = None
+    category_score: float | None = None
+    executable_now: bool = False
+    blocked_reason: str | None = None
+    planned_exit_days: int | None = None
+    planned_exit_rule_summary: str | None = None
     items: list[AdviceItemResponse]
     executable_recommendations: list[AdviceItemResponse] = Field(default_factory=list)
     best_unaffordable_recommendation: AdviceItemResponse | None = None

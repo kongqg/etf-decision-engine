@@ -1,0 +1,105 @@
+selection:
+  offensive_categories:
+    - stock_etf
+    - bond_etf
+    - gold_etf
+    - cross_border_etf
+  defensive_category: money_etf
+  max_selected_categories: 1
+  max_selected_etfs: 1
+
+category_scoring:
+  offensive:
+    w_cat_mom: 0.30
+    w_cat_trend: 0.25
+    w_cat_br: 0.20
+    w_cat_vol: 0.15
+    w_cat_dd: 0.10
+  money_etf:
+    w_def_liq: 0.55
+    w_def_vol: 0.25
+    w_def_dd: 0.20
+
+category_heads:
+  stock_etf:
+    entry:
+      momentum_5d: 0.22
+      momentum_10d: 0.23
+      trend_strength: 0.18
+      relative_strength_10d: 0.17
+      liquidity_score: 0.10
+      volatility_10d: -0.05
+      abs_drawdown_20d: -0.05
+    hold:
+      trend_strength: 0.28
+      relative_strength_10d: 0.24
+      momentum_20d: 0.24
+      abs_drawdown_20d: -0.14
+      volatility_10d: -0.10
+    exit:
+      abs_drawdown_20d: 0.34
+      rank_drop: 0.26
+      volatility_spike: 0.22
+      time_decay: 0.18
+  bond_etf:
+    entry:
+      momentum_10d: 0.30
+      trend_strength: 0.24
+      liquidity_score: 0.18
+      volatility_10d: -0.16
+      abs_drawdown_20d: -0.12
+    hold:
+      trend_strength: 0.34
+      momentum_20d: 0.28
+      volatility_10d: -0.20
+      abs_drawdown_20d: -0.18
+    exit:
+      abs_drawdown_20d: 0.40
+      volatility_spike: 0.32
+      time_decay: 0.28
+  gold_etf:
+    entry:
+      momentum_5d: 0.24
+      momentum_10d: 0.24
+      trend_strength: 0.18
+      liquidity_score: 0.14
+      volatility_10d: -0.10
+      abs_drawdown_20d: -0.10
+    hold:
+      trend_strength: 0.34
+      relative_strength_10d: 0.24
+      volatility_10d: -0.22
+      abs_drawdown_20d: -0.20
+    exit:
+      abs_drawdown_20d: 0.30
+      volatility_spike: 0.26
+      rank_drop: 0.22
+      time_decay: 0.22
+  cross_border_etf:
+    entry:
+      momentum_5d: 0.22
+      momentum_10d: 0.22
+      trend_strength: 0.18
+      liquidity_score: 0.16
+      volatility_10d: -0.12
+      abs_drawdown_20d: -0.10
+    hold:
+      trend_strength: 0.32
+      relative_strength_10d: 0.24
+      volatility_10d: -0.24
+      abs_drawdown_20d: -0.20
+    exit:
+      abs_drawdown_20d: 0.30
+      volatility_spike: 0.28
+      rank_drop: 0.22
+      time_decay: 0.20
+  money_etf:
+    entry:
+      liquidity_score: 0.55
+      volatility_10d: -0.25
+      abs_drawdown_20d: -0.20
+    hold:
+      liquidity_score: 0.65
+      volatility_10d: -0.35
+    exit:
+      time_decay: 1.00

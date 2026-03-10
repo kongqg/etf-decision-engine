@@ -40,11 +40,12 @@ class UniverseFilterService:
 
         for _, row in df.iterrows():
             row_reasons: list[str] = []
-            if row["category"] == "黄金" and not preferences.allow_gold:
+            decision_category = str(row.get("decision_category") or row.get("category") or "")
+            if decision_category in {"gold_etf", "黄金"} and not preferences.allow_gold:
                 row_reasons.append("用户未开启黄金 ETF")
-            if row["category"] == "债券" and not preferences.allow_bond:
+            if decision_category in {"bond_etf", "债券"} and not preferences.allow_bond:
                 row_reasons.append("用户未开启债券 ETF")
-            if row["category"] == "跨境" and not preferences.allow_overseas:
+            if decision_category in {"cross_border_etf", "跨境"} and not preferences.allow_overseas:
                 row_reasons.append("用户未开启跨境 ETF")
             if float(row["avg_amount_20d"]) < float(row["min_avg_amount"]):
                 row_reasons.append("近 20 日成交额不达标")

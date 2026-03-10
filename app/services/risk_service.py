@@ -11,10 +11,10 @@ class RiskService:
         self.rules = load_yaml_config(settings.config_dir / "risk_rules.yaml")
 
     def get_stop_loss_pct(self, category: str) -> float:
-        return float(self.rules["stop_loss_by_category"].get(category, 0.06))
+        return float(self.rules["stop_loss_by_category"].get(self._risk_category_key(category), 0.06))
 
     def get_take_profit_pct(self, category: str) -> float:
-        return float(self.rules["take_profit_by_category"].get(category, 0.10))
+        return float(self.rules["take_profit_by_category"].get(self._risk_category_key(category), 0.10))
 
     def build_global_risk_note(self, session_mode: str, market_regime: str) -> str:
         mode_note = {
@@ -33,3 +33,13 @@ class RiskService:
         if row.get("rank_in_pool", 99) <= 5:
             return "观察后续强弱"
         return "考虑减仓"
+
+    def _risk_category_key(self, category: str) -> str:
+        mapping = {
+            "stock_etf": "宽基",
+            "bond_etf": "债券",
+            "gold_etf": "黄金",
+            "cross_border_etf": "跨境",
+            "money_etf": "货币",
+        }
+        return mapping.get(category, category)

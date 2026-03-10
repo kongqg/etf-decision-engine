@@ -70,11 +70,53 @@
 </section>
 {% endif %}
 
+{% if advice["transition_plan"] %}
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">目标组合</div>
+            <h3>先确定目标组合，再看当前组合怎么过渡过去</h3>
+        </div>
+    </div>
+    {% if explanation and explanation["overall"] and explanation["overall"]["portfolio_transition"]["notes"] %}
+    <ul class="plain-list">
+        {% for note in explanation["overall"]["portfolio_transition"]["notes"] %}
+        <li>{{ note }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>ETF</th>
+            <th>当前权重</th>
+            <th>目标权重</th>
+            <th>权重变化</th>
+            <th>正式动作</th>
+            <th>执行状态</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for item in advice["transition_plan"] %}
+        <tr>
+            <td>{{ item.name }}<br><span class="muted">{{ item.symbol }}</span></td>
+            <td>{{ fmt_pct(item.current_weight * 100) }}</td>
+            <td>{{ fmt_pct(item.target_weight * 100) }}</td>
+            <td>{{ fmt_pct(item.delta_weight * 100) }}</td>
+            <td>{{ item.action }}<br><span class="muted">{{ item.transition_label }}</span></td>
+            <td>{{ item.execution_status }}{% if item.blocked_reason %}<br><span class="muted">{{ item.blocked_reason }}</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endif %}
+
 <section class="card wide">
     <div class="section-head">
         <div>
             <div class="eyebrow">可执行推荐</div>
-            <h3>今天优先看当前买得起的 ETF</h3>
+            <h3>本次最值得先执行的动作</h3>
         </div>
     </div>
     {% if advice["executable_recommendations"] %}
@@ -94,10 +136,12 @@
                 </div>
             </div>
             <div class="pick-metrics">
-                <div><span>建议金额</span><strong>{{ fmt_money(item.suggested_amount) }}</strong></div>
-                <div><span>1手门槛</span><strong>{{ fmt_money(item.min_order_amount) }}</strong></div>
-                <div><span>综合得分</span><strong>{{ "%.1f"|format(item.score) }}</strong></div>
+                <div><span>建议金额</span><strong>{{ fmt_money(item.suggested_amount|default(0, true)) }}</strong></div>
+                <div><span>1手门槛</span><strong>{{ fmt_money(item.min_order_amount|default(0, true)) }}</strong></div>
+                <div><span>决策分</span><strong>{{ "%.1f"|format(item.score|default(item.decision_score|default(0, true), true)) }}</strong></div>
                 <div><span>预计手续费</span><strong>{{ fmt_money(item.estimated_fee|default(0)) }}</strong></div>
+                <div><span>当前权重</span><strong>{{ fmt_pct(item.current_weight * 100) }}</strong></div>
+                <div><span>目标权重</span><strong>{{ fmt_pct(item.target_weight * 100) }}</strong></div>
             </div>
             {% if item.is_budget_substitute %}
             <p class="muted">主配置首选：{{ item.primary_asset_class }}。这只是预算内替代执行，不是当前主配置首选。</p>
@@ -121,9 +165,10 @@
     </div>
     <div class="score-compare">
         {% for item in advice["executable_recommendations"] %}
+        {% set bar_width = 0 if item.score < 0 else 100 if item.score > 100 else item.score %}
         <div class="bar-row">
             <span>{{ item.name }}</span>
-            <div class="bar-track"><div class="bar-fill" style="width: {{ item.score }}%;"></div></div>
+            <div class="bar-track"><div class="bar-fill" style="width: {{ bar_width }}%;"></div></div>
             <strong>{{ "%.1f"|format(item.score) }}</strong>
         </div>
         {% endfor %}
@@ -132,6 +177,43 @@
     <p>本次没有生成可直接执行的 ETF 买入建议。下面如果有“买得起但当前不建议买”“关注标的”或“手续费暂不划算”，说明它们各有原因，不适合现在马上下单。</p>
     {% endif %}
 </section>
+
+{% if advice["portfolio_review_items"] %}
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">持仓复核</div>
+            <h3>当前持仓这次分别怎么处理</h3>
+        </div>
+    </div>
+    <div class="card-grid three">
+        {% for item in advice["portfolio_review_items"] %}
+        <article class="pick-card">
+            <div class="pick-head">
+                <div>
+                    <h4>{{ item.name }}</h4>
+                    <p>{{ item.symbol }}</p>
+                </div>
+                <div class="action-cluster">
+                    <span class="pill">{{ item.action }}</span>
+                    <span class="pill">{{ item.execution_status }}</span>
+                </div>
+            </div>
+            <div class="pick-metrics">
+                <div><span>当前权重</span><strong>{{ fmt_pct(item.current_weight * 100) }}</strong></div>
+                <div><span>目标权重</span><strong>{{ fmt_pct(item.target_weight * 100) }}</strong></div>
+                <div><span>权重变化</span><strong>{{ fmt_pct(item.delta_weight * 100) }}</strong></div>
+                <div><span>浮动收益率</span><strong>{{ fmt_pct(item.current_return_pct * 100) }}</strong></div>
+            </div>
+            <p>{{ item.execution_note }}</p>
+            {% if item.filter_reasons %}
+            <p class="muted">本轮不适合继续新开仓：{{ item.filter_reasons|join("、") }}</p>
+            {% endif %}
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
 
 {% if advice["best_unaffordable_recommendation"] %}
 <section class="card wide">
@@ -156,7 +238,7 @@
             </div>
         </div>
         <div class="pick-metrics">
-            <div><span>综合得分</span><strong>{{ "%.1f"|format(item.score) }}</strong></div>
+            <div><span>决策分</span><strong>{{ "%.1f"|format(item.score) }}</strong></div>
             <div><span>建议金额</span><strong>{{ fmt_money(item.suggested_amount) }}</strong></div>
             <div><span>1手门槛</span><strong>{{ fmt_money(item.min_order_amount) }}</strong></div>
             <div><span>还差金额</span><strong>{{ fmt_money(item.budget_gap_to_min_order) }}</strong></div>
@@ -205,7 +287,7 @@
             <div class="pick-metrics">
                 <div><span>建议金额</span><strong>{{ fmt_money(item.suggested_amount) }}</strong></div>
                 <div><span>1手门槛</span><strong>{{ fmt_money(item.min_order_amount) }}</strong></div>
-                <div><span>综合得分</span><strong>{{ "%.1f"|format(item.score) }}</strong></div>
+                <div><span>决策分</span><strong>{{ "%.1f"|format(item.score) }}</strong></div>
                 <div><span>预计手续费</span><strong>{{ fmt_money(item.estimated_fee|default(0)) }}</strong></div>
             </div>
             <p>{{ item.execution_note or item.reason_short }}</p>

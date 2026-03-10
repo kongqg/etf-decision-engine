@@ -204,6 +204,29 @@ a {
     border: 1px solid #f0ddc1;
 }
 
+.data-status-banner {
+    margin-bottom: 24px;
+    padding: 18px 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: rgba(255, 253, 249, 0.96);
+    box-shadow: var(--shadow);
+}
+
+.data-status-banner.warning {
+    border-color: #e8c8a8;
+    background: #fff8ef;
+}
+
+.data-status-banner .section-head {
+    margin-bottom: 10px;
+}
+
+.data-status-banner h3 {
+    margin: 4px 0 0;
+    font-size: 22px;
+}
+
 .action-cluster {
     display: flex;
     gap: 12px;
@@ -247,6 +270,10 @@ button.xl {
 .evidence-list {
     display: grid;
     gap: 10px;
+}
+
+.evidence-list.compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .evidence-list div,
@@ -305,6 +332,19 @@ button.xl {
     padding-top: 32px;
 }
 
+.stacked-checks {
+    display: grid;
+    gap: 12px;
+    padding-top: 8px;
+}
+
+.stacked-checks .check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 0;
+}
+
 .wide-field {
     grid-column: span 2;
 }
@@ -341,6 +381,15 @@ select {
     border-bottom: 1px solid var(--line);
     text-align: left;
     vertical-align: top;
+}
+
+.history-actions {
+    white-space: nowrap;
+}
+
+.history-actions .text-link {
+    margin-top: 0;
+    margin-right: 10px;
 }
 
 .chart-box {
@@ -383,6 +432,10 @@ select {
     .two,
     .three,
     .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .evidence-list.compact {
         grid-template-columns: 1fr;
     }
 

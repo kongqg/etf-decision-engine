@@ -57,6 +57,7 @@
         </div>
         <a class="text-link" href="/advice/{{ advice.id }}">查看今天为什么这样建议</a>
         <a class="text-link" href="/evidence/{{ advice.id }}">查看这次用的原始数据</a>
+        <a class="text-link" href="/history">查看历史建议</a>
         {% else %}
         <p>先刷新数据，然后生成第一条建议。</p>
         {% endif %}
@@ -77,6 +78,7 @@
             <div><span>手续费上限</span><strong>{{ "%.2f"|format(max_fee_rate_for_execution * 100) }}%</strong></div>
         </div>
         <a class="text-link" href="/portfolio">查看我的持仓</a>
+        <a class="text-link" href="/settings">继续调参</a>
     </article>
 </section>
 {% endblock %}

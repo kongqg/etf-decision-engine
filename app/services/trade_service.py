@@ -16,6 +16,10 @@ class TradeService:
         if user is None:
             raise ValueError("请先初始化用户资金。")
 
+        symbol = str(payload["symbol"]).strip()
+        name = str(payload["name"]).strip()
+        side = str(payload["side"]).strip().lower()
+        note = str(payload.get("note", "")).strip()
         quantity = payload.get("quantity")
         if quantity is None:
             raw_quantity = payload["amount"] / payload["price"]
@@ -25,13 +29,12 @@ class TradeService:
 
         amount = quantity * payload["price"]
         fee = payload.get("fee", 0.0)
-        side = payload["side"]
-        position = get_position_by_symbol(session, payload["symbol"])
+        position = get_position_by_symbol(session, symbol)
 
         if position is None:
             position = Position(
-                symbol=payload["symbol"],
-                name=payload["name"],
+                symbol=symbol,
+                name=name,
                 quantity=0.0,
                 avg_cost=0.0,
                 last_price=payload["price"],
@@ -41,6 +44,9 @@ class TradeService:
                 weight_pct=0.0,
             )
             session.add(position)
+        else:
+            position.symbol = symbol
+            position.name = name
 
         if side == "buy":
             total_cost = position.avg_cost * position.quantity + amount + fee
@@ -63,8 +69,8 @@ class TradeService:
 
         trade = Trade(
             executed_at=payload["executed_at"],
-            symbol=payload["symbol"],
-            name=payload["name"],
+            symbol=symbol,
+            name=name,
             side=side,
             quantity=quantity,
             price=payload["price"],
@@ -72,7 +78,7 @@ class TradeService:
             fee=fee,
             realized_pnl=realized_pnl,
             related_advice_id=payload.get("related_advice_id"),
-            note=payload.get("note", ""),
+            note=note,
         )
         session.add(trade)
         session.commit()

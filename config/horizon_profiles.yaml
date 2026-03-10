@@ -1,0 +1,29 @@
+default_target_holding_days: 5
+
+mapping:
+  t1_intraday_fallback_profile: swing
+  intermediate_days_default_profile: swing
+  offensive_edge_fallback_profile: defensive_cash
+
+profiles:
+  intraday_t0:
+    min_days: 0
+    max_days: 1
+    tradability_required: t0
+    planned_exit_days: 1
+    label: "T+0日内"
+  swing:
+    min_days: 2
+    max_days: 10
+    planned_exit_days: 5
+    label: "短线波段"
+  rotation:
+    min_days: 20
+    max_days: 40
+    planned_exit_days: 20
+    label: "中期轮动"
+  defensive_cash:
+    min_days: 0
+    max_days: 999
+    planned_exit_days: 1
+    label: "防守现金"

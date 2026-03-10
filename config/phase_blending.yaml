@@ -1,0 +1,57 @@
+phase_thresholds:
+  build_phase_min_remaining_ratio: 0.66
+  hold_phase_min_remaining_ratio: 0.33
+
+profiles:
+  intraday_t0:
+    build_phase:
+      entry: 0.60
+      hold: 0.20
+      exit: 0.20
+    hold_phase:
+      entry: 0.20
+      hold: 0.40
+      exit: 0.40
+    exit_phase:
+      entry: 0.05
+      hold: 0.25
+      exit: 0.70
+  swing:
+    build_phase:
+      entry: 0.50
+      hold: 0.30
+      exit: 0.20
+    hold_phase:
+      entry: 0.20
+      hold: 0.60
+      exit: 0.20
+    exit_phase:
+      entry: 0.10
+      hold: 0.40
+      exit: 0.50
+  rotation:
+    build_phase:
+      entry: 0.45
+      hold: 0.35
+      exit: 0.20
+    hold_phase:
+      entry: 0.15
+      hold: 0.65
+      exit: 0.20
+    exit_phase:
+      entry: 0.05
+      hold: 0.40
+      exit: 0.55
+  defensive_cash:
+    build_phase:
+      entry: 0.20
+      hold: 0.70
+      exit: 0.10
+    hold_phase:
+      entry: 0.10
+      hold: 0.80
+      exit: 0.10
+    exit_phase:
+      entry: 0.05
+      hold: 0.65
+      exit: 0.30
