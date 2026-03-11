@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, Query, Request
@@ -22,6 +22,8 @@ from app.services.performance_service import PerformanceService
 from app.services.portfolio_service import PortfolioService
 from app.services.trade_service import TradeService
 from app.services.user_service import UserService
+from app.services.backtest_service import BacktestRequest, BacktestService
+from app.services.validation_service import RollingValidationRequest, ValidationService
 from app.utils.dates import detect_session_mode, get_now
 from app.web.presenters import (
     build_data_status,
@@ -45,6 +47,18 @@ portfolio_service = PortfolioService()
 trade_service = TradeService()
 capital_flow_service = CapitalFlowService()
 performance_service = PerformanceService()
+backtest_service = BacktestService()
+validation_service = ValidationService()
+
+
+def _parse_number_list(raw: str, *, cast=float) -> list:
+    values = []
+    for chunk in str(raw or "").split(","):
+        text = chunk.strip()
+        if not text:
+            continue
+        values.append(cast(text))
+    return values
 
 
 def _data_status_context(db: Session, advice=None) -> dict | None:
@@ -170,6 +184,46 @@ def performance_page(request: Request, status: str | None = Query(default=None),
     return templates.TemplateResponse(request=request, name="performance.html", context=context)
 
 
+@router.get("/backtest")
+def backtest_page(
+    request: Request,
+    run_id: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    session_mode = detect_session_mode()
+    preferences = get_preferences(db)
+    user = get_user(db)
+    now = get_now().date()
+    selected_run = backtest_service.load_saved_run(run_id) if run_id else None
+    latest_runs = backtest_service.list_saved_runs(limit=12)
+    default_end_date = now
+    default_start_date = now - timedelta(days=120)
+    context = page_context("历史回测", session_mode, status)
+    context["preferences"] = preferences
+    context["user"] = user
+    context["backtest_result"] = selected_run
+    context["latest_backtest_runs"] = latest_runs
+    context["default_backtest_form"] = {
+        "start_date": default_start_date.isoformat(),
+        "end_date": default_end_date.isoformat(),
+        "initial_capital": float(user.initial_capital) if user is not None else 100000.0,
+        "risk_mode": getattr(preferences, "risk_mode", "balanced") if preferences is not None else "balanced",
+        "target_holding_days": int(getattr(preferences, "target_holding_days", 5)) if preferences is not None else 5,
+        "train_days": int(validation_service.config.get("rolling_validation", {}).get("default_train_days", 60)),
+        "validation_days": int(validation_service.config.get("rolling_validation", {}).get("default_validation_days", 20)),
+        "step_days": int(validation_service.config.get("rolling_validation", {}).get("default_step_days", 20)),
+        "slippage_bps": float(backtest_service.config.get("execution", {}).get("default_slippage_bps", 3.0)),
+        "offensive_threshold_deltas": "-4,0,4",
+        "open_threshold_deltas": "-4,0,2",
+        "reduce_threshold_deltas": "-2,0,2",
+        "full_exit_threshold_deltas": "-4,0,4",
+        "target_holding_day_candidates": "4,5,7",
+    }
+    context["data_status"] = _data_status_context(db)
+    return templates.TemplateResponse(request=request, name="backtest.html", context=context)
+
+
 @router.get("/settings")
 def settings_page(request: Request, status: str | None = Query(default=None), db: Session = Depends(get_db)):
     session_mode = detect_session_mode()
@@ -189,6 +243,81 @@ def history_page(request: Request, status: str | None = Query(default=None), db:
     context["history_rows"] = serialize_advice_history(advice_rows, trade_stats_by_advice(db))
     context["data_status"] = _data_status_context(db)
     return templates.TemplateResponse(request=request, name="history.html", context=context)
+
+
+@router.post("/actions/run-backtest")
+def run_backtest_action(
+    start_date: str = Form(...),
+    end_date: str = Form(...),
+    initial_capital: float = Form(...),
+    risk_mode: str = Form(default="balanced"),
+    target_holding_days: int = Form(default=5),
+    auto_calibrate: bool = Form(default=False),
+    train_days: int = Form(default=60),
+    validation_days: int = Form(default=20),
+    step_days: int = Form(default=20),
+    slippage_bps: float = Form(default=3.0),
+    fee_rate_override: str = Form(default=""),
+    min_fee_override: str = Form(default=""),
+    use_live_trades: bool = Form(default=False),
+    allow_weak_data: bool = Form(default=False),
+    offensive_threshold_deltas: str = Form(default="-4,0,4"),
+    open_threshold_deltas: str = Form(default="-4,0,2"),
+    reduce_threshold_deltas: str = Form(default="-2,0,2"),
+    full_exit_threshold_deltas: str = Form(default="-4,0,4"),
+    target_holding_day_candidates: str = Form(default="4,5,7"),
+    db: Session = Depends(get_db),
+):
+    try:
+        parsed_start = date.fromisoformat(start_date)
+        parsed_end = date.fromisoformat(end_date)
+        parsed_fee_rate = float(fee_rate_override) if str(fee_rate_override).strip() else None
+        parsed_min_fee = float(min_fee_override) if str(min_fee_override).strip() else None
+        if auto_calibrate:
+            result = validation_service.run(
+                db,
+                RollingValidationRequest(
+                    start_date=parsed_start,
+                    end_date=parsed_end,
+                    initial_capital=initial_capital,
+                    train_days=train_days,
+                    validation_days=validation_days,
+                    step_days=step_days,
+                    use_live_trades=use_live_trades,
+                    risk_mode=risk_mode,
+                    slippage_bps=slippage_bps,
+                    fee_rate_override=parsed_fee_rate,
+                    min_fee_override=parsed_min_fee,
+                    strict_data_quality=not allow_weak_data,
+                    search_space={
+                        "fallback.offensive_threshold": _parse_number_list(offensive_threshold_deltas, cast=float),
+                        "decision_thresholds.open_threshold": _parse_number_list(open_threshold_deltas, cast=float),
+                        "decision_thresholds.reduce_threshold": _parse_number_list(reduce_threshold_deltas, cast=float),
+                        "decision_thresholds.full_exit_threshold": _parse_number_list(full_exit_threshold_deltas, cast=float),
+                    },
+                    target_holding_days_candidates=_parse_number_list(target_holding_day_candidates, cast=int),
+                ),
+            )
+            return RedirectResponse(url=f"/backtest?run_id={result['run_id']}&status=滚动验证已完成", status_code=303)
+
+        result = backtest_service.run(
+            db,
+            BacktestRequest(
+                start_date=parsed_start,
+                end_date=parsed_end,
+                initial_capital=initial_capital,
+                use_live_trades=use_live_trades,
+                risk_mode=risk_mode,
+                target_holding_days=target_holding_days,
+                slippage_bps=slippage_bps,
+                fee_rate_override=parsed_fee_rate,
+                min_fee_override=parsed_min_fee,
+                strict_data_quality=not allow_weak_data,
+            ),
+        )
+        return RedirectResponse(url=f"/backtest?run_id={result['run_id']}&status=回测已完成", status_code=303)
+    except ValueError as exc:
+        return RedirectResponse(url=f"/backtest?status={exc}", status_code=303)
 
 
 @router.post("/actions/init-user")

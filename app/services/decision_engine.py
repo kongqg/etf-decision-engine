@@ -306,6 +306,162 @@ class DecisionEngine:
         advice_dict["evidence"] = json.loads(advice_record.evidence_json or "{}")
         return advice_dict
 
+    def build_plan_from_context(
+        self,
+        *,
+        feature_df: pd.DataFrame,
+        portfolio_summary: dict[str, Any],
+        positions_df: pd.DataFrame,
+        preferences,
+        current_time: datetime,
+        market_snapshot: dict[str, Any],
+        session_mode: str,
+        trade_context: dict[str, Any],
+        previous_rank_map: dict[str, int],
+        action_thresholds: dict[str, Any] | None = None,
+        allowed_categories: set[str] | None = None,
+        category_score_adjustments: dict[str, float] | None = None,
+    ) -> dict[str, Any]:
+        holding_symbols = set(positions_df["symbol"].tolist()) if not positions_df.empty else set()
+        quality_gate = self._data_quality_gate(
+            market_snapshot=market_snapshot,
+            feature_df=feature_df,
+            holding_symbols=holding_symbols,
+        )
+        resolved_thresholds = action_thresholds or self.thresholds
+
+        if quality_gate["blocked"]:
+            current_position_pct = float(portfolio_summary.get("current_position_pct", 0.0))
+            decision_context = {
+                "action_code": "no_trade",
+                "summary_text": (
+                    "当前数据质量不足，先不生成正式建议。"
+                    f"{quality_gate['blocking_reasons'][0] if quality_gate['blocking_reasons'] else ''}"
+                ),
+                "reason_code": "data_quality_not_ready",
+                "target_position_pct": current_position_pct,
+                "recommendation_groups": {
+                    "executable_recommendations": [],
+                    "best_unaffordable_recommendation": None,
+                    "affordable_but_weak_recommendations": [],
+                    "watchlist_recommendations": [],
+                    "cost_inefficient_recommendations": [],
+                    "show_watchlist_recommendations": False,
+                    "show_cost_inefficient_recommendations": False,
+                    "budget_filter_enabled": True,
+                    "fee_filter_enabled": False,
+                },
+                "primary_item": None,
+                "winning_category": "",
+                "winning_category_label": "",
+                "selected_category_score": 0.0,
+                "mapped_horizon_profile": "",
+                "lifecycle_phase": "",
+                "executable_now": False,
+                "blocked_reason": "data_quality_not_ready",
+                "planned_exit_days": None,
+                "planned_exit_rule_summary": "当前数据质量不足，暂不生成正式执行动作。",
+                "category_scores": [],
+                "target_portfolio": {
+                    "mode": "data_not_ready",
+                    "selected_category": "",
+                    "selected_category_label": "",
+                    "target_weight_by_symbol": {},
+                    "rows": [],
+                    "notes": quality_gate["blocking_reasons"] or ["当前数据质量不足，先暂停正式建议。"],
+                },
+                "transition_plan": [],
+                "daily_action_plan": [],
+                "portfolio_review_items": [],
+                "action_counts": {},
+                "facts": {
+                    "data_quality_status": quality_gate["quality_status"],
+                    "formal_decision_ready": False,
+                    "blocking_reasons": quality_gate["blocking_reasons"],
+                    "warning_reasons": quality_gate["warning_reasons"],
+                    "coverage_ratio": float(quality_gate["summary"].get("coverage_ratio", 0.0)),
+                    "fallback_ratio": float(quality_gate["summary"].get("fallback_ratio", 0.0)),
+                    "stale_ratio": float(quality_gate["summary"].get("stale_ratio", 0.0)),
+                    "risk_mode": str(getattr(preferences, "risk_mode", "balanced")),
+                    "risk_mode_label": str(getattr(preferences, "risk_mode_label", "正常")),
+                    "effective_max_total_position_pct": float(getattr(preferences, "max_total_position_pct", 0.7)),
+                    "effective_target_holding_days": int(getattr(preferences, "target_holding_days", 5)),
+                },
+            }
+            return {
+                "plan": decision_context,
+                "filtered_df": pd.DataFrame(),
+                "scored_df": pd.DataFrame(),
+                "evaluation": {
+                    "category_scores_df": pd.DataFrame(),
+                    "selected_category": "",
+                    "selected_category_score": 0.0,
+                    "fallback_action": "no_trade",
+                    "offensive_edge": False,
+                },
+                "quality_gate": quality_gate,
+            }
+
+        filtered_df = self.filter_service.apply(feature_df, preferences)
+        candidates_df = filtered_df[filtered_df["filter_pass"]].copy()
+        decision_universe_df = filtered_df[
+            filtered_df["filter_pass"] | filtered_df["symbol"].isin(holding_symbols)
+        ].copy()
+        if allowed_categories:
+            candidates_df = candidates_df[candidates_df["decision_category"].isin(allowed_categories)].copy()
+            decision_universe_df = decision_universe_df[
+                decision_universe_df["symbol"].isin(holding_symbols)
+                | decision_universe_df["decision_category"].isin(allowed_categories)
+            ].copy()
+
+        evaluation = self.scoring_service.evaluate(
+            candidates_df=candidates_df,
+            positions_df=positions_df,
+            target_holding_days=int(getattr(preferences, "target_holding_days", 5)),
+            previous_rank_map=previous_rank_map,
+            days_held_map=trade_context["days_held_map"],
+            action_thresholds=resolved_thresholds,
+            category_score_adjustments=category_score_adjustments,
+        )
+        if not decision_universe_df.empty:
+            defensive_category = self.policy.defensive_category()
+            decision_universe_df["is_current_holding"] = decision_universe_df["symbol"].isin(holding_symbols)
+            decision_universe_df["entry_eligible"] = decision_universe_df["filter_pass"]
+            decision_universe_df["profile_offensive_edge"] = decision_universe_df.apply(
+                lambda row: bool(evaluation["offensive_edge"])
+                or (
+                    bool(row["symbol"] in holding_symbols)
+                    and str(row["decision_category"]) != defensive_category
+                ),
+                axis=1,
+            )
+        scored_df = self.scoring_service.score_decision_universe(
+            decision_df=decision_universe_df,
+            category_scores_df=evaluation["category_scores_df"],
+            target_holding_days=int(getattr(preferences, "target_holding_days", 5)),
+            previous_rank_map=previous_rank_map,
+            days_held_map=trade_context["days_held_map"],
+            offensive_edge=bool(evaluation["offensive_edge"]),
+        )
+        decision_context = self._build_decision_context(
+            scored_df=scored_df,
+            evaluation=evaluation,
+            portfolio_summary=portfolio_summary,
+            preferences=preferences,
+            session_mode=session_mode,
+            current_time=current_time,
+            trade_context=trade_context,
+            market_snapshot=market_snapshot,
+            thresholds=resolved_thresholds,
+        )
+        return {
+            "plan": decision_context,
+            "filtered_df": filtered_df,
+            "scored_df": scored_df,
+            "evaluation": evaluation,
+            "quality_gate": quality_gate,
+        }
+
     def _data_quality_gate(
         self,
         *,

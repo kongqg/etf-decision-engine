@@ -1,0 +1,37 @@
+execution:
+  default_slippage_bps: 3.0
+  annualization_days: 252
+
+rolling_validation:
+  default_train_days: 60
+  default_validation_days: 20
+  default_step_days: 20
+
+calibration:
+  objective_weights:
+    total_return_weight: 1.0
+    max_drawdown_weight: 0.7
+    stability_weight: 20.0
+    turnover_penalty_weight: 1.5
+    trade_count_penalty_weight: 0.12
+  search_space:
+    fallback.offensive_threshold:
+      - -4.0
+      - 0.0
+      - 4.0
+    decision_thresholds.open_threshold:
+      - -4.0
+      - 0.0
+      - 2.0
+    decision_thresholds.reduce_threshold:
+      - -2.0
+      - 0.0
+      - 2.0
+    decision_thresholds.full_exit_threshold:
+      - -4.0
+      - 0.0
+      - 4.0
+  target_holding_days_candidates:
+    - 4
+    - 5
+    - 7

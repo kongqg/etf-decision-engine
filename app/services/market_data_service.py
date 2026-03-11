@@ -74,6 +74,52 @@ class MarketDataService:
             "fallback": self._load_history_from_fallback,
         }
 
+    def load_history_range(
+        self,
+        *,
+        symbol: str,
+        category: str,
+        min_avg_amount: float,
+        start_date: date,
+        end_date: date,
+    ) -> dict[str, Any]:
+        request_params = {
+            "symbol": symbol,
+            "period": "daily",
+            "adjust": "qfq",
+            "start_date": start_date.strftime("%Y%m%d"),
+            "end_date": end_date.strftime("%Y%m%d"),
+        }
+        akshare_history = self._load_history_from_akshare_range(
+            symbol=symbol,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        if akshare_history is not None and not akshare_history.empty:
+            return {
+                "history": akshare_history,
+                "source": "akshare",
+                "request_params": request_params,
+            }
+
+        fallback_history = self._load_history_from_fallback_range(
+            symbol=symbol,
+            category=category,
+            min_avg_amount=min_avg_amount,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        return {
+            "history": fallback_history,
+            "source": "fallback",
+            "request_params": {
+                "symbol": symbol,
+                "method": "local_fallback_generator",
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
+            },
+        }
+
     def refresh_data(self, session: Session, now=None) -> dict[str, Any]:
         current_time = now or get_now()
         trade_date = latest_market_date(current_time)
@@ -369,19 +415,34 @@ class MarketDataService:
         }
 
     def _load_history_from_akshare(self, symbol: str, trade_date: date) -> pd.DataFrame | None:
+        start_date = trade_date - timedelta(days=self.settings.min_refresh_history_days * 3)
+        frame = self._load_history_from_akshare_range(
+            symbol=symbol,
+            start_date=start_date,
+            end_date=trade_date,
+        )
+        if frame is None or frame.empty:
+            return None
+        return frame.sort_values("date").tail(self.settings.min_refresh_history_days)
+
+    def _load_history_from_akshare_range(
+        self,
+        *,
+        symbol: str,
+        start_date: date,
+        end_date: date,
+    ) -> pd.DataFrame | None:
         try:
             import akshare as ak
         except Exception:
             return None
 
-        start_date = (trade_date - timedelta(days=self.settings.min_refresh_history_days * 3)).strftime("%Y%m%d")
-        end_date = trade_date.strftime("%Y%m%d")
         try:
             raw = ak.fund_etf_hist_em(
                 symbol=symbol,
                 period="daily",
-                start_date=start_date,
-                end_date=end_date,
+                start_date=start_date.strftime("%Y%m%d"),
+                end_date=end_date.strftime("%Y%m%d"),
                 adjust="qfq",
             )
         except Exception:
@@ -402,15 +463,34 @@ class MarketDataService:
         frame["date"] = pd.to_datetime(frame["date"], errors="coerce")
         frame["close"] = pd.to_numeric(frame["close"], errors="coerce")
         frame["amount"] = pd.to_numeric(frame["amount"], errors="coerce")
-        frame = frame.sort_values("date").tail(self.settings.min_refresh_history_days)
+        frame = frame.sort_values("date")
         return frame if not frame.empty else None
 
     def _load_history_from_fallback(self, symbol: str, category: str, min_avg_amount: float, trade_date: date) -> pd.DataFrame:
+        start_date = trade_date - timedelta(days=self.settings.min_refresh_history_days * 2)
+        frame = self._load_history_from_fallback_range(
+            symbol=symbol,
+            category=category,
+            min_avg_amount=min_avg_amount,
+            start_date=start_date,
+            end_date=trade_date,
+        )
+        return frame.tail(self.settings.min_refresh_history_days)
+
+    def _load_history_from_fallback_range(
+        self,
+        *,
+        symbol: str,
+        category: str,
+        min_avg_amount: float,
+        start_date: date,
+        end_date: date,
+    ) -> pd.DataFrame:
         seed = int(symbol)
         rng = np.random.default_rng(seed)
-        dates = pd.bdate_range(end=trade_date, periods=self.settings.min_refresh_history_days)
+        dates = pd.bdate_range(start=start_date, end=end_date)
         base_price = 0.9 + (seed % 37) / 10
-        phase = (trade_date.toordinal() + seed) / 13
+        phase = (end_date.toordinal() + seed) / 13
         dynamic_drift = CATEGORY_DRIFT.get(category, 0.0005) + np.sin(phase) * 0.0015
         volatility = CATEGORY_VOL.get(category, 0.015)
         returns = rng.normal(loc=dynamic_drift, scale=volatility, size=len(dates))
