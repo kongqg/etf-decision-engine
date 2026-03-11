@@ -55,6 +55,9 @@
         <div><span>最终动作</span><strong>{{ explanation["overall"]["execution_rule"]["result"] }}</strong></div>
         <div><span>是否可立即执行</span><strong>{{ "是" if explanation["overall"]["execution_rule"]["executable_now"] else "否" }}</strong></div>
         <div><span>阻塞原因</span><strong>{{ explanation["overall"]["execution_rule"]["blocked_reason"] or "-" }}</strong></div>
+        <div><span>统一交易成本</span><strong>{{ "%.1f"|format(explanation["overall"]["execution_rule"]["execution_cost_bps"]) }} bps</strong></div>
+        <div><span>成本前优势</span><strong>{{ "%.1f"|format(explanation["overall"]["execution_rule"]["expected_edge_before_cost"]) }} bps</strong></div>
+        <div><span>成本后优势</span><strong>{{ "%.1f"|format(explanation["overall"]["execution_rule"]["expected_edge_after_cost"]) }} bps</strong></div>
         <div><span>目标持有天数</span><strong>{{ explanation["overall"]["execution_rule"]["target_holding_days"] }}</strong></div>
         <div><span>胜出类别得分</span><strong>{{ "%.1f"|format(explanation["overall"]["execution_rule"]["selected_category_score"]) }}</strong></div>
     </div>
@@ -158,6 +161,9 @@
                 <div><span>动作</span><strong>{{ item.execution.action }}</strong></div>
                 <div><span>交易模式</span><strong>{{ item.execution.tradability_mode }}</strong></div>
                 <div><span>可立即执行</span><strong>{{ "是" if item.execution.executable_now else "否" }}</strong></div>
+                <div><span>统一成本</span><strong>{{ "%.1f"|format(item.execution.execution_cost_bps) }} bps</strong></div>
+                <div><span>成本前优势</span><strong>{{ "%.1f"|format(item.execution.expected_edge_before_cost) }} bps</strong></div>
+                <div><span>成本后优势</span><strong>{{ "%.1f"|format(item.execution.expected_edge_after_cost) }} bps</strong></div>
                 <div><span>映射周期</span><strong>{{ item.holding_profile.horizon_profile_label }}</strong></div>
                 <div><span>生命周期</span><strong>{{ item.holding_profile.lifecycle_phase }}</strong></div>
                 <div><span>当前权重</span><strong>{{ "%.1f"|format(item.position_context.current_weight * 100) }}%</strong></div>

@@ -65,11 +65,15 @@
                     <input type="number" step="0.5" min="0" name="slippage_bps" value="{{ default_backtest_form.slippage_bps }}">
                 </label>
                 <label>
-                    手续费率覆盖
+                    统一交易成本(bps)
+                    <input type="number" step="0.5" min="0" name="execution_cost_bps" value="{{ default_backtest_form.execution_cost_bps }}">
+                </label>
+                <label>
+                    手续费率覆盖(兼容)
                     <input type="number" step="0.0001" min="0" name="fee_rate_override" placeholder="留空则沿用ETF配置">
                 </label>
                 <label>
-                    最低手续费覆盖
+                    最低手续费覆盖(兼容)
                     <input type="number" step="0.1" min="0" name="min_fee_override" placeholder="留空则沿用ETF配置">
                 </label>
                 <label>
@@ -202,15 +206,16 @@
                 <h3>核心数字</h3>
             </div>
         </div>
-        <div class="evidence-list">
-            <div><span>累计收益率</span><strong>{{ fmt_pct(display_result.metrics.total_return_pct) }}</strong></div>
-            <div><span>年化收益率</span><strong>{{ fmt_pct(display_result.metrics.annualized_return_pct) }}</strong></div>
-            <div><span>最大回撤</span><strong>{{ fmt_pct(display_result.metrics.max_drawdown_pct) }}</strong></div>
-            <div><span>胜率</span><strong>{{ fmt_pct(display_result.metrics.win_rate_pct) }}</strong></div>
-            <div><span>交易次数</span><strong>{{ display_result.metrics.trade_count }}</strong></div>
-            <div><span>换手强度</span><strong>{{ "%.2f"|format(display_result.metrics.turnover_ratio) }}</strong></div>
-        </div>
-    </article>
+            <div class="evidence-list">
+                <div><span>累计收益率</span><strong>{{ fmt_pct(display_result.metrics.total_return_pct) }}</strong></div>
+                <div><span>年化收益率</span><strong>{{ fmt_pct(display_result.metrics.annualized_return_pct) }}</strong></div>
+                <div><span>最大回撤</span><strong>{{ fmt_pct(display_result.metrics.max_drawdown_pct) }}</strong></div>
+                <div><span>胜率</span><strong>{{ fmt_pct(display_result.metrics.win_rate_pct) }}</strong></div>
+                <div><span>交易次数</span><strong>{{ display_result.metrics.trade_count }}</strong></div>
+                <div><span>累计执行成本</span><strong>{{ fmt_money(display_result.metrics.total_execution_cost) }}</strong></div>
+                <div><span>换手强度</span><strong>{{ "%.2f"|format(display_result.metrics.turnover_ratio) }}</strong></div>
+            </div>
+        </article>
 </section>
 
 <section class="card">

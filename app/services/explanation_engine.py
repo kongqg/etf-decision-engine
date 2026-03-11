@@ -98,6 +98,12 @@ class ExplanationEngine:
                         "tradability_mode": payload["trade_mode"],
                         "executable_now": payload["executable_now"],
                         "blocked_reason": payload["blocked_reason"],
+                        "execution_cost_bps": float(payload.get("execution_cost_bps", 0.0)),
+                        "expected_edge_before_cost": float(payload.get("expected_edge_before_cost", 0.0)),
+                        "expected_edge_after_cost": float(payload.get("expected_edge_after_cost", 0.0)),
+                        "estimated_execution_cost": float(
+                            payload.get("estimated_execution_cost", payload.get("estimated_fee", 0.0))
+                        ),
                         "planned_exit_days": payload.get("planned_exit_days"),
                         "planned_exit_rule_summary": payload.get("planned_exit_rule_summary", ""),
                     },
@@ -127,6 +133,9 @@ class ExplanationEngine:
                         {"label": "持有分", "value": f"{payload['hold_score']:.1f}"},
                         {"label": "退出分", "value": f"{payload['exit_score']:.1f}"},
                         {"label": "决策分", "value": f"{payload['decision_score']:.1f}"},
+                        {"label": "统一交易成本", "value": f"{float(payload.get('execution_cost_bps', 0.0)):.1f} bps"},
+                        {"label": "成本前优势", "value": f"{float(payload.get('expected_edge_before_cost', 0.0)):.1f} bps"},
+                        {"label": "成本后优势", "value": f"{float(payload.get('expected_edge_after_cost', 0.0)):.1f} bps"},
                         {"label": "当前权重", "value": f"{payload.get('current_weight', 0.0) * 100:.1f}%"},
                         {"label": "目标权重", "value": f"{payload.get('target_weight', 0.0) * 100:.1f}%"},
                         {"label": "权重变化", "value": f"{payload.get('delta_weight', 0.0) * 100:.1f}%"},
@@ -185,6 +194,7 @@ class ExplanationEngine:
             {"label": "当前仓位", "value": f"{portfolio_summary['current_position_pct'] * 100:.1f}%"},
             {"label": "目标仓位", "value": f"{plan['target_position_pct'] * 100:.1f}%"},
             {"label": "目标持有天数", "value": str(facts.get("target_holding_days", 0))},
+            {"label": "统一交易成本", "value": f"{float(facts.get('execution_cost_bps', 0.0)):.1f} bps"},
             {"label": "胜出类别", "value": plan.get("winning_category_label", "-") or "-"},
             {"label": "胜出类别得分", "value": f"{plan['selected_category_score']:.1f}"},
             {"label": "是否可立即执行", "value": "是" if plan["executable_now"] else "否"},
@@ -206,6 +216,8 @@ class ExplanationEngine:
                     {"label": "生命周期", "value": self._phase_label(primary_item["lifecycle_phase"])},
                     {"label": "动作", "value": primary_item["action"]},
                     {"label": "标的决策分", "value": f"{primary_item['decision_score']:.1f}"},
+                    {"label": "成本前优势", "value": f"{float(primary_item.get('expected_edge_before_cost', 0.0)):.1f} bps"},
+                    {"label": "成本后优势", "value": f"{float(primary_item.get('expected_edge_after_cost', 0.0)):.1f} bps"},
                 ]
             )
         return evidence
@@ -229,7 +241,7 @@ class ExplanationEngine:
         facts = plan["facts"]
         result_action = advice.get("action") or self.policy.action_label(str(plan.get("action_code", "no_trade")))
         return {
-            "rule": "先决定目标组合属于哪个类别，再看每只标的相对当前持仓是该增、该减还是继续持有；最后再按 T+0/T+1、预算和时段限制决定能否立即执行。",
+            "rule": "先决定目标组合属于哪个类别，再看每只标的相对当前持仓是该增、该减还是继续持有；最后再按 T+0/T+1、预算、统一交易成本和时段限制决定能否立即执行。",
             "threshold": facts["open_threshold"],
             "top_score": float(primary_item["decision_score"]) if primary_item else 0.0,
             "result": result_action,
@@ -237,6 +249,11 @@ class ExplanationEngine:
             "blocked_reason": plan.get("blocked_reason", ""),
             "target_holding_days": facts.get("target_holding_days", 0),
             "selected_category_score": facts.get("selected_category_score", 0.0),
+            "execution_cost_bps": float(
+                primary_item.get("execution_cost_bps", facts.get("execution_cost_bps", 0.0)) if primary_item else facts.get("execution_cost_bps", 0.0)
+            ),
+            "expected_edge_before_cost": float(primary_item.get("expected_edge_before_cost", 0.0)) if primary_item else 0.0,
+            "expected_edge_after_cost": float(primary_item.get("expected_edge_after_cost", 0.0)) if primary_item else 0.0,
         }
 
     def _why_selected(self, payload: dict[str, Any], breakdown: dict[str, Any]) -> list[str]:
@@ -268,6 +285,12 @@ class ExplanationEngine:
             )
         if payload["blocked_reason"]:
             reasons.append(f"动作已生成，但当前被 {payload['blocked_reason']} 阻塞。")
+        if payload.get("execution_cost_bps", 0.0):
+            reasons.append(
+                f"这次统一按 {float(payload.get('execution_cost_bps', 0.0)):.1f} bps 估算执行成本，"
+                f"成本前优势 {float(payload.get('expected_edge_before_cost', 0.0)):.1f} bps，"
+                f"成本后剩余 {float(payload.get('expected_edge_after_cost', 0.0)):.1f} bps。"
+            )
         return reasons
 
     def _portfolio_transition_summary(

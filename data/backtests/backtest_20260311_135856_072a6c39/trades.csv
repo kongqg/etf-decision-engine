@@ -1,0 +1,2 @@
+﻿executed_at,symbol,name,side,quantity,price,amount,fee,realized_pnl,action_code,note,source
+2025-11-11T14:50:00,511990,华宝添益,buy,900.0,100.027,90024.3,45.01,0.0,park_in_money_etf,进攻边际不足，新增可用仓位先停泊到货币ETF。,backtest

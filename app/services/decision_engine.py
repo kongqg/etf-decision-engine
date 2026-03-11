@@ -15,6 +15,7 @@ from app.repositories.market_repo import get_latest_market_snapshot, get_latest_
 from app.repositories.portfolio_repo import list_trades
 from app.repositories.user_repo import get_preferences, get_user
 from app.services.decision_policy_service import get_decision_policy_service
+from app.services.execution_cost_service import get_execution_cost_service
 from app.services.explanation_engine import ExplanationEngine
 from app.services.market_data_service import MarketDataService
 from app.services.performance_service import PerformanceService
@@ -39,6 +40,7 @@ class DecisionEngine:
         self.position_action_service = PositionActionService()
         self.risk_service = RiskService()
         self.risk_mode_service = get_risk_mode_service()
+        self.execution_cost_service = get_execution_cost_service()
         self.explanation_engine = ExplanationEngine()
         self.policy = get_decision_policy_service()
         self.thresholds = self.policy.action_thresholds
@@ -386,6 +388,12 @@ class DecisionEngine:
                     "risk_mode_label": str(getattr(preferences, "risk_mode_label", "正常")),
                     "effective_max_total_position_pct": float(getattr(preferences, "max_total_position_pct", 0.7)),
                     "effective_target_holding_days": int(getattr(preferences, "target_holding_days", 5)),
+                    "execution_cost_bps": float(self.execution_cost_service.execution_cost_bps()),
+                    "effective_min_trade_amount": float(
+                        self.execution_cost_service.effective_min_trade_amount(
+                            float(getattr(preferences, "min_trade_amount", 0.0))
+                        )
+                    ),
                 },
             }
             return {
@@ -547,6 +555,10 @@ class DecisionEngine:
             "reduce_threshold": float(self.thresholds.get("decision_thresholds", {}).get("reduce_threshold", 58.0)),
             "full_exit_threshold": float(self.thresholds.get("decision_thresholds", {}).get("full_exit_threshold", 72.0)),
             "target_holding_days": int(getattr(preferences, "target_holding_days", 5)),
+            "execution_cost_bps": float(self.execution_cost_service.execution_cost_bps()),
+            "effective_min_trade_amount": float(
+                self.execution_cost_service.effective_min_trade_amount(float(getattr(preferences, "min_trade_amount", 0.0)))
+            ),
             "recommendation_count": 0,
             "transition_count": 0,
             "holding_review_count": 0,
@@ -985,6 +997,10 @@ class DecisionEngine:
             "effective_max_total_position_pct": float(getattr(preferences, "max_total_position_pct", 0.7)),
             "target_holding_days": int(getattr(preferences, "target_holding_days", 5)),
             "effective_target_holding_days": int(getattr(preferences, "target_holding_days", 5)),
+            "execution_cost_bps": float(self.execution_cost_service.execution_cost_bps()),
+            "effective_min_trade_amount": float(
+                self.execution_cost_service.effective_min_trade_amount(float(getattr(preferences, "min_trade_amount", 0.0)))
+            ),
             "recommendation_count": len(primary_items),
             "transition_count": len(transition_plan),
             "holding_review_count": len(portfolio_review_items),
@@ -1049,6 +1065,9 @@ class DecisionEngine:
         total_asset = float(portfolio_summary["total_asset"])
         available_cash = float(portfolio_summary["cash_balance"])
         current_position_pct = float(portfolio_summary["current_position_pct"])
+        effective_min_trade_amount = self.execution_cost_service.effective_min_trade_amount(
+            float(getattr(preferences, "min_trade_amount", 0.0))
+        )
         positions_lookup = {
             str(row["symbol"]): row
             for row in portfolio_summary["holdings"]
@@ -1093,7 +1112,8 @@ class DecisionEngine:
                     action_payload=action_payload,
                     route_payload=route_payload,
                     available_cash=available_cash,
-                    min_trade_amount=float(preferences.min_trade_amount),
+                    min_trade_amount=effective_min_trade_amount,
+                    thresholds=thresholds,
                 )
             )
         return planned_rows
@@ -1412,6 +1432,7 @@ class DecisionEngine:
         route_payload: dict[str, Any],
         available_cash: float,
         min_trade_amount: float,
+        thresholds: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         action_code = action_payload["action_code"]
         requires_order = bool(route_payload["requires_order"])
@@ -1429,9 +1450,29 @@ class DecisionEngine:
         days_held = int(action_payload.get("days_held", row.get("days_held", 0)) or 0)
         filter_reasons = list(row.get("filter_reasons", [])) if isinstance(row.get("filter_reasons"), list) else []
         entry_eligible = bool(row.get("entry_eligible", row.get("filter_pass", False)))
+        execution_cost_bps = float(self.execution_cost_service.execution_cost_bps())
+        estimated_execution_cost = (
+            self.execution_cost_service.estimate_execution_cost(suggested_amount)
+            if action_code in ORDER_ACTIONS and suggested_amount > 0
+            else 0.0
+        )
+        expected_edge_before_cost = self.execution_cost_service.expected_edge_before_cost(
+            action_code=action_code,
+            decision_score=float(row["decision_score"]),
+            exit_score=float(row["exit_score"]),
+            thresholds=thresholds or self.thresholds,
+            route_edge_bps=float(route_payload.get("edge_bps", 0.0)),
+        )
+        expected_edge_after_cost = round(expected_edge_before_cost - execution_cost_bps, 2)
         budget_blocked = action_code in BUY_ACTIONS and (suggested_amount < min_trade_amount or suggested_amount < min_order_amount)
-        executable_now = bool(route_payload["executable_now"]) and not budget_blocked
-        blocked_reason_code = "budget_below_min_trade_or_lot" if budget_blocked else str(route_payload["blocked_reason"])
+        cost_blocked = action_code in ORDER_ACTIONS and expected_edge_after_cost <= 0.0
+        executable_now = bool(route_payload["executable_now"]) and not budget_blocked and not cost_blocked
+        if budget_blocked:
+            blocked_reason_code = "budget_below_min_trade_or_lot"
+        elif cost_blocked:
+            blocked_reason_code = "edge_after_execution_cost_not_enough"
+        else:
+            blocked_reason_code = str(route_payload["blocked_reason"])
         blocked_reason = self._blocked_reason_text(
             blocked_reason_code,
             suggested_amount=suggested_amount,
@@ -1496,8 +1537,14 @@ class DecisionEngine:
             "lot_size": float(row["lot_size"]),
             "fee_rate": float(row["fee_rate"]),
             "min_fee": float(row["min_fee"]),
-            "estimated_fee": 0.0,
-            "estimated_cost_rate": 0.0,
+            "execution_cost_bps": execution_cost_bps,
+            "expected_edge_before_cost": expected_edge_before_cost,
+            "expected_edge_after_cost": expected_edge_after_cost,
+            "estimated_execution_cost": estimated_execution_cost,
+            "estimated_fee": estimated_execution_cost,
+            "estimated_cost_rate": round(execution_cost_bps / 10_000.0, 6)
+            if action_code in ORDER_ACTIONS and suggested_amount > 0
+            else 0.0,
             "min_advice_amount": min_trade_amount,
             "min_order_amount": min_order_amount,
             "available_cash": available_cash,
@@ -2015,6 +2062,7 @@ class DecisionEngine:
             "t0_cooldown_blocked": route_payload.get("planned_exit_rule_summary", "距离上一笔成交太近，仍在冷却时间内。"),
             "t0_flip_signal_too_small": "同日反手的分数差太小，不足以支撑翻向交易。",
             "t0_expected_edge_too_small": "当前信号优势太小，无法覆盖 T+0 反复交易的摩擦成本。",
+            "edge_after_execution_cost_not_enough": "信号虽达标，但扣除统一交易成本后优势不足，暂不操作。",
         }
         return str(messages.get(blocked_reason_code, blocked_reason_code))
 

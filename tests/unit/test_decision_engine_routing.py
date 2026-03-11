@@ -116,3 +116,131 @@ def test_affordable_but_weak_recommendations_stay_visible_for_small_account():
     assert items[0]["is_affordable_but_weak"] is True
     assert items[0]["suggested_amount"] == 1102.4
     assert "类别分 52.0 还没达到出手阈值 55.0" in items[0]["weak_signal_reason"]
+
+
+def test_execution_cost_blocks_order_when_after_cost_edge_is_negative():
+    engine = DecisionEngine()
+    payload = engine._compose_item_payload(
+        row={
+            "symbol": "510300",
+            "name": "沪深300ETF",
+            "rank_in_category": 1,
+            "close_price": 1.2,
+            "lot_size": 100.0,
+            "fee_rate": 0.0003,
+            "min_fee": 1.0,
+            "decision_score": 60.0,
+            "entry_score": 70.0,
+            "hold_score": 50.0,
+            "exit_score": 20.0,
+            "category_score": 66.0,
+            "score_gap": 0.0,
+            "risk_level": "中",
+            "decision_category": "stock_etf",
+            "tradability_mode": "t1",
+            "target_holding_days": 5,
+            "mapped_horizon_profile": "swing",
+            "lifecycle_phase": "build_phase",
+            "breakdown_json": "{}",
+            "filter_pass": True,
+        },
+        position=None,
+        action_payload={
+            "action_code": "buy_open",
+            "position_action": "buy_open",
+            "position_action_label": "开仓买入",
+            "action_reason": "测试开仓",
+            "suggested_amount": 2000.0,
+            "suggested_pct": 0.2,
+            "min_order_amount": 120.0,
+            "current_weight": 0.0,
+            "target_weight": 0.2,
+            "delta_weight": 0.2,
+            "current_amount": 0.0,
+            "target_amount": 2000.0,
+        },
+        route_payload={
+            "requires_order": True,
+            "executable_now": True,
+            "blocked_reason": "",
+            "planned_exit_days": None,
+            "planned_exit_rule_summary": "",
+            "edge_bps": 4.0,
+        },
+        available_cash=5000.0,
+        min_trade_amount=100.0,
+        thresholds={
+            "decision_thresholds": {"open_threshold": 58.0},
+            "t0_controls": {"score_to_edge_bps_multiplier": 2.0},
+        },
+    )
+
+    assert payload["expected_edge_before_cost"] == 4.0
+    assert payload["expected_edge_after_cost"] == -1.0
+    assert payload["estimated_execution_cost"] == 1.0
+    assert payload["execution_cost_bps"] == 5.0
+    assert payload["executable_now"] is False
+    assert "扣除统一交易成本后优势不足" in payload["blocked_reason"]
+
+
+def test_execution_cost_keeps_order_executable_when_edge_remains_positive():
+    engine = DecisionEngine()
+    payload = engine._compose_item_payload(
+        row={
+            "symbol": "518880",
+            "name": "黄金ETF",
+            "rank_in_category": 1,
+            "close_price": 4.5,
+            "lot_size": 100.0,
+            "fee_rate": 0.0003,
+            "min_fee": 1.0,
+            "decision_score": 70.0,
+            "entry_score": 82.0,
+            "hold_score": 60.0,
+            "exit_score": 20.0,
+            "category_score": 68.0,
+            "score_gap": 0.0,
+            "risk_level": "中",
+            "decision_category": "gold_etf",
+            "tradability_mode": "t0",
+            "target_holding_days": 5,
+            "mapped_horizon_profile": "swing",
+            "lifecycle_phase": "build_phase",
+            "breakdown_json": "{}",
+            "filter_pass": True,
+        },
+        position=None,
+        action_payload={
+            "action_code": "buy_open",
+            "position_action": "buy_open",
+            "position_action_label": "开仓买入",
+            "action_reason": "测试开仓",
+            "suggested_amount": 3000.0,
+            "suggested_pct": 0.3,
+            "min_order_amount": 450.0,
+            "current_weight": 0.0,
+            "target_weight": 0.3,
+            "delta_weight": 0.3,
+            "current_amount": 0.0,
+            "target_amount": 3000.0,
+        },
+        route_payload={
+            "requires_order": True,
+            "executable_now": True,
+            "blocked_reason": "",
+            "planned_exit_days": None,
+            "planned_exit_rule_summary": "",
+            "edge_bps": 24.0,
+        },
+        available_cash=5000.0,
+        min_trade_amount=100.0,
+        thresholds={
+            "decision_thresholds": {"open_threshold": 58.0},
+            "t0_controls": {"score_to_edge_bps_multiplier": 2.0},
+        },
+    )
+
+    assert payload["expected_edge_before_cost"] == 24.0
+    assert payload["expected_edge_after_cost"] == 19.0
+    assert payload["executable_now"] is True
+    assert payload["blocked_reason"] == ""

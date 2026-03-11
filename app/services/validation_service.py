@@ -27,6 +27,7 @@ class RollingValidationRequest:
     use_live_trades: bool = False
     risk_mode: str | None = None
     slippage_bps: float | None = None
+    execution_cost_bps_override: float | None = None
     fee_rate_override: float | None = None
     min_fee_override: float | None = None
     strict_data_quality: bool = True
@@ -87,6 +88,7 @@ class ValidationService:
                     use_live_trades=request.use_live_trades,
                     risk_mode=request.risk_mode,
                     slippage_bps=request.slippage_bps,
+                    execution_cost_bps_override=request.execution_cost_bps_override,
                     fee_rate_override=request.fee_rate_override,
                     min_fee_override=request.min_fee_override,
                     strict_data_quality=request.strict_data_quality,
@@ -111,6 +113,7 @@ class ValidationService:
                     target_holding_days=int(chosen["target_holding_days"]),
                     threshold_overrides=chosen["threshold_overrides"],
                     slippage_bps=request.slippage_bps,
+                    execution_cost_bps_override=request.execution_cost_bps_override,
                     fee_rate_override=request.fee_rate_override,
                     min_fee_override=request.min_fee_override,
                     strict_data_quality=request.strict_data_quality,
@@ -130,6 +133,7 @@ class ValidationService:
                     use_live_trades=request.use_live_trades,
                     risk_mode=request.risk_mode,
                     slippage_bps=request.slippage_bps,
+                    execution_cost_bps_override=request.execution_cost_bps_override,
                     fee_rate_override=request.fee_rate_override,
                     min_fee_override=request.min_fee_override,
                     strict_data_quality=request.strict_data_quality,
@@ -170,6 +174,7 @@ class ValidationService:
                 target_holding_days=int(recommended_candidate["target_holding_days"]),
                 threshold_overrides=recommended_candidate["threshold_overrides"],
                 slippage_bps=request.slippage_bps,
+                execution_cost_bps_override=request.execution_cost_bps_override,
                 fee_rate_override=request.fee_rate_override,
                 min_fee_override=request.min_fee_override,
                 strict_data_quality=request.strict_data_quality,
@@ -189,6 +194,7 @@ class ValidationService:
                 use_live_trades=request.use_live_trades,
                 risk_mode=request.risk_mode,
                 slippage_bps=request.slippage_bps,
+                execution_cost_bps_override=request.execution_cost_bps_override,
                 fee_rate_override=request.fee_rate_override,
                 min_fee_override=request.min_fee_override,
                 strict_data_quality=request.strict_data_quality,
@@ -214,6 +220,9 @@ class ValidationService:
                 "step_days": step_days,
                 "risk_mode": request.risk_mode or "balanced",
                 "use_live_trades": bool(request.use_live_trades),
+                "execution_cost_bps": float(
+                    self.backtest_service.execution_cost_service.execution_cost_bps(request.execution_cost_bps_override)
+                ),
             },
             "windows": window_results,
             "aggregate_validation": aggregate,

@@ -21,11 +21,16 @@ from app.repositories.market_repo import list_universe
 from app.repositories.user_repo import get_preferences
 from app.services.data_quality_service import DataQualityService
 from app.services.decision_engine import DecisionEngine
+from app.services.execution_cost_service import get_execution_cost_service
 from app.services.market_data_service import MarketDataService
 from app.services.market_regime_service import MarketRegimeService
 from app.services.risk_mode_service import get_risk_mode_service
 from app.services.user_service import UserService
 from app.utils.maths import max_drawdown, round_money
+
+
+BACKTEST_COST_BLOCKED_REASON = "信号虽达标，但扣除统一交易成本后优势不足，暂不操作。"
+BACKTEST_T0_BLOCKED_REASON_HINTS = ("同日反手", "T+0")
 
 
 METRIC_EXPLANATIONS = {
@@ -49,6 +54,10 @@ METRIC_EXPLANATIONS = {
         "professional": "区间内实际成交的模拟交易笔数。",
         "plain": "这套策略在这段时间一共动了多少次手。",
     },
+    "total_execution_cost": {
+        "professional": "回测区间内所有模拟成交累计扣除的统一执行成本。",
+        "plain": "这段历史里，一共被交易摩擦吃掉了多少钱。",
+    },
     "turnover_ratio": {
         "professional": "累计成交额相对平均总资产的比率，用来衡量换手强度。",
         "plain": "它调仓勤不勤，来回折腾多不多。",
@@ -70,6 +79,7 @@ class BacktestRequest:
     risk_mode: str | None = None
     threshold_overrides: dict[str, Any] | None = None
     slippage_bps: float | None = None
+    execution_cost_bps_override: float | None = None
     fee_rate_override: float | None = None
     min_fee_override: float | None = None
     strict_data_quality: bool = True
@@ -115,6 +125,7 @@ class BacktestService:
         self.market_regime_service = MarketRegimeService()
         self.data_quality_service = DataQualityService()
         self.decision_engine = DecisionEngine()
+        self.execution_cost_service = get_execution_cost_service()
         self.risk_mode_service = get_risk_mode_service()
         self.user_service = UserService()
         self.results_dir = Path(self.settings.base_dir) / "data" / "backtests"
@@ -233,6 +244,7 @@ class BacktestService:
         effective_thresholds = deepcopy(effective_parameters.action_thresholds)
         if request.threshold_overrides:
             effective_thresholds = self._merge_nested_dicts(effective_thresholds, request.threshold_overrides)
+        effective_thresholds = self._prepare_backtest_thresholds(effective_thresholds)
 
         run_id = f"{run_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid4().hex[:8]}"
         cash_balance = float(request.initial_capital)
@@ -261,6 +273,7 @@ class BacktestService:
                 dataset=dataset,
                 trade_date=trade_date,
                 current_time=current_time,
+                relax_quality_gate=True,
             )
             quality_status_counts[daily_market["quality_summary"]["quality_status"]] = (
                 quality_status_counts.get(daily_market["quality_summary"]["quality_status"], 0) + 1
@@ -291,6 +304,12 @@ class BacktestService:
                 action_thresholds=effective_thresholds,
                 allowed_categories=set(effective_parameters.allowed_categories or []),
                 category_score_adjustments=effective_parameters.category_score_adjustments,
+            )
+            self._apply_backtest_plan_overrides(
+                plan_result=plan_result,
+                available_cash=float(portfolio_summary["cash_balance"]),
+                total_asset=float(portfolio_summary["total_asset"]),
+                request=request,
             )
 
             if request.strict_data_quality and plan_result["quality_gate"]["blocked"]:
@@ -388,6 +407,7 @@ class BacktestService:
                 "risk_mode": str(getattr(effective_preferences, "risk_mode", "balanced")),
                 "risk_mode_label": str(getattr(effective_preferences, "risk_mode_label", "正常")),
                 "target_holding_days": int(getattr(effective_preferences, "target_holding_days", 5)),
+                "execution_cost_bps": float(self._resolved_execution_cost_bps(request)),
                 "strict_data_quality": bool(request.strict_data_quality),
                 "threshold_overrides": request.threshold_overrides or {},
                 "run_label": request.run_label or "",
@@ -399,6 +419,7 @@ class BacktestService:
                 "max_single_position_pct": float(getattr(effective_preferences, "max_single_position_pct", 0.35)),
                 "cash_reserve_pct": float(getattr(effective_preferences, "cash_reserve_pct", 0.2)),
                 "target_holding_days": int(getattr(effective_preferences, "target_holding_days", 5)),
+                "execution_cost_bps": float(self._resolved_execution_cost_bps(request)),
                 "action_thresholds": effective_thresholds,
             },
             "overview": overview,
@@ -408,7 +429,10 @@ class BacktestService:
             "beginner_summary": beginner_summary,
             "professional_summary": {
                 "headline": overview["one_line_conclusion"],
-                "notes": baseline_notes,
+                "notes": [
+                    *baseline_notes,
+                    f"回测默认按统一交易成本 {self._resolved_execution_cost_bps(request):.1f} bps 计入；如果显式传了旧版费率覆盖，则以覆盖参数为准。",
+                ],
                 "default_vs_effective_thresholds": self._compare_thresholds(
                     self.decision_engine.policy.action_thresholds,
                     effective_thresholds,
@@ -511,12 +535,28 @@ class BacktestService:
             cash_reserve_pct=float(defaults["cash_reserve_pct"]),
         )
 
+    def _prepare_backtest_thresholds(self, thresholds: dict[str, Any]) -> dict[str, Any]:
+        resolved = deepcopy(thresholds)
+        t0_controls = resolved.setdefault("t0_controls", {})
+        t0_controls["minimum_expected_edge_bps"] = 0.0
+        t0_controls["cooldown_minutes_after_trade"] = 0
+        t0_controls["max_decisions_per_symbol_per_day"] = max(
+            int(t0_controls.get("max_decisions_per_symbol_per_day", 4)),
+            99,
+        )
+        t0_controls["max_round_trips_per_day"] = max(
+            int(t0_controls.get("max_round_trips_per_day", 2)),
+            99,
+        )
+        return resolved
+
     def _build_daily_market_state(
         self,
         *,
         dataset: dict[str, Any],
         trade_date: date,
         current_time: datetime,
+        relax_quality_gate: bool = False,
     ) -> dict[str, Any]:
         rows: list[dict[str, Any]] = []
         quality_reports: list[dict[str, Any]] = []
@@ -577,6 +617,12 @@ class BacktestService:
             current_time=current_time,
             session_mode="intraday",
         )
+        if relax_quality_gate:
+            quality_summary = self._relax_quality_summary_for_backtest(
+                quality_summary=quality_summary,
+                quality_reports=quality_reports,
+                expected_trade_date=trade_date,
+            )
         source_counts = self._source_distribution(dataset)
         quality_summary["source_counts"] = source_counts
         market_snapshot = {
@@ -605,6 +651,43 @@ class BacktestService:
             "quality_summary": quality_summary,
             "price_map": price_map,
         }
+
+    def _relax_quality_summary_for_backtest(
+        self,
+        *,
+        quality_summary: dict[str, Any],
+        quality_reports: list[dict[str, Any]],
+        expected_trade_date: date,
+    ) -> dict[str, Any]:
+        summary = deepcopy(quality_summary)
+        if str(summary.get("quality_status", "")) != "blocked":
+            return summary
+
+        real_symbol_count = sum(
+            1 for item in quality_reports if str(item.get("source", "")) not in {"fallback", "mock", "simulated"}
+        )
+        if real_symbol_count <= 0:
+            return summary
+
+        migrated_warnings = list(summary.get("warning_reasons", []))
+        blocking_reasons = [str(item) for item in summary.get("blocking_reasons", []) if str(item).strip()]
+        if blocking_reasons:
+            migrated_warnings.append("回测模式允许在部分核心标的缺少最新真实历史时继续回放，但结果只宜保守参考。")
+            migrated_warnings.extend(blocking_reasons)
+
+        summary["quality_status"] = "weak"
+        summary["verification_status"] = "回测弱质量可继续"
+        summary["reliability_level"] = "中低"
+        summary["formal_decision_ready"] = True
+        summary["supports_formal_decision"] = True
+        summary["blocking_reasons"] = []
+        summary["warning_reasons"] = list(dict.fromkeys(migrated_warnings))
+        summary["backtest_quality_relaxed"] = True
+        summary["freshness_label"] = (
+            f"回测模式允许部分弱质量历史数据继续回放；请求交易日 {expected_trade_date.isoformat()}。"
+            "线上正式建议仍然要求最新正式数据。"
+        )
+        return summary
 
     def _seed_with_live_trades(
         self,
@@ -735,16 +818,7 @@ class BacktestService:
         base_price = float(item.get("latest_price", 0.0))
         if base_price <= 0:
             return None, cash_balance, "missing_price"
-        fee_rate = (
-            float(request.fee_rate_override)
-            if request.fee_rate_override is not None
-            else float(item.get("fee_rate", self.settings.default_fee_rate))
-        )
-        min_fee = (
-            float(request.min_fee_override)
-            if request.min_fee_override is not None
-            else float(item.get("min_fee", self.settings.default_min_fee))
-        )
+        fee_rate, min_fee = self._resolved_trade_cost(item=item, request=request)
         slippage_bps = float(request.slippage_bps if request.slippage_bps is not None else self.default_slippage_bps)
         position = positions.get(symbol)
 
@@ -965,7 +1039,7 @@ class BacktestService:
                 round_trip_inputs.setdefault(symbol, {"buy": 0, "sell": 0})[trade.side] += 1
                 if trade.side == "buy":
                     same_day_buy_symbols.add(symbol)
-            last_trade_by_symbol[symbol] = trade
+                last_trade_by_symbol[symbol] = trade
 
         round_trips_by_symbol_today = {
             symbol: min(counts.get("buy", 0), counts.get("sell", 0))
@@ -984,6 +1058,243 @@ class BacktestService:
             "days_held_map": days_held_map,
         }
 
+    def _apply_backtest_plan_overrides(
+        self,
+        *,
+        plan_result: dict[str, Any],
+        available_cash: float,
+        total_asset: float,
+        request: BacktestRequest,
+    ) -> None:
+        plan = plan_result.get("plan", {})
+        transition_plan = plan.get("transition_plan", [])
+        if not transition_plan:
+            return
+
+        for item in transition_plan:
+            self._relax_transition_item_for_backtest(item=item, available_cash=available_cash, request=request)
+
+        substitute_item = self._build_affordable_substitute_for_backtest(
+            plan=plan,
+            available_cash=available_cash,
+            total_asset=total_asset,
+            request=request,
+        )
+        if substitute_item is not None:
+            transition_plan.append(substitute_item)
+            transition_plan.sort(
+                key=lambda item: (
+                    self.decision_engine._transition_priority(str(item.get("action_code", ""))),
+                    abs(float(item.get("delta_weight", 0.0))),
+                    float(item.get("decision_score", 0.0)),
+                ),
+                reverse=True,
+            )
+            recommendation_groups = plan.get("recommendation_groups", {})
+            executable_rows = list(recommendation_groups.get("executable_recommendations", []))
+            executable_rows.append(substitute_item)
+            recommendation_groups["executable_recommendations"] = executable_rows
+            recommendation_groups["affordable_but_weak_recommendations"] = [
+                item
+                for item in recommendation_groups.get("affordable_but_weak_recommendations", [])
+                if str(item.get("symbol", "")) != str(substitute_item.get("symbol", ""))
+            ]
+            plan["primary_item"] = substitute_item
+            plan["action_code"] = str(substitute_item.get("action_code", "buy_open"))
+            plan["executable_now"] = True
+            plan["blocked_reason"] = ""
+            plan["mapped_horizon_profile"] = str(substitute_item.get("mapped_horizon_profile", ""))
+            plan["lifecycle_phase"] = str(substitute_item.get("lifecycle_phase", ""))
+            summary_text = str(plan.get("summary_text", "")).strip()
+            substitute_note = str(substitute_item.get("backtest_substitute_note", "")).strip()
+            plan["summary_text"] = f"{summary_text} {substitute_note}".strip()
+        else:
+            primary_item = plan.get("primary_item")
+            plan["executable_now"] = bool(primary_item and primary_item.get("executable_now", False))
+            plan["blocked_reason"] = str(primary_item.get("blocked_reason", "")) if primary_item else ""
+
+        action_counts = self.decision_engine._count_position_actions(transition_plan)
+        plan["action_counts"] = action_counts
+        plan["daily_action_plan"] = transition_plan
+        if isinstance(plan.get("facts"), dict):
+            plan["facts"]["action_counts"] = action_counts
+
+    def _relax_transition_item_for_backtest(
+        self,
+        *,
+        item: dict[str, Any],
+        available_cash: float,
+        request: BacktestRequest,
+    ) -> None:
+        if bool(item.get("executable_now", False)):
+            return
+
+        action_code = str(item.get("action_code", ""))
+        blocked_reason = str(item.get("blocked_reason", "")).strip()
+        if not blocked_reason:
+            return
+
+        if (
+            action_code == "park_in_money_etf"
+            and blocked_reason == BACKTEST_COST_BLOCKED_REASON
+            and self._buy_item_has_enough_budget(item=item, available_cash=available_cash, request=request)
+        ):
+            self._mark_item_executable_for_backtest(
+                item=item,
+                execution_status="可执行转入货币ETF",
+                note="回测按日频回放时，防守停车动作不再额外要求覆盖 alpha 型执行优势。",
+            )
+            return
+
+        if any(hint in blocked_reason for hint in BACKTEST_T0_BLOCKED_REASON_HINTS):
+            if action_code in {"buy_open", "buy_add", "park_in_money_etf"} and not self._buy_item_has_enough_budget(
+                item=item,
+                available_cash=available_cash,
+                request=request,
+            ):
+                return
+            self._mark_item_executable_for_backtest(
+                item=item,
+                execution_status=self._executable_status_for_action(action_code),
+                note="回测按日频逐日回放时，不再套用盘中型 T+0 限制。",
+            )
+
+    def _build_affordable_substitute_for_backtest(
+        self,
+        *,
+        plan: dict[str, Any],
+        available_cash: float,
+        total_asset: float,
+        request: BacktestRequest,
+    ) -> dict[str, Any] | None:
+        primary_item = plan.get("primary_item")
+        if not isinstance(primary_item, dict):
+            return None
+        if str(primary_item.get("action_code", "")) not in {"buy_open", "buy_add"}:
+            return None
+        blocked_reason = str(primary_item.get("blocked_reason", ""))
+        if "一手门槛" not in blocked_reason and "最小建议金额" not in blocked_reason:
+            return None
+
+        candidates = list(plan.get("recommendation_groups", {}).get("affordable_but_weak_recommendations", []))
+        if not candidates:
+            return None
+
+        winning_category = str(plan.get("winning_category", ""))
+        sorted_candidates = sorted(
+            candidates,
+            key=lambda item: (
+                str(item.get("category", "")) == winning_category,
+                float(item.get("decision_score", item.get("score", 0.0))),
+                float(item.get("category_score", 0.0)),
+                -float(item.get("min_order_amount", 0.0)),
+            ),
+            reverse=True,
+        )
+        candidate = deepcopy(sorted_candidates[0])
+        symbol = str(candidate.get("symbol", ""))
+        minimum_budget = max(
+            float(candidate.get("min_advice_amount", candidate.get("min_trade_amount", 0.0))),
+            self._minimum_buy_budget_for_backtest(item=candidate, request=request),
+        )
+        if not symbol or available_cash < minimum_budget:
+            return None
+
+        action_code = "buy_open"
+        action_label = self.decision_engine.policy.action_label(action_code)
+        suggested_amount = self._minimum_buy_budget_for_backtest(item=candidate, request=request)
+        suggested_pct = round(suggested_amount / total_asset, 4) if total_asset else 0.0
+        substitute_note = (
+            f"主推荐 {primary_item.get('name', primary_item.get('symbol', '这只ETF'))} 因一手门槛暂不可执行，"
+            f"回测改用买得起的次优替代 {candidate.get('name', symbol)}。这个替代只用于回测，不影响线上正式建议。"
+        )
+        candidate.update(
+            {
+                "action": action_label,
+                "action_code": action_code,
+                "position_action": action_code,
+                "position_action_label": action_label,
+                "action_reason": substitute_note,
+                "reason_short": substitute_note,
+                "suggested_amount": suggested_amount,
+                "suggested_pct": suggested_pct,
+                "target_weight": suggested_pct,
+                "delta_weight": suggested_pct - float(candidate.get("current_weight", 0.0)),
+                "target_amount": suggested_amount,
+                "executable_now": True,
+                "is_executable": True,
+                "blocked_reason": "",
+                "execution_status": "回测替代开仓",
+                "execution_note": substitute_note,
+                "recommendation_bucket": "executable_recommendations",
+                "planned_exit_days": None,
+                "planned_exit_rule_summary": "",
+                "backtest_affordable_substitute": True,
+                "backtest_substitute_for_symbol": str(primary_item.get("symbol", "")),
+                "backtest_substitute_note": substitute_note,
+            }
+        )
+        return candidate
+
+    def _buy_item_has_enough_budget(
+        self,
+        *,
+        item: dict[str, Any],
+        available_cash: float,
+        request: BacktestRequest,
+    ) -> bool:
+        min_required = max(
+            float(item.get("min_advice_amount", item.get("min_trade_amount", 0.0))),
+            self._minimum_buy_budget_for_backtest(item=item, request=request),
+        )
+        suggested_amount = float(item.get("suggested_amount", 0.0))
+        return suggested_amount >= min_required and available_cash >= min_required
+
+    def _minimum_buy_budget_for_backtest(
+        self,
+        *,
+        item: dict[str, Any],
+        request: BacktestRequest,
+    ) -> float:
+        base_price = float(item.get("latest_price", 0.0))
+        lot_size = max(float(item.get("lot_size", self.settings.default_lot_size)), 1.0)
+        min_order_amount = float(item.get("min_order_amount", 0.0))
+        if base_price <= 0 or lot_size <= 0:
+            return round_money(max(min_order_amount, 0.0))
+
+        slippage_bps = float(request.slippage_bps if request.slippage_bps is not None else self.default_slippage_bps)
+        trade_price = base_price * (1.0 + slippage_bps / 10_000.0)
+        gross_amount = round_money(trade_price * lot_size)
+        fee_rate, min_fee = self._resolved_trade_cost(item=item, request=request)
+        fee = round_money(max(gross_amount * fee_rate, min_fee))
+        return round_money(max(min_order_amount, gross_amount + fee))
+
+    def _mark_item_executable_for_backtest(
+        self,
+        *,
+        item: dict[str, Any],
+        execution_status: str,
+        note: str,
+    ) -> None:
+        action_reason = str(item.get("action_reason", "")).strip()
+        item["executable_now"] = True
+        item["is_executable"] = True
+        item["blocked_reason"] = ""
+        item["planned_exit_rule_summary"] = ""
+        item["recommendation_bucket"] = "executable_recommendations"
+        item["execution_status"] = execution_status
+        item["execution_note"] = f"{action_reason} {note}".strip()
+        item["backtest_execution_override_reason"] = note
+
+    def _executable_status_for_action(self, action_code: str) -> str:
+        return {
+            "buy_open": "可执行开仓",
+            "buy_add": "可执行加仓",
+            "reduce": "可执行减仓",
+            "sell_exit": "可执行卖出",
+            "park_in_money_etf": "可执行转入货币ETF",
+        }.get(action_code, "可执行")
+
     def _build_metrics(
         self,
         *,
@@ -998,6 +1309,7 @@ class BacktestService:
                 "max_drawdown_pct": 0.0,
                 "win_rate_pct": 0.0,
                 "trade_count": 0,
+                "total_execution_cost": 0.0,
                 "turnover_ratio": 0.0,
                 "stability_score": 0.0,
             }
@@ -1026,11 +1338,39 @@ class BacktestService:
             "max_drawdown_pct": round(max_drawdown(asset_curve), 2),
             "win_rate_pct": round(win_rate_pct, 2),
             "trade_count": len([trade for trade in trades if trade.source == "backtest"]),
+            "total_execution_cost": round_money(
+                sum(float(trade.fee) for trade in trades if trade.source == "backtest")
+            ),
             "turnover_ratio": round(turnover_ratio, 2),
             "stability_score": round(positive_day_ratio * 100.0, 2),
             "positive_day_ratio_pct": round(positive_day_ratio * 100.0, 2),
             "final_asset": round_money(final_asset),
         }
+
+    def _resolved_execution_cost_bps(self, request: BacktestRequest) -> float:
+        return float(self.execution_cost_service.execution_cost_bps(request.execution_cost_bps_override))
+
+    def _resolved_trade_cost(
+        self,
+        *,
+        item: dict[str, Any],
+        request: BacktestRequest,
+    ) -> tuple[float, float]:
+        if request.fee_rate_override is not None or request.min_fee_override is not None:
+            fee_rate = (
+                float(request.fee_rate_override)
+                if request.fee_rate_override is not None
+                else float(item.get("fee_rate", self.settings.default_fee_rate))
+            )
+            min_fee = (
+                float(request.min_fee_override)
+                if request.min_fee_override is not None
+                else float(item.get("min_fee", self.settings.default_min_fee))
+            )
+            return fee_rate, min_fee
+
+        execution_cost_bps = self._resolved_execution_cost_bps(request)
+        return execution_cost_bps / 10_000.0, 0.0
 
     def calibration_score(self, metrics: dict[str, Any]) -> float:
         weights = self.config.get("calibration", {}).get("objective_weights", {})
@@ -1060,7 +1400,14 @@ class BacktestService:
         formal_ready_days = quality_status_counts.get("ok", 0) + quality_status_counts.get("weak", 0)
         ready_ratio = formal_ready_days / total_days if total_days else 0.0
         demo_only = bool(source_distribution.get("fallback", 0) and not source_distribution.get("akshare", 0))
-        label = "正式数据" if ready_ratio >= 0.9 and not demo_only else "需谨慎" if ready_ratio >= 0.5 else "演示数据"
+        mixed_with_fallback = bool(source_distribution.get("fallback", 0) and source_distribution.get("akshare", 0))
+        label = (
+            "正式数据"
+            if ready_ratio >= 0.9 and not demo_only and not mixed_with_fallback
+            else "需谨慎"
+            if ready_ratio >= 0.5
+            else "演示数据"
+        )
         note = (
             "大部分交易日都有可用于正式决策的数据。"
             if label == "正式数据"

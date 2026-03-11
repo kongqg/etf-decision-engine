@@ -1,0 +1,3880 @@
+{
+  "run_id": "backtest_20260311_133219_e60f1573",
+  "run_type": "backtest",
+  "created_at": "2026-03-11T13:32:24.852690",
+  "request": {
+    "start_date": "2025-11-11",
+    "end_date": "2026-03-11",
+    "initial_capital": 100000.0,
+    "use_live_trades": false,
+    "risk_mode": "balanced",
+    "risk_mode_label": "正常",
+    "target_holding_days": 20,
+    "execution_cost_bps": 5.0,
+    "strict_data_quality": true,
+    "threshold_overrides": {},
+    "run_label": ""
+  },
+  "effective_parameters": {
+    "risk_mode": "balanced",
+    "risk_mode_label": "正常",
+    "max_total_position_pct": 0.7,
+    "max_single_position_pct": 0.35,
+    "cash_reserve_pct": 0.0,
+    "target_holding_days": 20,
+    "execution_cost_bps": 5.0,
+    "action_thresholds": {
+      "fallback": {
+        "offensive_threshold": 55.0,
+        "weak_offensive_action": "park_in_money_etf",
+        "no_money_candidate_action": "no_trade"
+      },
+      "selection": {
+        "minimum_category_score_delta": 3.0,
+        "max_selected_etfs": 1
+      },
+      "decision_thresholds": {
+        "open_threshold": 58.0,
+        "add_threshold": 64.0,
+        "hold_threshold": 48.0,
+        "reduce_threshold": 58.0,
+        "full_exit_threshold": 72.0,
+        "strong_entry_threshold": 62.0,
+        "strong_hold_threshold": 55.0
+      },
+      "position_rules": {
+        "reduce_fraction": 0.5,
+        "full_exit_fraction": 1.0,
+        "rebalance_tolerance_pct": 0.01
+      },
+      "position_action_rules": {
+        "minimum_action_delta_pct": 0.01,
+        "hold_exit_score_buffer": 6.0,
+        "rank_drop_to_reduce": 1,
+        "rank_drop_to_exit": 2,
+        "reopen_cooldown_days_after_exit": 2,
+        "reopen_score_buffer": 4.0,
+        "minimum_holding_days_before_reduce": 1
+      },
+      "t0_controls": {
+        "max_decisions_per_symbol_per_day": 4,
+        "max_round_trips_per_day": 2,
+        "cooldown_minutes_after_trade": 30,
+        "minimum_score_delta_to_flip_signal": 10.0,
+        "minimum_expected_edge_bps": 20.0,
+        "score_to_edge_bps_multiplier": 2.0
+      },
+      "t1_rules": {
+        "block_same_day_sell_after_buy": true,
+        "blocked_reason": "planned_exit_next_session_due_to_t1",
+        "planned_exit_days": 1,
+        "planned_exit_rule_summary": "T+1标的若当天刚买入，卖出信号延后到下一交易时段执行。"
+      },
+      "session_rules": {
+        "executable_session_modes": [
+          "intraday"
+        ],
+        "blocked_reason_by_session": {
+          "preopen": "market_not_open_planned_for_open",
+          "after_close": "market_closed_planned_for_next_session",
+          "closed": "market_closed_planned_for_next_session"
+        }
+      }
+    }
+  },
+  "overview": {
+    "overall_performance": "差",
+    "risk_level": "低",
+    "one_line_conclusion": "这段历史里总收益 0.00%，最大回撤 0.00%，整体属于“差”，风险级别偏低。 但数据质量是“演示数据”，要更谨慎解读。"
+  },
+  "metrics": {
+    "total_return_pct": 0.0,
+    "annualized_return_pct": 0.0,
+    "max_drawdown_pct": 0.0,
+    "win_rate_pct": 0.0,
+    "trade_count": 0,
+    "total_execution_cost": 0.0,
+    "turnover_ratio": 0.0,
+    "stability_score": 0.0,
+    "positive_day_ratio_pct": 0.0,
+    "final_asset": 100000.0
+  },
+  "quality_overview": {
+    "quality_status_counts": {
+      "ok": 0,
+      "weak": 0,
+      "blocked": 87
+    },
+    "formal_ready_ratio": 0.0,
+    "source_distribution": {
+      "fallback": 17
+    },
+    "label": "演示数据",
+    "note": "这次回放主要依赖回退/演示数据，只能看策略逻辑，不宜据此下结论。"
+  },
+  "metric_explanations": {
+    "total_return_pct": {
+      "professional": "累计收益率，表示回测区间结束时总资产相对初始资金的整体涨跌幅。",
+      "plain": "这段时间最后到底赚了多少，或者亏了多少。"
+    },
+    "annualized_return_pct": {
+      "professional": "把区间收益按年化口径折算后的收益率，便于和不同长度区间比较。",
+      "plain": "如果把这段表现粗略换算成一年，大概能有多快的赚钱速度。"
+    },
+    "max_drawdown_pct": {
+      "professional": "历史净值从阶段高点回落到后续低点的最大跌幅。",
+      "plain": "过去最惨的时候，账户最多缩水了多少。"
+    },
+    "win_rate_pct": {
+      "professional": "盈利平仓交易占全部平仓交易的比例。",
+      "plain": "10 次卖出里，大概有几次是赚钱离场的。"
+    },
+    "trade_count": {
+      "professional": "区间内实际成交的模拟交易笔数。",
+      "plain": "这套策略在这段时间一共动了多少次手。"
+    },
+    "total_execution_cost": {
+      "professional": "回测区间内所有模拟成交累计扣除的统一执行成本。",
+      "plain": "这段历史里，一共被交易摩擦吃掉了多少钱。"
+    },
+    "turnover_ratio": {
+      "professional": "累计成交额相对平均总资产的比率，用来衡量换手强度。",
+      "plain": "它调仓勤不勤，来回折腾多不多。"
+    },
+    "stability_score": {
+      "professional": "按正收益日占比构造的简化稳定性指标，越高代表日度表现越平顺。",
+      "plain": "赚钱和亏钱的日子比起来，它整体稳不稳。"
+    }
+  },
+  "beginner_summary": [
+    "这段历史里，账户整体赚钱了 0.00%。",
+    "中间最难受的时候，大概回撤了 0.00%。",
+    "从历史表现看，这套策略更稳一些，更适合能接受阶段波动、愿意按规则执行的人。",
+    "如果你是第一次用，当前结果属于“需要谨慎”，不建议新手直接照搬。",
+    "另外要记住：这只是历史模拟，不代表未来还会一样。这次回放主要依赖回退/演示数据，只能看策略逻辑，不宜据此下结论。"
+  ],
+  "professional_summary": {
+    "headline": "这段历史里总收益 0.00%，最大回撤 0.00%，整体属于“差”，风险级别偏低。 但数据质量是“演示数据”，要更谨慎解读。",
+    "notes": [
+      "回测默认按统一交易成本 5.0 bps 计入；如果显式传了旧版费率覆盖，则以覆盖参数为准。"
+    ],
+    "default_vs_effective_thresholds": [
+      {
+        "path": "fallback.offensive_threshold",
+        "base_value": 55.0,
+        "effective_value": 55.0,
+        "delta": 0.0
+      },
+      {
+        "path": "decision_thresholds.open_threshold",
+        "base_value": 58.0,
+        "effective_value": 58.0,
+        "delta": 0.0
+      },
+      {
+        "path": "decision_thresholds.add_threshold",
+        "base_value": 64.0,
+        "effective_value": 64.0,
+        "delta": 0.0
+      },
+      {
+        "path": "decision_thresholds.hold_threshold",
+        "base_value": 48.0,
+        "effective_value": 48.0,
+        "delta": 0.0
+      },
+      {
+        "path": "decision_thresholds.reduce_threshold",
+        "base_value": 58.0,
+        "effective_value": 58.0,
+        "delta": 0.0
+      },
+      {
+        "path": "decision_thresholds.full_exit_threshold",
+        "base_value": 72.0,
+        "effective_value": 72.0,
+        "delta": 0.0
+      },
+      {
+        "path": "decision_thresholds.strong_entry_threshold",
+        "base_value": 62.0,
+        "effective_value": 62.0,
+        "delta": 0.0
+      },
+      {
+        "path": "decision_thresholds.strong_hold_threshold",
+        "base_value": 55.0,
+        "effective_value": 55.0,
+        "delta": 0.0
+      },
+      {
+        "path": "selection.minimum_category_score_delta",
+        "base_value": 3.0,
+        "effective_value": 3.0,
+        "delta": 0.0
+      }
+    ]
+  },
+  "daily_curve": [
+    {
+      "date": "2025-11-11",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-11-12",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-11-13",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-11-14",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-11-17",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-11-18",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-11-19",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-11-20",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-11-21",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-11-24",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-11-25",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-11-26",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-11-27",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-11-28",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-01",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-02",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-03",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-04",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-05",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-08",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-09",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-10",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-11",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-12",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-15",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-16",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-17",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-18",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-19",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-22",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-23",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-24",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-25",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-26",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-29",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-30",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2025-12-31",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-01",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-02",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-05",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-06",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-07",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-08",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-09",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-12",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-13",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-14",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-15",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-16",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-19",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-20",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-21",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-22",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-23",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-26",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-27",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-28",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-29",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-01-30",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-02-02",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-02-03",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-02-04",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-02-05",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-02-06",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-02-09",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-02-10",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-02-11",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-02-12",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-02-13",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-02-16",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-02-17",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-02-18",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-02-19",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-02-20",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-02-23",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-02-24",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-02-25",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-02-26",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-02-27",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-03-02",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-03-03",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-03-04",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-03-05",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-03-06",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-03-09",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-03-10",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    },
+    {
+      "date": "2026-03-11",
+      "total_asset": 100000.0,
+      "cash_balance": 100000.0,
+      "market_value": 0.0,
+      "position_pct": 0.0,
+      "cumulative_return_pct": 0.0,
+      "action_code": "no_trade",
+      "action_label": "暂不交易",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "blocking_reasons": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ],
+      "warning_reasons": [
+        "存在需要谨慎解释的数据标的：159915, 159949, 510300, 510500, 511010, 511260, 511990, 512100, 512480, 512660, 512690, 513060, 513100, 513500, 515790, 518880, 588000。"
+      ],
+      "winning_category": "",
+      "selected_symbol": "",
+      "selected_name": ""
+    }
+  ],
+  "trades": [],
+  "skipped_actions": [
+    {
+      "date": "2025-11-11",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-11-12",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-11-13",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-11-14",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-11-17",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-11-18",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-11-19",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-11-20",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-11-21",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-11-24",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-11-25",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-11-26",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-11-27",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-11-28",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-01",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-02",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-03",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-04",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-05",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-08",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-09",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-10",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-11",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-12",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-15",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-16",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-17",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-18",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-19",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-22",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-23",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-24",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-25",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-26",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-29",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-30",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2025-12-31",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-01",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-02",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-05",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-06",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-07",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-08",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-09",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-12",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-13",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-14",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-15",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-16",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-19",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-20",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-21",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-22",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-23",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-26",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-27",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-28",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-29",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-01-30",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-02-02",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-02-03",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-02-04",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-02-05",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-02-06",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-02-09",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-02-10",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-02-11",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-02-12",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-02-13",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-02-16",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-02-17",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-02-18",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-02-19",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-02-20",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-02-23",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-02-24",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-02-25",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-02-26",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-02-27",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-03-02",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-03-03",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-03-04",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-03-05",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-03-06",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-03-09",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-03-10",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    },
+    {
+      "date": "2026-03-11",
+      "reason": "data_quality_not_ready",
+      "detail": [
+        "核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+        "当前新鲜真实数据覆盖率只有 0.0%，低于正式决策门槛 85.0%。",
+        "当前回退/模拟数据占比 100.0%，高于允许上限 15.0%。"
+      ]
+    }
+  ],
+  "signal_log": [
+    {
+      "date": "2025-11-11",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-11-12",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-11-13",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-11-14",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-11-17",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-11-18",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-11-19",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-11-20",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-11-21",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-11-24",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-11-25",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-11-26",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-11-27",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-11-28",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-01",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-02",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-03",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-04",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-05",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-08",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-09",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-10",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-11",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-12",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-15",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-16",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-17",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-18",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-19",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-22",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-23",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-24",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-25",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-26",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-29",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-30",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2025-12-31",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-01",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-02",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-05",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-06",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-07",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-08",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-09",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-12",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-13",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-14",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-15",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-16",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-19",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-20",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-21",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-22",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-23",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-26",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-27",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-28",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-29",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-01-30",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-02-02",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-02-03",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-02-04",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-02-05",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-02-06",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-02-09",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-02-10",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-02-11",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-02-12",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-02-13",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-02-16",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-02-17",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-02-18",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-02-19",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-02-20",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-02-23",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-02-24",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-02-25",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-02-26",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-02-27",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-03-02",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-03-03",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-03-04",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-03-05",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-03-06",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-03-09",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-03-10",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    },
+    {
+      "date": "2026-03-11",
+      "action_code": "no_trade",
+      "reason_code": "data_quality_not_ready",
+      "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+      "quality_status": "blocked",
+      "category_scores": [],
+      "transition_plan": [],
+      "action_counts": {}
+    }
+  ],
+  "output_files": {}
+}

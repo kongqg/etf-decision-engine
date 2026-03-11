@@ -1,0 +1,872 @@
+[
+  {
+    "date": "2025-11-11",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-11-12",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-11-13",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-11-14",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-11-17",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-11-18",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-11-19",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-11-20",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-11-21",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-11-24",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-11-25",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-11-26",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-11-27",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-11-28",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-01",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-02",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-03",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-04",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-05",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-08",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-09",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-10",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-11",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-12",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-15",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-16",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-17",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-18",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-19",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-22",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-23",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-24",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-25",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-26",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-29",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-30",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2025-12-31",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-01",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-02",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-05",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-06",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-07",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-08",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-09",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-12",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-13",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-14",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-15",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-16",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-19",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-20",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-21",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-22",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-23",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-26",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-27",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-28",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-29",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-01-30",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-02-02",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-02-03",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-02-04",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-02-05",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-02-06",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-02-09",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-02-10",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-02-11",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-02-12",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-02-13",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-02-16",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-02-17",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-02-18",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-02-19",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-02-20",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-02-23",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：510300, 510500, 159915, 518880, 511010, 511990, 513100。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-02-24",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-02-25",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-02-26",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-02-27",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-03-02",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-03-03",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-03-04",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-03-05",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-03-06",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-03-09",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-03-10",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  },
+  {
+    "date": "2026-03-11",
+    "action_code": "no_trade",
+    "reason_code": "data_quality_not_ready",
+    "summary_text": "当前数据质量不足，先不生成正式建议。核心 ETF 缺少新鲜真实数据：511990。",
+    "quality_status": "blocked",
+    "category_scores": [],
+    "transition_plan": [],
+    "action_counts": {}
+  }
+]

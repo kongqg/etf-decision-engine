@@ -62,6 +62,10 @@ def serialize_advice_record(advice) -> dict[str, Any] | None:
             "target_holding_days": getattr(item, "target_holding_days", 5),
             "mapped_horizon_profile": getattr(item, "mapped_horizon_profile", "swing"),
             "lifecycle_phase": getattr(item, "lifecycle_phase", "build_phase"),
+            "execution_cost_bps": 0.0,
+            "expected_edge_before_cost": 0.0,
+            "expected_edge_after_cost": 0.0,
+            "estimated_execution_cost": 0.0,
             "estimated_fee": 0.0,
             "estimated_cost_rate": 0.0,
             "cost_reason": "",
@@ -197,6 +201,10 @@ def _normalize_recommendation_item(item: Any) -> dict[str, Any] | None:
     normalized.setdefault("lot_size", None)
     normalized.setdefault("fee_rate", 0.0)
     normalized.setdefault("min_fee", 0.0)
+    normalized.setdefault("execution_cost_bps", 0.0)
+    normalized.setdefault("expected_edge_before_cost", 0.0)
+    normalized.setdefault("expected_edge_after_cost", 0.0)
+    normalized.setdefault("estimated_execution_cost", normalized.get("estimated_fee", 0.0))
     normalized.setdefault("estimated_fee", 0.0)
     normalized.setdefault("estimated_cost_rate", 0.0)
     normalized.setdefault("is_cost_efficient", True)

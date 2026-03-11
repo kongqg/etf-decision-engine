@@ -25,6 +25,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--target-holding-days", type=int, default=None, help="覆盖持有周期")
     parser.add_argument("--use-live-trades", action="store_true", help="把开始日前的真实历史成交作为初始仓位背景")
     parser.add_argument("--slippage-bps", type=float, default=None, help="滑点，单位 bps")
+    parser.add_argument("--execution-cost-bps", type=float, default=None, help="统一交易成本，单位 bps")
     parser.add_argument("--fee-rate-override", type=float, default=None, help="统一覆盖手续费率")
     parser.add_argument("--min-fee-override", type=float, default=None, help="统一覆盖最小手续费")
     parser.add_argument("--allow-weak-data", action="store_true", help="弱质量数据也继续回放，不额外报错")
@@ -53,6 +54,7 @@ def main() -> None:
                     use_live_trades=bool(args.use_live_trades),
                     risk_mode=args.risk_mode,
                     slippage_bps=args.slippage_bps,
+                    execution_cost_bps_override=args.execution_cost_bps,
                     fee_rate_override=args.fee_rate_override,
                     min_fee_override=args.min_fee_override,
                     strict_data_quality=not args.allow_weak_data,
@@ -80,6 +82,7 @@ def main() -> None:
                 target_holding_days=args.target_holding_days,
                 risk_mode=args.risk_mode,
                 slippage_bps=args.slippage_bps,
+                execution_cost_bps_override=args.execution_cost_bps,
                 fee_rate_override=args.fee_rate_override,
                 min_fee_override=args.min_fee_override,
                 strict_data_quality=not args.allow_weak_data,

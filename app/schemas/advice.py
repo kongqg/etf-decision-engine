@@ -41,6 +41,10 @@ class AdviceItemResponse(BaseModel):
     lot_size: float | None = None
     fee_rate: float | None = None
     min_fee: float | None = None
+    execution_cost_bps: float | None = None
+    expected_edge_before_cost: float | None = None
+    expected_edge_after_cost: float | None = None
+    estimated_execution_cost: float | None = None
     estimated_fee: float | None = None
     estimated_cost_rate: float | None = None
     is_cost_efficient: bool = True

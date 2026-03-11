@@ -24,6 +24,7 @@ class CalibrationRequest:
     use_live_trades: bool = False
     risk_mode: str | None = None
     slippage_bps: float | None = None
+    execution_cost_bps_override: float | None = None
     fee_rate_override: float | None = None
     min_fee_override: float | None = None
     strict_data_quality: bool = True
@@ -83,6 +84,7 @@ class ThresholdCalibrationService:
                     risk_mode=request.risk_mode,
                     threshold_overrides=candidate["threshold_overrides"],
                     slippage_bps=request.slippage_bps,
+                    execution_cost_bps_override=request.execution_cost_bps_override,
                     fee_rate_override=request.fee_rate_override,
                     min_fee_override=request.min_fee_override,
                     strict_data_quality=request.strict_data_quality,
@@ -132,6 +134,9 @@ class ThresholdCalibrationService:
                 "initial_capital": float(request.initial_capital),
                 "risk_mode": request.risk_mode or "balanced",
                 "use_live_trades": bool(request.use_live_trades),
+                "execution_cost_bps": float(
+                    self.backtest_service.execution_cost_service.execution_cost_bps(request.execution_cost_bps_override)
+                ),
                 "search_space": search_space,
                 "target_holding_days_candidates": target_holding_days_candidates,
             },

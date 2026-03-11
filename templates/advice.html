@@ -139,7 +139,10 @@
                 <div><span>建议金额</span><strong>{{ fmt_money(item.suggested_amount|default(0, true)) }}</strong></div>
                 <div><span>1手门槛</span><strong>{{ fmt_money(item.min_order_amount|default(0, true)) }}</strong></div>
                 <div><span>决策分</span><strong>{{ "%.1f"|format(item.score|default(item.decision_score|default(0, true), true)) }}</strong></div>
-                <div><span>预计手续费</span><strong>{{ fmt_money(item.estimated_fee|default(0)) }}</strong></div>
+                <div><span>统一成本</span><strong>{{ "%.1f"|format(item.execution_cost_bps|default(0)) }} bps</strong></div>
+                <div><span>成本前优势</span><strong>{{ "%.1f"|format(item.expected_edge_before_cost|default(0)) }} bps</strong></div>
+                <div><span>成本后优势</span><strong>{{ "%.1f"|format(item.expected_edge_after_cost|default(0)) }} bps</strong></div>
+                <div><span>预计执行成本</span><strong>{{ fmt_money(item.estimated_execution_cost|default(item.estimated_fee|default(0))) }}</strong></div>
                 <div><span>当前权重</span><strong>{{ fmt_pct(item.current_weight * 100) }}</strong></div>
                 <div><span>目标权重</span><strong>{{ fmt_pct(item.target_weight * 100) }}</strong></div>
             </div>
@@ -288,7 +291,9 @@
                 <div><span>建议金额</span><strong>{{ fmt_money(item.suggested_amount) }}</strong></div>
                 <div><span>1手门槛</span><strong>{{ fmt_money(item.min_order_amount) }}</strong></div>
                 <div><span>决策分</span><strong>{{ "%.1f"|format(item.score) }}</strong></div>
-                <div><span>预计手续费</span><strong>{{ fmt_money(item.estimated_fee|default(0)) }}</strong></div>
+                <div><span>统一成本</span><strong>{{ "%.1f"|format(item.execution_cost_bps|default(0)) }} bps</strong></div>
+                <div><span>成本后优势</span><strong>{{ "%.1f"|format(item.expected_edge_after_cost|default(0)) }} bps</strong></div>
+                <div><span>预计执行成本</span><strong>{{ fmt_money(item.estimated_execution_cost|default(item.estimated_fee|default(0))) }}</strong></div>
             </div>
             <p>{{ item.execution_note or item.reason_short }}</p>
             {% if item.weak_signal_reason %}
@@ -341,7 +346,9 @@
                 <div><span>建议金额</span><strong>{{ fmt_money(item.suggested_amount) }}</strong></div>
                 <div><span>1手门槛</span><strong>{{ fmt_money(item.min_order_amount) }}</strong></div>
                 <div><span>还差金额</span><strong>{{ fmt_money(item.budget_gap_to_min_order) }}</strong></div>
-                <div><span>预计手续费</span><strong>{{ fmt_money(item.estimated_fee|default(0)) }}</strong></div>
+                <div><span>统一成本</span><strong>{{ "%.1f"|format(item.execution_cost_bps|default(0)) }} bps</strong></div>
+                <div><span>成本后优势</span><strong>{{ "%.1f"|format(item.expected_edge_after_cost|default(0)) }} bps</strong></div>
+                <div><span>预计执行成本</span><strong>{{ fmt_money(item.estimated_execution_cost|default(item.estimated_fee|default(0))) }}</strong></div>
             </div>
             <p>{{ item.not_executable_reason or item.execution_note }}</p>
             {% if item.execution_timing_mode %}
@@ -387,8 +394,9 @@
             </div>
             <div class="pick-metrics">
                 <div><span>建议金额</span><strong>{{ fmt_money(item.suggested_amount) }}</strong></div>
-                <div><span>预计手续费</span><strong>{{ fmt_money(item.estimated_fee|default(0)) }}</strong></div>
-                <div><span>成本占比</span><strong>{{ "%.2f"|format(item.estimated_cost_rate|default(0) * 100) }}%</strong></div>
+                <div><span>统一成本</span><strong>{{ "%.1f"|format(item.execution_cost_bps|default(0)) }} bps</strong></div>
+                <div><span>预计执行成本</span><strong>{{ fmt_money(item.estimated_execution_cost|default(item.estimated_fee|default(0))) }}</strong></div>
+                <div><span>成本后优势</span><strong>{{ "%.1f"|format(item.expected_edge_after_cost|default(0)) }} bps</strong></div>
                 <div><span>综合得分</span><strong>{{ "%.1f"|format(item.score) }}</strong></div>
             </div>
             <p>{{ item.cost_reason or item.execution_note }}</p>
