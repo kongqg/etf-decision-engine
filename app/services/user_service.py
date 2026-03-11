@@ -58,6 +58,7 @@ class UserService:
         allow_overseas: bool,
         min_trade_amount: float,
         target_holding_days: int = 5,
+        risk_mode: str = "balanced",
     ) -> UserProfile:
         settings = get_settings()
         defaults = self._risk_profile_defaults(risk_level)
@@ -93,6 +94,7 @@ class UserService:
             preferences = UserPreferences(
                 user_id=user.id,
                 risk_level=risk_level,
+                risk_mode=risk_mode,
                 allow_gold=allow_gold,
                 allow_bond=allow_bond,
                 allow_overseas=allow_overseas,
@@ -105,6 +107,7 @@ class UserService:
             session.add(preferences)
         else:
             preferences.risk_level = risk_level
+            preferences.risk_mode = risk_mode
             preferences.allow_gold = allow_gold
             preferences.allow_bond = allow_bond
             preferences.allow_overseas = allow_overseas
@@ -130,6 +133,7 @@ class UserService:
         max_total_position_pct: float,
         max_single_position_pct: float,
         cash_reserve_pct: float,
+        risk_mode: str = "balanced",
     ) -> UserPreferences:
         user = session.get(UserProfile, get_settings().default_user_id)
         if user is None:
@@ -142,6 +146,7 @@ class UserService:
             session.add(preferences)
 
         preferences.risk_level = risk_level
+        preferences.risk_mode = risk_mode
         preferences.allow_gold = allow_gold
         preferences.allow_bond = allow_bond
         preferences.allow_overseas = allow_overseas

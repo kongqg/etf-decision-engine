@@ -594,6 +594,7 @@ def test_update_preferences_keeps_existing_records(monkeypatch):
         payload = update_preferences(
             UpdatePreferencesRequest(
                 risk_level="保守",
+                risk_mode="conservative",
                 allow_gold=False,
                 allow_bond=True,
                 allow_overseas=False,
@@ -608,12 +609,80 @@ def test_update_preferences_keeps_existing_records(monkeypatch):
         latest_advice = get_latest_advice(session)
         trades = list_trades(session, limit=20)
         assert payload["risk_level"] == "保守"
+        assert payload["risk_mode"] == "conservative"
         assert payload["allow_gold"] is False
         assert payload["max_total_position_pct"] == 0.5
         assert latest_advice is not None
         assert latest_advice.id == advice["id"]
         assert len(trades) == 1
         assert trades[0].related_advice_id == advice["id"]
+
+
+def test_init_user_defaults_risk_mode_to_balanced(monkeypatch):
+    session_local = setup_test_db(monkeypatch)
+
+    from app.repositories.user_repo import get_preferences
+    from app.services.user_service import UserService
+
+    with session_local()() as session:
+        UserService().init_user(
+            session,
+            initial_capital=5000,
+            risk_level="中性",
+            allow_gold=True,
+            allow_bond=True,
+            allow_overseas=True,
+            min_trade_amount=100,
+        )
+
+        preferences = get_preferences(session)
+        assert preferences is not None
+        assert preferences.risk_mode == "balanced"
+
+
+def test_decision_engine_uses_effective_risk_mode_values(monkeypatch):
+    session_local = setup_test_db(monkeypatch)
+    seed_decision_inputs(session_local)
+
+    from app.repositories.advice_repo import get_latest_advice
+    from app.services.decision_engine import DecisionEngine
+    from app.services.user_service import UserService
+
+    with session_local()() as session:
+        service = UserService()
+        service.init_user(
+            session,
+            initial_capital=5000,
+            risk_level="中性",
+            allow_gold=True,
+            allow_bond=True,
+            allow_overseas=True,
+            min_trade_amount=100,
+        )
+        service.update_preferences(
+            session,
+            risk_level="中性",
+            risk_mode="aggressive",
+            allow_gold=True,
+            allow_bond=True,
+            allow_overseas=True,
+            min_trade_amount=100,
+            target_holding_days=2,
+            max_total_position_pct=0.4,
+            max_single_position_pct=0.2,
+            cash_reserve_pct=0.2,
+        )
+
+        advice = DecisionEngine().decide(session, now=datetime(2026, 3, 10, 10, 0, 0))
+        latest_advice = get_latest_advice(session)
+        plan_facts = advice["evidence"]["plan_facts"]
+
+        assert advice["target_position_pct"] == 0.55
+        assert latest_advice is not None
+        assert latest_advice.target_holding_days == 8
+        assert plan_facts["risk_mode"] == "aggressive"
+        assert plan_facts["effective_max_total_position_pct"] == 0.8
+        assert plan_facts["effective_target_holding_days"] == 8
 
 
 def test_decision_engine_recalculates_after_capital_adjustment(monkeypatch):

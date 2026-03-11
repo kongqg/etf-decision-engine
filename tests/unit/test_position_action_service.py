@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from copy import deepcopy
 from types import SimpleNamespace
 
 from app.services.position_action_service import PositionActionService
@@ -214,3 +215,44 @@ def test_recent_exit_requires_stronger_signal_before_reopening():
 
     assert result["action_code"] == "no_trade"
     assert result["position_action"] == "no_trade"
+
+
+def test_threshold_override_can_loosen_open_signal():
+    service = PositionActionService()
+    thresholds = deepcopy(service.rules)
+    thresholds["decision_thresholds"]["open_threshold"] = 56.0
+
+    baseline = service.decide(
+        row=_row(decision_score=57.0),
+        position=None,
+        preferences=_preferences(),
+        total_asset=100000.0,
+        available_cash=30000.0,
+        current_position_pct=0.10,
+        target_position_pct=0.50,
+        target_weight=0.15,
+        selected_category="stock_etf",
+        offensive_edge=True,
+        fallback_action="no_trade",
+        trade_context=_trade_context(),
+        current_time=datetime(2026, 3, 10, 10, 0, 0),
+    )
+    overridden = service.decide(
+        row=_row(decision_score=57.0),
+        position=None,
+        preferences=_preferences(),
+        total_asset=100000.0,
+        available_cash=30000.0,
+        current_position_pct=0.10,
+        target_position_pct=0.50,
+        target_weight=0.15,
+        selected_category="stock_etf",
+        offensive_edge=True,
+        fallback_action="no_trade",
+        trade_context=_trade_context(),
+        current_time=datetime(2026, 3, 10, 10, 0, 0),
+        thresholds=thresholds,
+    )
+
+    assert baseline["action_code"] == "no_trade"
+    assert overridden["action_code"] == "buy_open"

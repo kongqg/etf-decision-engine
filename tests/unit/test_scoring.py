@@ -1,5 +1,6 @@
 import pandas as pd
 
+from app.services.decision_policy_service import get_decision_policy_service
 from app.services.scoring_service import ScoringService
 
 
@@ -141,3 +142,59 @@ def test_money_etf_uses_defensive_score_not_offensive_score():
 
     assert money_row["category_score"] == money_row["defensive_score"]
     assert money_row["category_score"] != money_row["offensive_score"]
+
+
+def test_action_threshold_override_changes_offensive_edge():
+    frame = pd.DataFrame(
+        [
+            build_row(
+                "510300",
+                "宽基",
+                "股票",
+                "T+1",
+                momentum_5d=5.0,
+                momentum_10d=8.5,
+                trend_strength=4.0,
+                volatility_10d=0.2,
+                drawdown_20d=-0.1,
+                above_ma20_flag=1,
+            ),
+            build_row("511990", "货币", "货币", "T+0", liquidity_score=16.0, volatility_10d=0.05, drawdown_20d=-0.1),
+        ]
+    )
+    service = ScoringService()
+    base_thresholds = get_decision_policy_service().action_thresholds
+    relaxed_thresholds = {
+        **base_thresholds,
+        "fallback": {
+            **base_thresholds["fallback"],
+            "offensive_threshold": 10.0,
+        },
+    }
+    strict_thresholds = {
+        **base_thresholds,
+        "fallback": {
+            **base_thresholds["fallback"],
+            "offensive_threshold": 999.0,
+        },
+    }
+
+    baseline = service.evaluate(
+        candidates_df=frame,
+        positions_df=pd.DataFrame(),
+        target_holding_days=5,
+        previous_rank_map={},
+        days_held_map={},
+        action_thresholds=relaxed_thresholds,
+    )
+    overridden = service.evaluate(
+        candidates_df=frame,
+        positions_df=pd.DataFrame(),
+        target_holding_days=5,
+        previous_rank_map={},
+        days_held_map={},
+        action_thresholds=strict_thresholds,
+    )
+
+    assert baseline["offensive_edge"] is True
+    assert overridden["offensive_edge"] is False

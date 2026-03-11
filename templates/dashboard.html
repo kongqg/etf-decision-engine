@@ -67,10 +67,11 @@
         <div class="section-head">
             <div>
                 <div class="eyebrow">账户设置</div>
-                <h3>{{ preferences.risk_level }} 风格</h3>
+                <h3>{{ risk_mode_labels.get(preferences.risk_mode, "正常") }} / {{ preferences.risk_level }} 风格</h3>
             </div>
         </div>
         <div class="evidence-list">
+            <div><span>风险模式</span><strong>{{ risk_mode_labels.get(preferences.risk_mode, "正常") }}</strong></div>
             <div><span>黄金 ETF</span><strong>{{ "已开启" if preferences.allow_gold else "未开启" }}</strong></div>
             <div><span>债券 ETF</span><strong>{{ "已开启" if preferences.allow_bond else "未开启" }}</strong></div>
             <div><span>跨境 ETF</span><strong>{{ "已开启" if preferences.allow_overseas else "未开启" }}</strong></div>

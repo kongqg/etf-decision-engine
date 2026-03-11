@@ -36,6 +36,8 @@ class ScoringService:
         target_holding_days: int,
         previous_rank_map: dict[str, int],
         days_held_map: dict[str, int],
+        action_thresholds: dict[str, Any] | None = None,
+        category_score_adjustments: dict[str, float] | None = None,
     ) -> dict[str, Any]:
         if candidates_df.empty:
             return {
@@ -48,12 +50,13 @@ class ScoringService:
             }
 
         df = self._prepare_frame(candidates_df)
-        category_scores_df = self.score_categories(df)
+        thresholds = action_thresholds or self.action_thresholds
+        category_scores_df = self.score_categories(df, category_score_adjustments=category_score_adjustments)
 
         top_offensive = self._top_offensive_category(category_scores_df)
-        offensive_threshold = float(self.action_thresholds.get("fallback", {}).get("offensive_threshold", 55.0))
+        offensive_threshold = float(thresholds.get("fallback", {}).get("offensive_threshold", 55.0))
         offensive_edge = bool(top_offensive and float(top_offensive["category_score"]) >= offensive_threshold)
-        fallback_action = str(self.action_thresholds.get("fallback", {}).get("weak_offensive_action", "park_in_money_etf"))
+        fallback_action = str(thresholds.get("fallback", {}).get("weak_offensive_action", "park_in_money_etf"))
         selected_category = str(top_offensive["decision_category"]) if top_offensive and offensive_edge else ""
         selected_category_score = float(top_offensive["category_score"]) if top_offensive and offensive_edge else 0.0
 
@@ -103,7 +106,12 @@ class ScoringService:
             offensive_edge=offensive_edge,
         )
 
-    def score_categories(self, df: pd.DataFrame) -> pd.DataFrame:
+    def score_categories(
+        self,
+        df: pd.DataFrame,
+        *,
+        category_score_adjustments: dict[str, float] | None = None,
+    ) -> pd.DataFrame:
         if df.empty:
             return pd.DataFrame()
         if "decision_category" not in df.columns or "abs_drawdown_20d" not in df.columns:
@@ -159,6 +167,12 @@ class ScoringService:
             else float(row["offensive_score"]),
             axis=1,
         )
+        if category_score_adjustments:
+            grouped["category_score"] = grouped.apply(
+                lambda row: float(row["category_score"])
+                + float(category_score_adjustments.get(str(row["decision_category"]), 0.0)),
+                axis=1,
+            )
         grouped = grouped.sort_values(["category_score", "category_momentum"], ascending=[False, False]).reset_index(drop=True)
         grouped["category_rank"] = grouped.index + 1
         grouped["breakdown_json"] = grouped.apply(self._category_breakdown_json, axis=1)

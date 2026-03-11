@@ -21,6 +21,7 @@ from app.services.performance_service import PerformanceService
 from app.services.portfolio_service import PortfolioService
 from app.services.position_action_service import BUY_ACTIONS, ORDER_ACTIONS, SELL_ACTIONS, PositionActionService
 from app.services.risk_service import RiskService
+from app.services.risk_mode_service import get_risk_mode_service
 from app.services.scoring_service import ScoringService
 from app.services.universe_filter_service import UniverseFilterService
 from app.utils.dates import detect_session_mode, get_now, latest_market_date
@@ -37,6 +38,7 @@ class DecisionEngine:
         self.scoring_service = ScoringService()
         self.position_action_service = PositionActionService()
         self.risk_service = RiskService()
+        self.risk_mode_service = get_risk_mode_service()
         self.explanation_engine = ExplanationEngine()
         self.policy = get_decision_policy_service()
         self.thresholds = self.policy.action_thresholds
@@ -46,6 +48,11 @@ class DecisionEngine:
         preferences = get_preferences(session)
         if user is None or preferences is None:
             raise ValueError("请先初始化用户。")
+
+        effective_parameters = self.risk_mode_service.resolve(preferences, self.policy.action_thresholds)
+        effective_preferences = effective_parameters.preferences
+        effective_thresholds = effective_parameters.action_thresholds
+        allowed_categories = set(effective_parameters.allowed_categories or [])
 
         current_time = now or get_now()
         latest_trade = get_latest_trade_date(session)
@@ -79,15 +86,23 @@ class DecisionEngine:
         decision_universe_df = filtered_df[
             filtered_df["filter_pass"] | filtered_df["symbol"].isin(holding_symbols)
         ].copy()
+        if allowed_categories:
+            candidates_df = candidates_df[candidates_df["decision_category"].isin(allowed_categories)].copy()
+            decision_universe_df = decision_universe_df[
+                decision_universe_df["symbol"].isin(holding_symbols)
+                | decision_universe_df["decision_category"].isin(allowed_categories)
+            ].copy()
 
         trade_context = self._trade_context(session, positions_df, current_time)
         previous_rank_map = self._previous_rank_map(session)
         evaluation = self.scoring_service.evaluate(
             candidates_df=candidates_df,
             positions_df=positions_df,
-            target_holding_days=int(getattr(preferences, "target_holding_days", 5)),
+            target_holding_days=int(getattr(effective_preferences, "target_holding_days", 5)),
             previous_rank_map=previous_rank_map,
             days_held_map=trade_context["days_held_map"],
+            action_thresholds=effective_thresholds,
+            category_score_adjustments=effective_parameters.category_score_adjustments,
         )
         if not decision_universe_df.empty:
             defensive_category = self.policy.defensive_category()
@@ -104,7 +119,7 @@ class DecisionEngine:
         scored_df = self.scoring_service.score_decision_universe(
             decision_df=decision_universe_df,
             category_scores_df=evaluation["category_scores_df"],
-            target_holding_days=int(getattr(preferences, "target_holding_days", 5)),
+            target_holding_days=int(getattr(effective_preferences, "target_holding_days", 5)),
             previous_rank_map=previous_rank_map,
             days_held_map=trade_context["days_held_map"],
             offensive_edge=bool(evaluation["offensive_edge"]),
@@ -115,11 +130,12 @@ class DecisionEngine:
             scored_df=scored_df,
             evaluation=evaluation,
             portfolio_summary=portfolio_summary,
-            preferences=preferences,
+            preferences=effective_preferences,
             session_mode=session_mode,
             current_time=current_time,
             trade_context=trade_context,
             market_snapshot=market_snapshot,
+            thresholds=effective_thresholds,
         )
         self._update_position_actions(
             session,
@@ -143,7 +159,7 @@ class DecisionEngine:
             action_code=decision_context["action_code"],
             market_regime=market_snapshot["market_regime"],
             winning_category=decision_context.get("winning_category", ""),
-            target_holding_days=int(getattr(preferences, "target_holding_days", 5)),
+            target_holding_days=int(getattr(effective_preferences, "target_holding_days", 5)),
             mapped_horizon_profile=str(top_item.get("mapped_horizon_profile", decision_context["mapped_horizon_profile"]))
             if top_item
             else decision_context["mapped_horizon_profile"],
@@ -165,6 +181,8 @@ class DecisionEngine:
             evidence_json=json.dumps(
                 {
                     "market_snapshot": market_snapshot,
+                    "risk_mode": effective_parameters.risk_mode,
+                    "risk_mode_label": effective_parameters.risk_mode_label,
                     "category_scores": decision_context["category_scores"],
                     "winning_category": decision_context.get("winning_category", ""),
                     "winning_category_label": decision_context.get("winning_category_label", ""),
@@ -394,7 +412,9 @@ class DecisionEngine:
         current_time: datetime,
         trade_context: dict[str, Any],
         market_snapshot: dict[str, Any],
+        thresholds: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        resolved_thresholds = thresholds or self.thresholds
         target_position_pct = min(
             float(market_snapshot.get("recommended_position_pct", preferences.max_total_position_pct)),
             float(preferences.max_total_position_pct),
@@ -425,6 +445,7 @@ class DecisionEngine:
             current_time=current_time,
             trade_context=trade_context,
             target_portfolio=target_portfolio,
+            thresholds=resolved_thresholds,
         )
 
         max_items = self.policy.max_selected_etfs()
@@ -509,6 +530,7 @@ class DecisionEngine:
             offensive_edge=bool(evaluation["offensive_edge"]),
             selected_category=selected_category,
             selected_category_label=selected_category_label,
+            thresholds=resolved_thresholds,
         )
 
         primary_item = primary_items[0] if primary_items else None
@@ -530,11 +552,15 @@ class DecisionEngine:
             "selected_category": winning_category,
             "selected_category_label": winning_category_label,
             "selected_category_score": float(primary_item["category_score"]) if primary_item else float(evaluation["selected_category_score"]),
-            "offensive_threshold": float(self.thresholds.get("fallback", {}).get("offensive_threshold", 55.0)),
-            "open_threshold": float(self.thresholds.get("decision_thresholds", {}).get("open_threshold", 58.0)),
-            "reduce_threshold": float(self.thresholds.get("decision_thresholds", {}).get("reduce_threshold", 58.0)),
-            "full_exit_threshold": float(self.thresholds.get("decision_thresholds", {}).get("full_exit_threshold", 72.0)),
+            "offensive_threshold": float(resolved_thresholds.get("fallback", {}).get("offensive_threshold", 55.0)),
+            "open_threshold": float(resolved_thresholds.get("decision_thresholds", {}).get("open_threshold", 58.0)),
+            "reduce_threshold": float(resolved_thresholds.get("decision_thresholds", {}).get("reduce_threshold", 58.0)),
+            "full_exit_threshold": float(resolved_thresholds.get("decision_thresholds", {}).get("full_exit_threshold", 72.0)),
+            "risk_mode": str(getattr(preferences, "risk_mode", "balanced")),
+            "risk_mode_label": str(getattr(preferences, "risk_mode_label", "正常")),
+            "effective_max_total_position_pct": float(getattr(preferences, "max_total_position_pct", 0.7)),
             "target_holding_days": int(getattr(preferences, "target_holding_days", 5)),
+            "effective_target_holding_days": int(getattr(preferences, "target_holding_days", 5)),
             "recommendation_count": len(primary_items),
             "transition_count": len(transition_plan),
             "holding_review_count": len(portfolio_review_items),
@@ -592,6 +618,7 @@ class DecisionEngine:
         current_time: datetime,
         trade_context: dict[str, Any],
         target_portfolio: dict[str, Any],
+        thresholds: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         if scored_df.empty:
             return []
@@ -621,6 +648,7 @@ class DecisionEngine:
                 fallback_action=fallback_action,
                 trade_context=trade_context,
                 current_time=current_time,
+                thresholds=thresholds,
             )
             route_payload = self._route_action(
                 symbol=str(row["symbol"]),
@@ -632,6 +660,7 @@ class DecisionEngine:
                 decision_score=float(row["decision_score"]),
                 entry_score=float(row["entry_score"]),
                 exit_score=float(row["exit_score"]),
+                thresholds=thresholds,
             )
             planned_rows.append(
                 self._compose_item_payload(
@@ -661,6 +690,7 @@ class DecisionEngine:
         fallback_action: str,
         trade_context: dict[str, Any],
         current_time: datetime,
+        thresholds: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         return self.position_action_service.decide(
             row=row,
@@ -676,6 +706,7 @@ class DecisionEngine:
             fallback_action=fallback_action,
             trade_context=trade_context,
             current_time=current_time,
+            thresholds=thresholds,
         )
 
         decision_thresholds = self.thresholds.get("decision_thresholds", {})
@@ -822,7 +853,9 @@ class DecisionEngine:
         decision_score: float,
         entry_score: float,
         exit_score: float,
+        thresholds: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        resolved_thresholds = thresholds or self.thresholds
         if action_code not in ORDER_ACTIONS:
             return {
                 "requires_order": False,
@@ -846,7 +879,7 @@ class DecisionEngine:
         today = current_time.date()
         same_day_buy = symbol in trade_context["same_day_buy_symbols"]
         if tradability_mode == "t1" and action_code in SELL_ACTIONS:
-            t1_rules = self.thresholds.get("t1_rules", {})
+            t1_rules = resolved_thresholds.get("t1_rules", {})
             if bool(t1_rules.get("block_same_day_sell_after_buy", True)) and same_day_buy:
                 return {
                     "requires_order": True,
@@ -863,7 +896,7 @@ class DecisionEngine:
                 }
 
         if tradability_mode == "t0":
-            t0_rules = self.thresholds.get("t0_controls", {})
+            t0_rules = resolved_thresholds.get("t0_controls", {})
             symbol_trade_count = int(trade_context["trade_count_by_symbol_today"].get(symbol, 0))
             if symbol_trade_count >= int(t0_rules.get("max_decisions_per_symbol_per_day", 4)):
                 return {
@@ -913,9 +946,9 @@ class DecisionEngine:
                             "edge_bps": 0.0,
                         }
             reference_threshold = (
-                float(self.thresholds.get("decision_thresholds", {}).get("open_threshold", 58.0))
+                float(resolved_thresholds.get("decision_thresholds", {}).get("open_threshold", 58.0))
                 if action_code in BUY_ACTIONS
-                else float(self.thresholds.get("decision_thresholds", {}).get("reduce_threshold", 58.0))
+                else float(resolved_thresholds.get("decision_thresholds", {}).get("reduce_threshold", 58.0))
             )
             edge_points = max(decision_score - reference_threshold, 0.0) if action_code in BUY_ACTIONS else max(exit_score - reference_threshold, 0.0)
             edge_bps = edge_points * float(t0_rules.get("score_to_edge_bps_multiplier", 2.0))
@@ -1406,6 +1439,7 @@ class DecisionEngine:
         offensive_edge: bool,
         selected_category: str,
         selected_category_label: str,
+        thresholds: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         if available_cash <= 0:
             return []
@@ -1430,6 +1464,7 @@ class DecisionEngine:
                 offensive_edge=offensive_edge,
                 selected_category=selected_category,
                 selected_category_label=selected_category_label,
+                thresholds=thresholds,
             )
             annotated = dict(payload)
             suggested_amount = min_order_amount
@@ -1471,14 +1506,16 @@ class DecisionEngine:
         offensive_edge: bool,
         selected_category: str,
         selected_category_label: str,
+        thresholds: dict[str, Any] | None = None,
     ) -> str:
+        resolved_thresholds = thresholds or self.thresholds
         reasons: list[str] = []
         category = str(item.get("category", ""))
         category_label = str(item.get("asset_class") or self.policy.get_category_label(category) or "这类ETF")
         category_score = float(item.get("category_score", 0.0))
         decision_score = float(item.get("decision_score", item.get("score", 0.0)))
-        offensive_threshold = float(self.thresholds.get("fallback", {}).get("offensive_threshold", 55.0))
-        open_threshold = float(self.thresholds.get("decision_thresholds", {}).get("open_threshold", 58.0))
+        offensive_threshold = float(resolved_thresholds.get("fallback", {}).get("offensive_threshold", 55.0))
+        open_threshold = float(resolved_thresholds.get("decision_thresholds", {}).get("open_threshold", 58.0))
 
         if not offensive_edge and category and category != self.policy.defensive_category():
             reasons.append(f"{category_label}当前类别分 {category_score:.1f} 还没达到出手阈值 {offensive_threshold:.1f}")

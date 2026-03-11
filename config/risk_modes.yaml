@@ -1,0 +1,35 @@
+default_mode: balanced
+
+modes:
+  conservative:
+    label: "稳一点"
+    max_total_position_pct: 0.55
+    target_holding_days: 4
+    offensive_threshold_delta: 4.0
+    open_threshold_delta: 3.0
+    reduce_threshold_delta: -4.0
+    full_exit_threshold_delta: -5.0
+    fallback_action: park_in_money_etf
+    category_score_adjustments:
+      stock_etf: -3.0
+      cross_border_etf: -4.0
+      gold_etf: -1.5
+
+  balanced:
+    label: "正常"
+    offensive_threshold_delta: 0.0
+    open_threshold_delta: 0.0
+    reduce_threshold_delta: 0.0
+    full_exit_threshold_delta: 0.0
+
+  aggressive:
+    label: "冲一点"
+    max_total_position_pct: 0.85
+    target_holding_days: 8
+    offensive_threshold_delta: -3.0
+    open_threshold_delta: -2.0
+    reduce_threshold_delta: 3.0
+    full_exit_threshold_delta: 4.0
+    category_score_adjustments:
+      stock_etf: 1.5
+      cross_border_etf: 2.0

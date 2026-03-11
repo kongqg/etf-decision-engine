@@ -17,6 +17,7 @@ user_service = UserService()
 def _preferences_payload(preferences) -> dict:
     return {
         "risk_level": preferences.risk_level,
+        "risk_mode": getattr(preferences, "risk_mode", "balanced"),
         "allow_gold": preferences.allow_gold,
         "allow_bond": preferences.allow_bond,
         "allow_overseas": preferences.allow_overseas,
@@ -34,6 +35,7 @@ def init_user(payload: InitUserRequest, db: Session = Depends(get_db)):
         db,
         initial_capital=payload.initial_capital,
         risk_level=payload.risk_level,
+        risk_mode=payload.risk_mode,
         allow_gold=payload.allow_gold,
         allow_bond=payload.allow_bond,
         allow_overseas=payload.allow_overseas,

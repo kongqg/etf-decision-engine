@@ -24,6 +24,15 @@
             </select>
         </label>
         <label>
+            <span>风险模式</span>
+            <select name="risk_mode">
+                <option value="conservative">稳一点</option>
+                <option value="balanced" selected>正常</option>
+                <option value="aggressive">冲一点</option>
+            </select>
+            <small class="muted">这是在现有偏好之上再加一层节奏控制，不会改掉底层打分公式。</small>
+        </label>
+        <label>
             <span>最小建议金额</span>
             <input
                 type="number"

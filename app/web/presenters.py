@@ -5,6 +5,7 @@ from typing import Any
 
 from app.core.config import get_settings
 from app.core.session_mode import SESSION_MODE_HINTS, SESSION_MODE_LABELS
+from app.services.risk_mode_service import RISK_MODE_LABELS
 from app.utils.formatters import dt_string, money, pct
 
 
@@ -457,6 +458,7 @@ def page_context(title: str, session_mode: str, status_message: str | None = Non
         "session_button_label": SESSION_MODE_LABELS[session_mode],
         "session_hint": SESSION_MODE_HINTS[session_mode],
         "status_message": status_message,
+        "risk_mode_labels": RISK_MODE_LABELS,
         "default_min_advice_amount": settings.default_min_advice_amount,
         "default_lot_size": settings.default_lot_size,
         "show_watchlist_recommendations": settings.show_watchlist_recommendations,

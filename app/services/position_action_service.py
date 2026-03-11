@@ -55,10 +55,12 @@ class PositionActionService:
         fallback_action: str,
         trade_context: dict[str, Any],
         current_time: datetime,
+        thresholds: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        decision_thresholds = self.rules.get("decision_thresholds", {})
-        position_rules = self.rules.get("position_rules", {})
-        action_rules = self.rules.get("position_action_rules", {})
+        rules = thresholds or self.rules
+        decision_thresholds = rules.get("decision_thresholds", {})
+        position_rules = rules.get("position_rules", {})
+        action_rules = rules.get("position_action_rules", {})
 
         reduce_fraction = float(position_rules.get("reduce_fraction", 0.5))
         full_exit_fraction = float(position_rules.get("full_exit_fraction", 1.0))

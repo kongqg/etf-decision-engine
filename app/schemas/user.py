@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
 
 
+RiskMode = Literal["conservative", "balanced", "aggressive"]
+
+
 class InitUserRequest(BaseModel):
     initial_capital: float = Field(gt=0)
     risk_level: str = Field(default="中性")
+    risk_mode: RiskMode = Field(default="balanced")
     allow_gold: bool = True
     allow_bond: bool = True
     allow_overseas: bool = True
@@ -21,6 +27,7 @@ class UserProfileResponse(BaseModel):
     cash_balance: float
     total_asset: float
     risk_level: str
+    risk_mode: RiskMode
     allow_gold: bool
     allow_bond: bool
     allow_overseas: bool
@@ -28,6 +35,7 @@ class UserProfileResponse(BaseModel):
 
 class UpdatePreferencesRequest(BaseModel):
     risk_level: str = Field(default="中性")
+    risk_mode: RiskMode = Field(default="balanced")
     allow_gold: bool = True
     allow_bond: bool = True
     allow_overseas: bool = True
@@ -40,6 +48,7 @@ class UpdatePreferencesRequest(BaseModel):
 
 class PreferencesResponse(BaseModel):
     risk_level: str
+    risk_mode: RiskMode
     allow_gold: bool
     allow_bond: bool
     allow_overseas: bool

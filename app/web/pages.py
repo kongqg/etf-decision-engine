@@ -195,6 +195,7 @@ def history_page(request: Request, status: str | None = Query(default=None), db:
 def init_user_action(
     initial_capital: float = Form(...),
     risk_level: str = Form(...),
+    risk_mode: str = Form(default="balanced"),
     allow_gold: bool = Form(default=False),
     allow_bond: bool = Form(default=False),
     allow_overseas: bool = Form(default=False),
@@ -206,6 +207,7 @@ def init_user_action(
         db,
         initial_capital=initial_capital,
         risk_level=risk_level,
+        risk_mode=risk_mode,
         allow_gold=allow_gold,
         allow_bond=allow_bond,
         allow_overseas=allow_overseas,
@@ -218,6 +220,7 @@ def init_user_action(
 @router.post("/actions/update-preferences")
 def update_preferences_action(
     risk_level: str = Form(...),
+    risk_mode: str = Form(default="balanced"),
     allow_gold: bool = Form(default=False),
     allow_bond: bool = Form(default=False),
     allow_overseas: bool = Form(default=False),
@@ -232,6 +235,7 @@ def update_preferences_action(
         user_service.update_preferences(
             db,
             risk_level=risk_level,
+            risk_mode=risk_mode,
             allow_gold=allow_gold,
             allow_bond=allow_bond,
             allow_overseas=allow_overseas,

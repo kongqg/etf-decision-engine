@@ -32,6 +32,7 @@ class UserPreferences(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user_profile.id"), unique=True, nullable=False)
     risk_level: Mapped[str] = mapped_column(String(20), nullable=False, default="中性")
+    risk_mode: Mapped[str] = mapped_column(String(20), nullable=False, default="balanced")
     allow_gold: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     allow_bond: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     allow_overseas: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

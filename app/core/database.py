@@ -50,6 +50,7 @@ def _run_schema_compatibility_migrations(engine) -> None:
             "min_fee": "ALTER TABLE etf_universe ADD COLUMN min_fee FLOAT NOT NULL DEFAULT 1.0",
         },
         "user_preferences": {
+            "risk_mode": "ALTER TABLE user_preferences ADD COLUMN risk_mode VARCHAR(20) NOT NULL DEFAULT 'balanced'",
             "target_holding_days": "ALTER TABLE user_preferences ADD COLUMN target_holding_days INTEGER NOT NULL DEFAULT 5",
             "max_total_position_pct": "ALTER TABLE user_preferences ADD COLUMN max_total_position_pct FLOAT NOT NULL DEFAULT 0.7",
             "max_single_position_pct": "ALTER TABLE user_preferences ADD COLUMN max_single_position_pct FLOAT NOT NULL DEFAULT 0.35",
