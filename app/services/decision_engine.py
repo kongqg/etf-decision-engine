@@ -8,6 +8,7 @@ import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.db.models import AdviceItem, AdviceRecord, ETFFeature, ETFUniverse, ExplanationRecord, MarketSnapshot, Position
 from app.repositories.advice_repo import get_latest_advice
 from app.repositories.market_repo import get_latest_market_snapshot, get_latest_trade_date
@@ -23,10 +24,12 @@ from app.services.risk_service import RiskService
 from app.services.scoring_service import ScoringService
 from app.services.universe_filter_service import UniverseFilterService
 from app.utils.dates import detect_session_mode, get_now, latest_market_date
+from app.utils.maths import round_money
 
 
 class DecisionEngine:
     def __init__(self) -> None:
+        self.settings = get_settings()
         self.market_data_service = MarketDataService()
         self.portfolio_service = PortfolioService()
         self.performance_service = PerformanceService()
@@ -203,7 +206,7 @@ class DecisionEngine:
             "items": recommendation_groups["executable_recommendations"],
             "executable_recommendations": recommendation_groups["executable_recommendations"],
             "best_unaffordable_recommendation": None,
-            "affordable_but_weak_recommendations": [],
+            "affordable_but_weak_recommendations": recommendation_groups["affordable_but_weak_recommendations"],
             "watchlist_recommendations": recommendation_groups["watchlist_recommendations"],
             "cost_inefficient_recommendations": [],
             "show_watchlist_recommendations": True,
@@ -212,7 +215,7 @@ class DecisionEngine:
             "fee_filter_enabled": False,
             "recommendation_counts": {
                 "executable": len(recommendation_groups["executable_recommendations"]),
-                "affordable_but_weak": 0,
+                "affordable_but_weak": len(recommendation_groups["affordable_but_weak_recommendations"]),
                 "watchlist": len(recommendation_groups["watchlist_recommendations"]),
                 "cost_inefficient": 0,
             },
@@ -498,6 +501,15 @@ class DecisionEngine:
                 if item["recommendation_bucket"] == "watchlist_recommendations"
                 and item["symbol"] not in {payload["symbol"] for payload in primary_items}
             ][: max(0, max_items)]
+        affordable_but_weak_items = self._build_affordable_but_weak_recommendations(
+            candidate_items=primary_candidates,
+            excluded_symbols={payload["symbol"] for payload in primary_items},
+            total_asset=total_asset,
+            available_cash=available_cash,
+            offensive_edge=bool(evaluation["offensive_edge"]),
+            selected_category=selected_category,
+            selected_category_label=selected_category_label,
+        )
 
         primary_item = primary_items[0] if primary_items else None
         executable_now = bool(primary_item and primary_item.get("executable_now", False))
@@ -526,6 +538,7 @@ class DecisionEngine:
             "recommendation_count": len(primary_items),
             "transition_count": len(transition_plan),
             "holding_review_count": len(portfolio_review_items),
+            "affordable_but_weak_count": len(affordable_but_weak_items),
             "target_portfolio_mode": target_portfolio["mode"],
             "action_counts": action_counts,
         }
@@ -538,7 +551,7 @@ class DecisionEngine:
             "recommendation_groups": {
                 "executable_recommendations": executable_items,
                 "best_unaffordable_recommendation": None,
-                "affordable_but_weak_recommendations": [],
+                "affordable_but_weak_recommendations": affordable_but_weak_items,
                 "watchlist_recommendations": watchlist_items,
                 "cost_inefficient_recommendations": [],
                 "show_watchlist_recommendations": True,
@@ -1382,6 +1395,103 @@ class DecisionEngine:
             action = str(item.get("position_action", item.get("action_code", "no_trade")))
             counts[action] = counts.get(action, 0) + 1
         return counts
+
+    def _build_affordable_but_weak_recommendations(
+        self,
+        *,
+        candidate_items: list[dict[str, Any]],
+        excluded_symbols: set[str],
+        total_asset: float,
+        available_cash: float,
+        offensive_edge: bool,
+        selected_category: str,
+        selected_category_label: str,
+    ) -> list[dict[str, Any]]:
+        if available_cash <= 0:
+            return []
+
+        items: list[dict[str, Any]] = []
+        for payload in candidate_items:
+            symbol = str(payload.get("symbol", ""))
+            min_order_amount = round_money(float(payload.get("min_order_amount", 0.0)))
+            if (
+                not symbol
+                or symbol in excluded_symbols
+                or bool(payload.get("is_current_holding"))
+                or str(payload.get("action_code", "")) != "no_trade"
+                or not bool(payload.get("entry_eligible", payload.get("filter_pass", False)))
+                or min_order_amount <= 0
+                or min_order_amount > float(available_cash)
+            ):
+                continue
+
+            weak_reason = self._affordable_but_weak_reason(
+                item=payload,
+                offensive_edge=offensive_edge,
+                selected_category=selected_category,
+                selected_category_label=selected_category_label,
+            )
+            annotated = dict(payload)
+            suggested_amount = min_order_amount
+            suggested_pct = round(suggested_amount / total_asset, 4) if total_asset else 0.0
+            asset_class = annotated.get("asset_class") or self.policy.get_category_label(str(annotated.get("category", "")))
+            annotated.update(
+                {
+                    "suggested_amount": suggested_amount,
+                    "suggested_pct": suggested_pct,
+                    "is_executable": False,
+                    "executable_now": False,
+                    "is_affordable_but_weak": True,
+                    "weak_signal_reason": weak_reason,
+                    "not_executable_reason": weak_reason,
+                    "recommendation_bucket": "affordable_but_weak_recommendations",
+                    "execution_status": "买得起但当前不建议买",
+                    "execution_note": (
+                        f"这只 {asset_class} 当前买得起 1 手，但{weak_reason[:-1]}，"
+                        "所以系统不建议现在马上下单。"
+                    ),
+                }
+            )
+            items.append(annotated)
+
+        items.sort(
+            key=lambda item: (
+                float(item.get("category_score", 0.0)),
+                float(item.get("decision_score", item.get("score", 0.0))),
+                -float(item.get("min_order_amount", 0.0)),
+            ),
+            reverse=True,
+        )
+        return items[: int(self.settings.top_n_default)]
+
+    def _affordable_but_weak_reason(
+        self,
+        *,
+        item: dict[str, Any],
+        offensive_edge: bool,
+        selected_category: str,
+        selected_category_label: str,
+    ) -> str:
+        reasons: list[str] = []
+        category = str(item.get("category", ""))
+        category_label = str(item.get("asset_class") or self.policy.get_category_label(category) or "这类ETF")
+        category_score = float(item.get("category_score", 0.0))
+        decision_score = float(item.get("decision_score", item.get("score", 0.0)))
+        offensive_threshold = float(self.thresholds.get("fallback", {}).get("offensive_threshold", 55.0))
+        open_threshold = float(self.thresholds.get("decision_thresholds", {}).get("open_threshold", 58.0))
+
+        if not offensive_edge and category and category != self.policy.defensive_category():
+            reasons.append(f"{category_label}当前类别分 {category_score:.1f} 还没达到出手阈值 {offensive_threshold:.1f}")
+        elif offensive_edge and selected_category and category != selected_category:
+            target_label = selected_category_label or self.policy.get_category_label(selected_category)
+            reasons.append(f"当前主配置优先看 {target_label}")
+
+        if decision_score < open_threshold:
+            reasons.append(f"决策分 {decision_score:.1f} 还没达到开仓阈值 {open_threshold:.1f}")
+
+        if not reasons:
+            reasons.append("当前还不属于值得执行的主推荐")
+        return "；".join(dict.fromkeys(reasons)) + "。"
 
     def _category_score_cards(self, category_scores_df: pd.DataFrame) -> list[dict[str, Any]]:
         if category_scores_df.empty:
