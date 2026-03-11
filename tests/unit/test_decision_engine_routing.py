@@ -244,3 +244,133 @@ def test_execution_cost_keeps_order_executable_when_edge_remains_positive():
     assert payload["expected_edge_after_cost"] == 19.0
     assert payload["executable_now"] is True
     assert payload["blocked_reason"] == ""
+
+
+def test_execution_cost_does_not_block_sell_exit_when_route_is_executable():
+    engine = DecisionEngine()
+    payload = engine._compose_item_payload(
+        row={
+            "symbol": "511990",
+            "name": "华宝添益",
+            "rank_in_category": 1,
+            "close_price": 100.0,
+            "lot_size": 100.0,
+            "fee_rate": 0.0002,
+            "min_fee": 1.0,
+            "decision_score": -5.0,
+            "entry_score": 50.0,
+            "hold_score": 50.0,
+            "exit_score": 50.0,
+            "category_score": 46.0,
+            "score_gap": 0.0,
+            "risk_level": "低",
+            "decision_category": "money_etf",
+            "tradability_mode": "t0",
+            "target_holding_days": 30,
+            "mapped_horizon_profile": "rotation",
+            "lifecycle_phase": "exit_phase",
+            "breakdown_json": "{}",
+            "filter_pass": True,
+        },
+        position={
+            "weight_pct": 0.9,
+            "market_value": 90000.0,
+            "avg_cost": 100.0,
+            "quantity": 900.0,
+            "unrealized_pnl": -70.0,
+        },
+        action_payload={
+            "action_code": "sell_exit",
+            "position_action": "sell_exit",
+            "position_action_label": "卖出退出",
+            "action_reason": "释放停车资金",
+            "suggested_amount": 90000.0,
+            "suggested_pct": 0.9,
+            "min_order_amount": 10000.0,
+            "current_weight": 0.9,
+            "target_weight": 0.0,
+            "delta_weight": -0.9,
+            "current_amount": 90000.0,
+            "target_amount": 0.0,
+        },
+        route_payload={
+            "requires_order": True,
+            "executable_now": True,
+            "blocked_reason": "",
+            "planned_exit_days": None,
+            "planned_exit_rule_summary": "",
+            "edge_bps": 0.0,
+        },
+        available_cash=10000.0,
+        min_trade_amount=100.0,
+        thresholds={
+            "decision_thresholds": {"full_exit_threshold": 72.0, "reduce_threshold": 58.0},
+            "t0_controls": {"score_to_edge_bps_multiplier": 2.0},
+        },
+    )
+
+    assert payload["expected_edge_after_cost"] < 0.0
+    assert payload["executable_now"] is True
+    assert payload["blocked_reason"] == ""
+
+
+def test_defensive_parking_stays_hold_without_executable_offensive_replacement():
+    engine = DecisionEngine()
+    planned_rows = [
+        {
+            "symbol": "511990",
+            "name": "华宝添益",
+            "category": "money_etf",
+            "action": "卖出退出",
+            "action_code": "sell_exit",
+            "position_action": "exit_position",
+            "position_action_label": "卖出退出",
+            "action_reason": "释放停车资金",
+            "decision_score": -5.0,
+            "entry_score": 50.0,
+            "hold_score": 50.0,
+            "exit_score": 50.0,
+            "execution_cost_bps": 5.0,
+            "current_weight": 0.9,
+            "target_weight": 0.0,
+            "is_current_holding": True,
+            "executable_now": True,
+            "is_executable": True,
+            "blocked_reason": "",
+            "execution_status": "可执行卖出",
+            "execution_note": "释放停车资金",
+            "recommendation_bucket": "watchlist_recommendations",
+        },
+        {
+            "symbol": "518880",
+            "name": "黄金ETF",
+            "category": "gold_etf",
+            "action": "暂不交易",
+            "action_code": "no_trade",
+            "position_action": "no_trade",
+            "position_action_label": "暂不交易",
+            "decision_score": 53.3,
+            "entry_score": 87.0,
+            "hold_score": 67.0,
+            "exit_score": 46.25,
+            "current_weight": 0.0,
+            "target_weight": 0.35,
+            "is_current_holding": False,
+            "executable_now": False,
+            "is_executable": False,
+            "blocked_reason": "",
+            "recommendation_bucket": "watchlist_recommendations",
+        },
+    ]
+
+    stabilized = engine._stabilize_defensive_parking_rows(
+        planned_rows=planned_rows,
+        selected_category="gold_etf",
+        offensive_edge=True,
+        fallback_action="park_in_money_etf",
+    )
+
+    money_row = stabilized[0]
+    assert money_row["action_code"] == "hold"
+    assert money_row["position_action"] == "hold_position"
+    assert "今天还没有形成可执行的新开仓" in money_row["action_reason"]

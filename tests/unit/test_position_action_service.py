@@ -189,6 +189,41 @@ def test_tiny_delta_does_not_trigger_noisy_rebalance():
     assert abs(result["delta_weight"]) < 0.01
 
 
+def test_money_etf_parking_position_exits_when_offensive_edge_returns():
+    service = PositionActionService()
+    defensive_category = service.policy.defensive_category()
+
+    result = service.decide(
+        row=_row(
+            symbol="511990",
+            decision_category=defensive_category,
+            decision_score=30.0,
+            entry_score=50.0,
+            hold_score=50.0,
+            exit_score=50.0,
+            close_price=100.0,
+            lot_size=100,
+            days_held=10,
+        ),
+        position=_position(weight_pct=0.90, market_value=90000.0),
+        preferences=_preferences(),
+        total_asset=100000.0,
+        available_cash=10000.0,
+        current_position_pct=0.90,
+        target_position_pct=0.35,
+        target_weight=0.0,
+        selected_category="gold_etf",
+        offensive_edge=True,
+        fallback_action="park_in_money_etf",
+        trade_context=_trade_context(),
+        current_time=datetime(2026, 3, 10, 10, 0, 0),
+    )
+
+    assert result["action_code"] == "sell_exit"
+    assert result["position_action"] == "exit_position"
+    assert "防守停车位不再需要" in result["action_reason"]
+
+
 def test_recent_exit_requires_stronger_signal_before_reopening():
     service = PositionActionService()
     current_time = datetime(2026, 3, 10, 10, 0, 0)

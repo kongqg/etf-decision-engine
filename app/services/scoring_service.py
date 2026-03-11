@@ -314,14 +314,15 @@ class ScoringService:
             category = str(row["decision_category"])
             head = head_configs.get(category, {})
             category_df = df[df["decision_category"] == category].copy()
+            comparison_df = category_df if len(category_df) > 1 else df
 
             entry_payload = self._formula_for_row(
-                category_df=category_df,
+                reference_df=comparison_df,
                 row_symbol=str(row["symbol"]),
                 formula=head.get("entry", {}),
             )
             hold_payload = self._formula_for_row(
-                category_df=category_df,
+                reference_df=comparison_df,
                 row_symbol=str(row["symbol"]),
                 formula=head.get("hold", {}),
             )
@@ -350,8 +351,9 @@ class ScoringService:
             category = str(row["decision_category"])
             head = head_configs.get(category, {})
             category_df = df[df["decision_category"] == category].copy()
+            comparison_df = category_df if len(category_df) > 1 else df
             exit_payload = self._formula_for_row(
-                category_df=category_df,
+                reference_df=comparison_df,
                 row_symbol=str(row["symbol"]),
                 formula=head.get("exit", {}),
             )
@@ -368,20 +370,36 @@ class ScoringService:
         df["exit_score"] = df.groupby("decision_category")["exit_raw_score"].transform(
             lambda series: self._rank_percentile(series, higher_is_better=True)
         )
+        category_sizes = df.groupby("decision_category")["symbol"].transform("count")
+        defensive_category = self.policy.defensive_category()
+        single_symbol_mask = (category_sizes <= 1) & (df["decision_category"] != defensive_category)
+        if single_symbol_mask.any():
+            for column, head_key in {
+                "entry_score": "entry",
+                "hold_score": "hold",
+                "exit_score": "exit",
+            }.items():
+                df.loc[single_symbol_mask, column] = df.loc[single_symbol_mask].apply(
+                    lambda row: self._normalize_formula_score(
+                        raw_score=float(row[column.replace("_score", "_raw_score")]),
+                        formula=head_configs.get(str(row["decision_category"]), {}).get(head_key, {}),
+                    ),
+                    axis=1,
+                )
         return df
 
     def _formula_for_row(
         self,
         *,
-        category_df: pd.DataFrame,
+        reference_df: pd.DataFrame,
         row_symbol: str,
         formula: dict[str, float],
     ) -> dict[str, Any]:
         raw_score = 0.0
         details = []
-        row_index = category_df.index[category_df["symbol"] == row_symbol][0]
+        row_index = reference_df.index[reference_df["symbol"] == row_symbol][0]
         for feature_name, weight in formula.items():
-            values = self._feature_values(category_df, feature_name)
+            values = self._feature_values(reference_df, feature_name)
             component_scores = self._rank_percentile(values, higher_is_better=True)
             raw_value = float(values.loc[row_index])
             component_value = float(component_scores.loc[row_index])
@@ -397,6 +415,22 @@ class ScoringService:
                 }
             )
         return {"raw_score": raw_score, "details": details}
+
+    def _normalize_formula_score(self, *, raw_score: float, formula: dict[str, float]) -> float:
+        if not formula:
+            return 50.0
+        min_raw = 0.0
+        max_raw = 0.0
+        for weight in formula.values():
+            weight = float(weight)
+            if weight >= 0:
+                max_raw += weight * 100.0
+            else:
+                min_raw += weight * 100.0
+        if math.isclose(max_raw, min_raw):
+            return 50.0
+        normalized = (float(raw_score) - min_raw) / (max_raw - min_raw) * 100.0
+        return max(0.0, min(100.0, normalized))
 
     def _feature_values(
         self,

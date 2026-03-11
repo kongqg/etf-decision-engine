@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 import json
 from datetime import datetime
 from typing import Any
@@ -883,6 +884,12 @@ class DecisionEngine:
             target_portfolio=target_portfolio,
             thresholds=resolved_thresholds,
         )
+        primary_candidates = self._stabilize_defensive_parking_rows(
+            planned_rows=primary_candidates,
+            selected_category=selected_category,
+            offensive_edge=bool(evaluation["offensive_edge"]),
+            fallback_action=str(evaluation["fallback_action"]),
+        )
 
         max_items = self.policy.max_selected_etfs()
         transition_plan = sorted(
@@ -1043,6 +1050,70 @@ class DecisionEngine:
             "action_counts": action_counts,
             "facts": facts,
         }
+
+    def _stabilize_defensive_parking_rows(
+        self,
+        *,
+        planned_rows: list[dict[str, Any]],
+        selected_category: str,
+        offensive_edge: bool,
+        fallback_action: str,
+    ) -> list[dict[str, Any]]:
+        if not planned_rows or not offensive_edge or fallback_action != "park_in_money_etf" or not selected_category:
+            return planned_rows
+
+        has_executable_offensive_replacement = any(
+            item["category"] == selected_category
+            and item["action_code"] in {"buy_open", "buy_add"}
+            and bool(item.get("executable_now", False))
+            for item in planned_rows
+        )
+        if has_executable_offensive_replacement:
+            return planned_rows
+
+        defensive_category = self.policy.defensive_category()
+        stabilized_rows: list[dict[str, Any]] = []
+        for item in planned_rows:
+            if (
+                item["category"] == defensive_category
+                and item["action_code"] in SELL_ACTIONS
+                and bool(item.get("is_current_holding", False))
+                and float(item.get("target_weight", 0.0)) <= 0.0001
+            ):
+                updated = deepcopy(item)
+                action_reason = "进攻类别虽然暂时领先，但今天还没有形成可执行的新开仓，先继续保留防守停车位。"
+                updated["action"] = "继续持有"
+                updated["action_code"] = "hold"
+                updated["position_action"] = "hold_position"
+                updated["position_action_label"] = "继续持有"
+                updated["action_reason"] = action_reason
+                updated["reason_short"] = (
+                    f"{action_reason} 入场分 {float(updated['entry_score']):.1f}，持有分 {float(updated['hold_score']):.1f}，"
+                    f"退出分 {float(updated['exit_score']):.1f}，决策分 {float(updated['decision_score']):.1f}。"
+                )
+                updated["execution_status"] = "继续持有"
+                updated["execution_note"] = action_reason
+                updated["transition_label"] = self._transition_label(
+                    action_code="hold",
+                    is_current_holding=True,
+                    current_weight=float(updated.get("current_weight", 0.0)),
+                    target_weight=float(updated.get("target_weight", 0.0)),
+                )
+                updated["recommendation_bucket"] = "executable_recommendations"
+                updated["executable_now"] = False
+                updated["is_executable"] = False
+                updated["blocked_reason"] = ""
+                updated["planned_exit_days"] = None
+                updated["planned_exit_rule_summary"] = ""
+                updated["expected_edge_before_cost"] = 0.0
+                updated["expected_edge_after_cost"] = -float(updated.get("execution_cost_bps", 0.0))
+                updated["estimated_execution_cost"] = 0.0
+                updated["estimated_fee"] = 0.0
+                updated["estimated_cost_rate"] = 0.0
+                stabilized_rows.append(updated)
+            else:
+                stabilized_rows.append(item)
+        return stabilized_rows
 
     def _plan_rows(
         self,
@@ -1465,7 +1536,7 @@ class DecisionEngine:
         )
         expected_edge_after_cost = round(expected_edge_before_cost - execution_cost_bps, 2)
         budget_blocked = action_code in BUY_ACTIONS and (suggested_amount < min_trade_amount or suggested_amount < min_order_amount)
-        cost_blocked = action_code in ORDER_ACTIONS and expected_edge_after_cost <= 0.0
+        cost_blocked = action_code in BUY_ACTIONS and expected_edge_after_cost <= 0.0
         executable_now = bool(route_payload["executable_now"]) and not budget_blocked and not cost_blocked
         if budget_blocked:
             blocked_reason_code = "budget_below_min_trade_or_lot"

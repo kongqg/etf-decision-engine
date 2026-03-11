@@ -118,6 +118,16 @@ class PositionActionService:
 
         if position is not None:
             if (
+                category == defensive_category
+                and fallback_action == "park_in_money_etf"
+                and offensive_edge
+                and target_weight <= minimum_action_delta
+            ):
+                legacy_action_code = "sell_exit"
+                suggested_amount = market_value * full_exit_fraction
+                suggested_pct = current_weight * full_exit_fraction
+                action_reason = "当前重新出现进攻机会，防守停车位不再需要，先释放资金切换到更优类别。"
+            elif (
                 exit_score >= full_exit_threshold
                 and (
                     target_weight <= minimum_action_delta

@@ -198,3 +198,100 @@ def test_action_threshold_override_changes_offensive_edge():
 
     assert baseline["offensive_edge"] is True
     assert overridden["offensive_edge"] is False
+
+
+def test_single_symbol_category_uses_absolute_formula_scores_instead_of_being_stuck_at_50():
+    frame = pd.DataFrame(
+        [
+            build_row(
+                "518880",
+                "黄金",
+                "黄金",
+                "T+0",
+                momentum_5d=8.0,
+                momentum_10d=10.0,
+                trend_strength=5.0,
+                volatility_10d=0.4,
+                drawdown_20d=-0.2,
+                liquidity_score=25.0,
+                above_ma20_flag=1,
+            ),
+            build_row(
+                "510300",
+                "宽基",
+                "股票",
+                "T+1",
+                momentum_5d=-2.0,
+                momentum_10d=-1.5,
+                trend_strength=-1.0,
+                volatility_10d=3.5,
+                drawdown_20d=-5.0,
+                liquidity_score=18.0,
+                above_ma20_flag=0,
+            ),
+            build_row(
+                "159915",
+                "宽基",
+                "股票",
+                "T+1",
+                momentum_5d=-1.8,
+                momentum_10d=-1.2,
+                trend_strength=-0.8,
+                volatility_10d=3.2,
+                drawdown_20d=-4.8,
+                liquidity_score=17.0,
+                above_ma20_flag=0,
+            ),
+            build_row(
+                "511990",
+                "货币",
+                "货币",
+                "T+0",
+                momentum_5d=0.0,
+                momentum_10d=0.1,
+                trend_strength=0.1,
+                volatility_10d=0.03,
+                drawdown_20d=-0.05,
+                liquidity_score=16.0,
+                above_ma20_flag=0,
+            ),
+        ]
+    )
+
+    evaluation = ScoringService().evaluate(
+        candidates_df=frame,
+        positions_df=pd.DataFrame(),
+        target_holding_days=30,
+        previous_rank_map={},
+        days_held_map={},
+    )
+
+    gold_row = evaluation["scored_df"][evaluation["scored_df"]["symbol"] == "518880"].iloc[0]
+
+    assert gold_row["entry_score"] > 50.0
+    assert gold_row["hold_score"] > 50.0
+    assert gold_row["decision_score"] > 30.0
+
+
+def test_defensive_money_etf_single_symbol_keeps_stable_baseline_scores():
+    frame = pd.DataFrame(
+        [
+            build_row("511990", "货币", "货币", "T+0", liquidity_score=16.0, volatility_10d=0.03, drawdown_20d=-0.05),
+            build_row("510300", "宽基", "股票", "T+1", momentum_10d=-1.5, trend_strength=-1.0, volatility_10d=3.5, drawdown_20d=-5.0),
+            build_row("159915", "宽基", "股票", "T+1", momentum_10d=-1.2, trend_strength=-0.8, volatility_10d=3.2, drawdown_20d=-4.8),
+        ]
+    )
+
+    evaluation = ScoringService().evaluate(
+        candidates_df=frame,
+        positions_df=pd.DataFrame(),
+        target_holding_days=30,
+        previous_rank_map={},
+        days_held_map={},
+    )
+
+    money_row = evaluation["scored_df"][evaluation["scored_df"]["symbol"] == "511990"].iloc[0]
+
+    assert money_row["entry_score"] == 50.0
+    assert money_row["hold_score"] == 50.0
+    assert money_row["exit_score"] == 50.0
