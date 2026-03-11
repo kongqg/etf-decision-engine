@@ -57,6 +57,12 @@ def _run_schema_compatibility_migrations(engine) -> None:
             "cash_reserve_pct": "ALTER TABLE user_preferences ADD COLUMN cash_reserve_pct FLOAT NOT NULL DEFAULT 0.2",
         },
         "etf_features": {
+            "latest_row_date": "ALTER TABLE etf_features ADD COLUMN latest_row_date DATE",
+            "source_code": "ALTER TABLE etf_features ADD COLUMN source_code VARCHAR(20) NOT NULL DEFAULT ''",
+            "stale_data_flag": "ALTER TABLE etf_features ADD COLUMN stale_data_flag BOOLEAN NOT NULL DEFAULT 0",
+            "quality_status": "ALTER TABLE etf_features ADD COLUMN quality_status VARCHAR(20) NOT NULL DEFAULT ''",
+            "formal_eligible": "ALTER TABLE etf_features ADD COLUMN formal_eligible BOOLEAN NOT NULL DEFAULT 1",
+            "source_request_json": "ALTER TABLE etf_features ADD COLUMN source_request_json TEXT NOT NULL DEFAULT '{}'",
             "momentum_20d": "ALTER TABLE etf_features ADD COLUMN momentum_20d FLOAT NOT NULL DEFAULT 0.0",
             "ma5": "ALTER TABLE etf_features ADD COLUMN ma5 FLOAT NOT NULL DEFAULT 0.0",
             "ma10": "ALTER TABLE etf_features ADD COLUMN ma10 FLOAT NOT NULL DEFAULT 0.0",
@@ -83,6 +89,12 @@ def _run_schema_compatibility_migrations(engine) -> None:
             "blocked_reason": "ALTER TABLE advice_records ADD COLUMN blocked_reason TEXT NOT NULL DEFAULT ''",
             "planned_exit_days": "ALTER TABLE advice_records ADD COLUMN planned_exit_days INTEGER",
             "planned_exit_rule_summary": "ALTER TABLE advice_records ADD COLUMN planned_exit_rule_summary TEXT NOT NULL DEFAULT ''",
+        },
+        "market_snapshots": {
+            "data_source": "ALTER TABLE market_snapshots ADD COLUMN data_source VARCHAR(20) NOT NULL DEFAULT ''",
+            "quality_status": "ALTER TABLE market_snapshots ADD COLUMN quality_status VARCHAR(20) NOT NULL DEFAULT ''",
+            "formal_decision_ready": "ALTER TABLE market_snapshots ADD COLUMN formal_decision_ready BOOLEAN NOT NULL DEFAULT 1",
+            "latest_available_date": "ALTER TABLE market_snapshots ADD COLUMN latest_available_date DATE",
         },
         "advice_items": {
             "action_code": "ALTER TABLE advice_items ADD COLUMN action_code VARCHAR(30) NOT NULL DEFAULT ''",

@@ -13,6 +13,7 @@ from app.core.config import get_settings, load_yaml_config
 from app.db.models import ETFFeature, MarketSnapshot
 from app.repositories.market_repo import add_market_snapshot, list_universe, replace_features_for_date
 from app.services.decision_policy_service import get_decision_policy_service
+from app.services.data_quality_service import DataQualityService
 from app.services.feature_engine import FeatureEngine
 from app.services.market_regime_service import MarketRegimeService
 from app.utils.dates import detect_session_mode, get_now, latest_market_date
@@ -65,8 +66,13 @@ class MarketDataService:
         self.settings = settings
         self.feature_engine = FeatureEngine()
         self.market_regime_service = MarketRegimeService()
+        self.data_quality_service = DataQualityService()
         self.policy = get_decision_policy_service()
         self.risk_rules = load_yaml_config(settings.config_dir / "risk_rules.yaml")
+        self.source_loader_map = {
+            "akshare": self._load_history_from_akshare,
+            "fallback": self._load_history_from_fallback,
+        }
 
     def refresh_data(self, session: Session, now=None) -> dict[str, Any]:
         current_time = now or get_now()
@@ -76,9 +82,8 @@ class MarketDataService:
 
         rows = []
         source_counter: Counter[str] = Counter()
-        quality_checks = []
+        quality_checks: list[dict[str, Any]] = []
         series_samples: dict[str, Any] = {}
-        latest_dates: list[date] = []
 
         for etf in universe:
             bundle = self._load_history_bundle(
@@ -91,7 +96,6 @@ class MarketDataService:
             history = bundle["history"]
             row_source = bundle["source"]
             source_counter[row_source] += 1
-            latest_dates.append(bundle["latest_row_date"])
 
             features = self.feature_engine.calculate(history)
             anomaly_flag = (
@@ -113,6 +117,12 @@ class MarketDataService:
                     "min_avg_amount": etf.min_avg_amount,
                     "settlement_note": etf.settlement_note,
                     "trade_mode": etf.trade_mode,
+                    "latest_row_date": bundle["latest_row_date"],
+                    "source_code": row_source,
+                    "stale_data_flag": bool(bundle["quality_report"]["stale_data_flag"]),
+                    "quality_status": str(bundle["quality_report"]["status"]),
+                    "formal_eligible": bool(bundle["quality_report"]["formal_eligible"]),
+                    "source_request_json": json.dumps(bundle["request_params"], ensure_ascii=False),
                     "anomaly_flag": anomaly_flag,
                     **features,
                 }
@@ -124,25 +134,33 @@ class MarketDataService:
                 "name": etf.name,
                 "category": etf.category,
                 "source": row_source,
-                "latest_row_date": bundle["latest_row_date"].isoformat(),
+                "latest_row_date": bundle["quality_report"]["latest_row_date"],
+                "requested_trade_date": trade_date.isoformat(),
+                "stale_data_flag": bool(bundle["quality_report"]["stale_data_flag"]),
+                "formal_eligible": bool(bundle["quality_report"]["formal_eligible"]),
+                "quality_status": str(bundle["quality_report"]["status"]),
                 "request_params": bundle["request_params"],
                 "rows": self._serialize_history(history.tail(11)),
             }
 
         features_df = pd.DataFrame(rows)
         features_df = self._apply_decision_metadata(features_df)
-        snapshot_payload = self.market_regime_service.evaluate(features_df)
+        formal_market_df = features_df[features_df["formal_eligible"]].copy()
+        snapshot_payload = self.market_regime_service.evaluate(formal_market_df if not formal_market_df.empty else features_df)
 
         data_source = self._resolve_data_source(source_counter)
         source_meta = SOURCE_META[data_source]
-        quality_summary = self._build_quality_summary(
-            data_source=data_source,
-            source_counts=source_counter,
-            latest_dates=latest_dates,
-            quality_checks=quality_checks,
+        quality_summary = self.data_quality_service.build_summary(
+            quality_reports=quality_checks,
             current_time=current_time,
             expected_trade_date=trade_date,
             session_mode=session_mode,
+        )
+        quality_summary["data_type"] = source_meta["data_type"]
+        quality_summary["source_counts"] = dict(source_counter)
+        quality_summary["regime_input_symbol_count"] = int(len(formal_market_df) if not formal_market_df.empty else len(features_df))
+        quality_summary["regime_input_scope"] = (
+            "fresh_real_only" if not formal_market_df.empty else "all_rows_demo_scope"
         )
 
         feature_rows = [
@@ -150,6 +168,12 @@ class MarketDataService:
                 trade_date=trade_date,
                 captured_at=current_time,
                 symbol=str(row["symbol"]),
+                latest_row_date=row["latest_row_date"],
+                source_code=str(row["source_code"]),
+                stale_data_flag=bool(row["stale_data_flag"]),
+                quality_status=str(row["quality_status"]),
+                formal_eligible=bool(row["formal_eligible"]),
+                source_request_json=str(row["source_request_json"]),
                 close_price=float(row["close_price"]),
                 pct_change=float(row["pct_change"]),
                 latest_amount=float(row["latest_amount"]),
@@ -192,6 +216,14 @@ class MarketDataService:
             MarketSnapshot(
                 trade_date=trade_date,
                 captured_at=current_time,
+                data_source=data_source,
+                quality_status=str(quality_summary["quality_status"]),
+                formal_decision_ready=bool(quality_summary["formal_decision_ready"]),
+                latest_available_date=(
+                    date.fromisoformat(quality_summary["latest_available_date"])
+                    if quality_summary.get("latest_available_date") not in {None, "", "-"}
+                    else None
+                ),
                 session_mode=session_mode,
                 market_regime=snapshot_payload["market_regime"],
                 broad_index_score=float(snapshot_payload["broad_index_score"]),
@@ -247,6 +279,7 @@ class MarketDataService:
             "count": len(feature_rows),
             "market_regime": snapshot_payload["market_regime"],
             "quality_status": quality_summary["verification_status"],
+            "formal_decision_ready": bool(quality_summary["formal_decision_ready"]),
         }
 
     def _apply_decision_metadata(self, features_df: pd.DataFrame) -> pd.DataFrame:
@@ -280,49 +313,59 @@ class MarketDataService:
         min_avg_amount: float,
         trade_date: date,
     ) -> dict[str, Any]:
-        history = self._load_history_from_akshare(symbol, trade_date)
-        if history is not None and len(history) >= 15:
-            request_params = {
-                "symbol": symbol,
-                "period": "daily",
-                "adjust": "qfq",
-                "start_date": (trade_date - timedelta(days=self.settings.min_refresh_history_days * 3)).strftime("%Y%m%d"),
-                "end_date": trade_date.strftime("%Y%m%d"),
-            }
-            quality_report = self._build_quality_report(
+        request_params = {
+            "symbol": symbol,
+            "period": "daily",
+            "adjust": "qfq",
+            "start_date": (trade_date - timedelta(days=self.settings.min_refresh_history_days * 3)).strftime("%Y%m%d"),
+            "end_date": trade_date.strftime("%Y%m%d"),
+        }
+        akshare_history = self.source_loader_map["akshare"](symbol=symbol, trade_date=trade_date)
+        if akshare_history is not None and not akshare_history.empty:
+            quality_report = self.data_quality_service.assess_history(
                 symbol=symbol,
                 name=name,
                 source="akshare",
-                history=history,
+                history=akshare_history,
                 requested_trade_date=trade_date,
+                min_avg_amount=min_avg_amount,
+                anomaly_pct_change_threshold=float(self.risk_rules["anomaly_pct_change_threshold"]),
             )
-            return {
-                "history": history,
-                "source": "akshare",
-                "latest_row_date": quality_report["latest_row_date_obj"],
-                "request_params": request_params,
-                "quality_report": quality_report["payload"],
-            }
+            if len(quality_report.clean_history) >= 2:
+                return {
+                    "history": quality_report.clean_history,
+                    "source": "akshare",
+                    "latest_row_date": quality_report.latest_row_date,
+                    "request_params": request_params,
+                    "quality_report": quality_report.payload,
+                }
 
-        history = self._load_history_from_fallback(symbol, category, min_avg_amount, trade_date)
-        quality_report = self._build_quality_report(
+        fallback_history = self.source_loader_map["fallback"](
+            symbol=symbol,
+            category=category,
+            min_avg_amount=min_avg_amount,
+            trade_date=trade_date,
+        )
+        fallback_report = self.data_quality_service.assess_history(
             symbol=symbol,
             name=name,
             source="fallback",
-            history=history,
+            history=fallback_history,
             requested_trade_date=trade_date,
+            min_avg_amount=min_avg_amount,
+            anomaly_pct_change_threshold=float(self.risk_rules["anomaly_pct_change_threshold"]),
         )
         return {
-            "history": history,
+            "history": fallback_report.clean_history,
             "source": "fallback",
-            "latest_row_date": quality_report["latest_row_date_obj"],
+            "latest_row_date": fallback_report.latest_row_date,
             "request_params": {
                 "symbol": symbol,
                 "method": "local_fallback_generator",
                 "periods": self.settings.min_refresh_history_days,
                 "end_date": trade_date.isoformat(),
             },
-            "quality_report": quality_report["payload"],
+            "quality_report": fallback_report.payload,
         }
 
     def _load_history_from_akshare(self, symbol: str, trade_date: date) -> pd.DataFrame | None:
@@ -356,10 +399,10 @@ class MarketDataService:
             return None
 
         frame = raw.rename(columns=column_map)[["date", "close", "amount"]].copy()
-        frame["date"] = pd.to_datetime(frame["date"])
+        frame["date"] = pd.to_datetime(frame["date"], errors="coerce")
         frame["close"] = pd.to_numeric(frame["close"], errors="coerce")
         frame["amount"] = pd.to_numeric(frame["amount"], errors="coerce")
-        frame = frame.dropna().sort_values("date").tail(self.settings.min_refresh_history_days)
+        frame = frame.sort_values("date").tail(self.settings.min_refresh_history_days)
         return frame if not frame.empty else None
 
     def _load_history_from_fallback(self, symbol: str, category: str, min_avg_amount: float, trade_date: date) -> pd.DataFrame:
@@ -375,144 +418,6 @@ class MarketDataService:
         amount_floor = max(min_avg_amount * 0.85, 5_000_000)
         amounts = rng.uniform(amount_floor, amount_floor * 2.2, size=len(dates))
         return pd.DataFrame({"date": dates, "close": prices, "amount": amounts})
-
-    def _build_quality_report(
-        self,
-        symbol: str,
-        name: str,
-        source: str,
-        history: pd.DataFrame,
-        requested_trade_date: date,
-    ) -> dict[str, Any]:
-        frame = history.copy().sort_values("date").reset_index(drop=True)
-        latest_row_date = pd.Timestamp(frame["date"].iloc[-1]).date()
-        abnormal_threshold = float(self.risk_rules["anomaly_pct_change_threshold"])
-        daily_returns = frame["close"].pct_change().abs() * 100
-        abnormal_days = int((daily_returns > abnormal_threshold).sum())
-
-        checks = [
-            {
-                "label": "样本长度",
-                "passed": len(frame) >= self.settings.min_refresh_history_days,
-                "detail": f"共 {len(frame)} 行，目标至少 {self.settings.min_refresh_history_days} 行。",
-            },
-            {
-                "label": "日期递增",
-                "passed": bool(frame["date"].is_monotonic_increasing),
-                "detail": "日期按时间顺序排列。",
-            },
-            {
-                "label": "缺失值",
-                "passed": bool(not frame[["date", "close", "amount"]].isna().any().any()),
-                "detail": "价格和成交额没有空值。",
-            },
-            {
-                "label": "成交额为正",
-                "passed": bool((frame["amount"] > 0).all()),
-                "detail": "所有样本点成交额都大于 0。",
-            },
-            {
-                "label": "重复日期",
-                "passed": int(frame["date"].duplicated().sum()) == 0,
-                "detail": f"重复日期数量 {int(frame['date'].duplicated().sum())}。",
-            },
-            {
-                "label": "异常涨跌幅",
-                "passed": abnormal_days == 0,
-                "detail": f"单日绝对涨跌幅超过 {abnormal_threshold:.1f}% 的天数为 {abnormal_days}。",
-            },
-            {
-                "label": "最新日期有效",
-                "passed": latest_row_date <= requested_trade_date,
-                "detail": f"最新数据日期 {latest_row_date.isoformat()}，请求交易日 {requested_trade_date.isoformat()}。",
-            },
-        ]
-
-        failed_count = sum(1 for item in checks if not item["passed"])
-        if failed_count == 0:
-            status = "pass"
-        elif failed_count <= 2:
-            status = "partial"
-        else:
-            status = "fail"
-
-        return {
-            "latest_row_date_obj": latest_row_date,
-            "payload": {
-                "symbol": symbol,
-                "name": name,
-                "source": source,
-                "status": status,
-                "latest_row_date": latest_row_date.isoformat(),
-                "row_count": int(len(frame)),
-                "failed_checks": failed_count,
-                "checks": checks,
-            },
-        }
-
-    def _build_quality_summary(
-        self,
-        data_source: str,
-        source_counts: Counter[str],
-        latest_dates: list[date],
-        quality_checks: list[dict[str, Any]],
-        current_time,
-        expected_trade_date: date,
-        session_mode: str,
-    ) -> dict[str, Any]:
-        latest_available_date = min(latest_dates).isoformat() if latest_dates else "-"
-        failed_symbols = [item["symbol"] for item in quality_checks if item["status"] != "pass"]
-        failed_checks = sum(int(item["failed_checks"]) for item in quality_checks)
-        total_checks = sum(len(item["checks"]) for item in quality_checks)
-        passed_checks = total_checks - failed_checks
-
-        if data_source == "fallback":
-            verification_status = "模拟数据"
-            reliability_level = "低"
-            freshness_label = "当前使用模拟数据，不代表真实最新行情。"
-            supports_live_execution = False
-        elif data_source == "mixed":
-            verification_status = "部分真实、部分回退"
-            reliability_level = "中"
-            freshness_label = self._freshness_label(latest_available_date, expected_trade_date, session_mode)
-            supports_live_execution = False
-        elif failed_symbols:
-            verification_status = "单源质检存在异常"
-            reliability_level = "中"
-            freshness_label = self._freshness_label(latest_available_date, expected_trade_date, session_mode)
-            supports_live_execution = False
-        else:
-            verification_status = "单源质检通过"
-            reliability_level = "中高"
-            freshness_label = self._freshness_label(latest_available_date, expected_trade_date, session_mode)
-            supports_live_execution = False
-
-        return {
-            "verification_status": verification_status,
-            "reliability_level": reliability_level,
-            "cross_source_status": "未启用第二数据源交叉验证",
-            "supports_live_execution": supports_live_execution,
-            "live_execution_note": (
-                "当前只使用日线历史数据或模拟数据，适合做开盘计划、收盘后复盘和下一交易日预案，不适合伪装成盘中实时建议。"
-            ),
-            "data_type": SOURCE_META[data_source]["data_type"],
-            "freshness_label": freshness_label,
-            "latest_available_date": latest_available_date,
-            "captured_at": current_time.isoformat(),
-            "source_counts": dict(source_counts),
-            "passed_checks": passed_checks,
-            "failed_checks": failed_checks,
-            "failed_symbols": failed_symbols,
-        }
-
-    def _freshness_label(self, latest_available_date: str, expected_trade_date: date, session_mode: str) -> str:
-        if latest_available_date == "-":
-            return "没有可用数据。"
-        if latest_available_date < expected_trade_date.isoformat():
-            return f"当前数据只更新到 {latest_available_date} 收盘。"
-        if session_mode == "after_close":
-            return f"当前数据可视为 {latest_available_date} 收盘后的最新日线结果。"
-        return f"当前拿到的是截至 {latest_available_date} 的日线数据，不是盘中逐笔实时行情。"
 
     def _resolve_data_source(self, source_counts: Counter[str]) -> str:
         if source_counts.get("akshare") and source_counts.get("fallback"):

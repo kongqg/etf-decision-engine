@@ -147,6 +147,12 @@ class ExplanationEngine:
         primary_item: dict[str, Any] | None,
         category_scores: list[dict[str, Any]],
     ) -> list[str]:
+        if plan.get("reason_code") == "data_quality_not_ready":
+            facts = plan.get("facts", {})
+            blocking_reasons = facts.get("blocking_reasons", [])
+            reasons = ["这次没有进入正式打分，因为当前数据质量还没有达到正式建议门槛。"]
+            reasons.extend(str(reason) for reason in blocking_reasons if str(reason).strip())
+            return reasons
         reasons = ["系统这次不是只看单只ETF，而是先生成目标组合，再决定当前组合如何过渡过去。"]
         if category_scores:
             top_category = category_scores[0]

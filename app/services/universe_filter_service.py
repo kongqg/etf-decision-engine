@@ -51,6 +51,12 @@ class UniverseFilterService:
                 row_reasons.append("近 20 日成交额不达标")
             if bool(row["anomaly_flag"]):
                 row_reasons.append("近期波动或涨跌异常")
+            if bool(row.get("stale_data_flag", False)):
+                row_reasons.append("最新行情日期早于请求交易日")
+            if str(row.get("source_code", "")) in {"fallback", "mock", "simulated"}:
+                row_reasons.append("当前只有回退/模拟数据")
+            if not bool(row.get("formal_eligible", True)):
+                row_reasons.append("数据质量未达到正式决策门槛")
             if float(row["volatility_10d"]) > max_vol:
                 row_reasons.append("波动率超出当前风险偏好")
             if RISK_ORDER.get(str(row["risk_level"]), 4) > allowed_risk_level:

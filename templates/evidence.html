@@ -92,10 +92,24 @@
         </div>
     </div>
     <div class="evidence-list">
+        <div><span>质量状态</span><strong>{{ evidence.quality_overview.quality_status }}</strong></div>
+        <div><span>允许正式建议</span><strong>{{ "是" if evidence.quality_overview.formal_decision_ready else "否" }}</strong></div>
         <div><span>通过检查数</span><strong>{{ evidence.quality_overview.passed_checks }}</strong></div>
         <div><span>失败检查数</span><strong>{{ evidence.quality_overview.failed_checks }}</strong></div>
+        <div><span>有效覆盖率</span><strong>{{ "%.1f"|format(evidence.quality_overview.coverage_ratio * 100) }}%</strong></div>
+        <div><span>滞后占比</span><strong>{{ "%.1f"|format(evidence.quality_overview.stale_ratio * 100) }}%</strong></div>
+        <div><span>回退占比</span><strong>{{ "%.1f"|format(evidence.quality_overview.fallback_ratio * 100) }}%</strong></div>
         <div><span>存在异常的 ETF</span><strong>{{ evidence.quality_overview.failed_symbols|join("、") if evidence.quality_overview.failed_symbols else "无" }}</strong></div>
     </div>
+    {% if evidence.quality_overview.missing_core_symbols %}
+    <p class="muted" style="margin-top: 14px;"><strong>核心缺失：</strong>{{ evidence.quality_overview.missing_core_symbols|join("、") }}</p>
+    {% endif %}
+    {% if evidence.quality_overview.blocking_reasons %}
+    <p class="muted" style="margin-top: 8px;"><strong>阻塞原因：</strong>{{ evidence.quality_overview.blocking_reasons|join(" ") }}</p>
+    {% endif %}
+    {% if evidence.quality_overview.warning_reasons %}
+    <p class="muted" style="margin-top: 8px;"><strong>预警：</strong>{{ evidence.quality_overview.warning_reasons|join(" ") }}</p>
+    {% endif %}
     <table class="data-table" style="margin-top: 16px;">
         <thead>
         <tr>
@@ -152,6 +166,9 @@
             </div>
             <div class="evidence-list">
                 <div><span>最新样本日期</span><strong>{{ card.latest_row_date }}</strong></div>
+                <div><span>请求交易日</span><strong>{{ card.requested_trade_date }}</strong></div>
+                <div><span>是否滞后</span><strong>{{ "是" if card.stale_data_flag else "否" }}</strong></div>
+                <div><span>正式可用</span><strong>{{ "是" if card.formal_eligible else "否" }}</strong></div>
                 {% for item in card.metrics[:4] %}
                 <div><span>{{ item.label }}</span><strong>{{ item.value }}</strong></div>
                 {% endfor %}
@@ -201,6 +218,11 @@
             <div class="evidence-list">
                 <div><span>候选池排名</span><strong>{{ card.rank_in_pool if card.rank_in_pool else "-" }}</strong></div>
                 <div><span>是否通过筛选</span><strong>{{ "是" if card.filter_pass else "否" }}</strong></div>
+                <div><span>请求交易日</span><strong>{{ card.requested_trade_date }}</strong></div>
+                <div><span>真实最新日期</span><strong>{{ card.latest_row_date }}</strong></div>
+                <div><span>是否滞后</span><strong>{{ "是" if card.stale_data_flag else "否" }}</strong></div>
+                <div><span>正式可用</span><strong>{{ "是" if card.formal_eligible else "否" }}</strong></div>
+                <div><span>质量状态</span><strong>{{ card.quality_status }}</strong></div>
                 {% for item in card.metrics %}
                 <div><span>{{ item.label }}</span><strong>{{ item.value }}</strong></div>
                 {% endfor %}

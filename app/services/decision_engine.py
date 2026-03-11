@@ -74,13 +74,30 @@ class DecisionEngine:
         )
         feature_df = self._feature_frame(feature_rows)
         feature_df = self._enrich_with_universe(session, feature_df)
-        filtered_df = self.filter_service.apply(feature_df, preferences)
 
         portfolio_summary = self.portfolio_service.get_portfolio_summary(session)
         positions_df = self.portfolio_service.positions_dataframe(session)
         holding_symbols = set(positions_df["symbol"].tolist()) if not positions_df.empty else set()
         market_snapshot = self._market_snapshot_dict(latest_snapshot)
         session_mode = detect_session_mode(current_time)
+        quality_gate = self._data_quality_gate(
+            market_snapshot=market_snapshot,
+            feature_df=feature_df,
+            holding_symbols=holding_symbols,
+        )
+        if quality_gate["blocked"]:
+            return self._build_data_quality_blocked_advice(
+                session=session,
+                advice_date=latest_trade,
+                current_time=current_time,
+                session_mode=session_mode,
+                portfolio_summary=portfolio_summary,
+                market_snapshot=market_snapshot,
+                quality_gate=quality_gate,
+                preferences=effective_preferences,
+            )
+
+        filtered_df = self.filter_service.apply(feature_df, preferences)
 
         candidates_df = filtered_df[filtered_df["filter_pass"]].copy()
         decision_universe_df = filtered_df[
@@ -289,6 +306,251 @@ class DecisionEngine:
         advice_dict["evidence"] = json.loads(advice_record.evidence_json or "{}")
         return advice_dict
 
+    def _data_quality_gate(
+        self,
+        *,
+        market_snapshot: dict[str, Any],
+        feature_df: pd.DataFrame,
+        holding_symbols: set[str],
+    ) -> dict[str, Any]:
+        raw = market_snapshot.get("raw", {}) if isinstance(market_snapshot.get("raw", {}), dict) else {}
+        quality_summary = raw.get("quality_summary", {}) if isinstance(raw.get("quality_summary", {}), dict) else {}
+        blocking_reasons = list(quality_summary.get("blocking_reasons", []))
+        warning_reasons = list(quality_summary.get("warning_reasons", []))
+        held_quality_issues: list[str] = []
+
+        if holding_symbols and not feature_df.empty:
+            held_df = feature_df[feature_df["symbol"].isin(holding_symbols)].copy()
+            if not held_df.empty:
+                bad_holdings = held_df[
+                    held_df["stale_data_flag"].fillna(False)
+                    | (~held_df["formal_eligible"].fillna(True))
+                    | held_df["source_code"].isin({"fallback", "mock", "simulated"})
+                ]
+                held_quality_issues = [str(symbol) for symbol in bad_holdings["symbol"].tolist()]
+                if held_quality_issues:
+                    blocking_reasons.append(
+                        f"当前持仓缺少新鲜真实数据：{', '.join(held_quality_issues)}。"
+                    )
+
+        quality_status = str(quality_summary.get("quality_status") or market_snapshot.get("quality_status") or "")
+        formal_ready = quality_summary.get("formal_decision_ready")
+        blocked = bool(quality_status == "blocked" or formal_ready is False or held_quality_issues)
+
+        return {
+            "blocked": blocked,
+            "quality_status": quality_status or ("blocked" if blocked else "ok"),
+            "blocking_reasons": list(dict.fromkeys(str(item) for item in blocking_reasons if str(item).strip())),
+            "warning_reasons": list(dict.fromkeys(str(item) for item in warning_reasons if str(item).strip())),
+            "held_quality_issues": held_quality_issues,
+            "summary": quality_summary,
+        }
+
+    def _build_data_quality_blocked_advice(
+        self,
+        *,
+        session: Session,
+        advice_date,
+        current_time: datetime,
+        session_mode: str,
+        portfolio_summary: dict[str, Any],
+        market_snapshot: dict[str, Any],
+        quality_gate: dict[str, Any],
+        preferences,
+    ) -> dict[str, Any]:
+        total_asset = float(portfolio_summary["total_asset"])
+        available_cash = float(portfolio_summary["cash_balance"])
+        current_position_pct = float(portfolio_summary["current_position_pct"])
+        primary_reason = (
+            quality_gate["blocking_reasons"][0]
+            if quality_gate["blocking_reasons"]
+            else "当前数据质量不足，不生成正式建议。"
+        )
+        summary_text = f"当前数据质量不足，先不生成正式建议。{primary_reason}"
+        recommendation_groups = {
+            "executable_recommendations": [],
+            "best_unaffordable_recommendation": None,
+            "affordable_but_weak_recommendations": [],
+            "watchlist_recommendations": [],
+            "cost_inefficient_recommendations": [],
+            "show_watchlist_recommendations": False,
+            "show_cost_inefficient_recommendations": False,
+            "budget_filter_enabled": True,
+            "fee_filter_enabled": False,
+        }
+        facts = {
+            "available_cash": available_cash,
+            "total_asset": total_asset,
+            "current_position_pct": current_position_pct,
+            "target_position_pct": current_position_pct,
+            "selected_category": "",
+            "selected_category_label": "",
+            "selected_category_score": 0.0,
+            "offensive_threshold": float(self.thresholds.get("fallback", {}).get("offensive_threshold", 55.0)),
+            "open_threshold": float(self.thresholds.get("decision_thresholds", {}).get("open_threshold", 58.0)),
+            "reduce_threshold": float(self.thresholds.get("decision_thresholds", {}).get("reduce_threshold", 58.0)),
+            "full_exit_threshold": float(self.thresholds.get("decision_thresholds", {}).get("full_exit_threshold", 72.0)),
+            "target_holding_days": int(getattr(preferences, "target_holding_days", 5)),
+            "recommendation_count": 0,
+            "transition_count": 0,
+            "holding_review_count": 0,
+            "affordable_but_weak_count": 0,
+            "target_portfolio_mode": "data_not_ready",
+            "action_counts": {},
+            "data_quality_status": quality_gate["quality_status"],
+            "formal_decision_ready": False,
+            "blocking_reasons": quality_gate["blocking_reasons"],
+            "warning_reasons": quality_gate["warning_reasons"],
+            "coverage_ratio": float(quality_gate["summary"].get("coverage_ratio", 0.0)),
+            "fallback_ratio": float(quality_gate["summary"].get("fallback_ratio", 0.0)),
+            "stale_ratio": float(quality_gate["summary"].get("stale_ratio", 0.0)),
+        }
+        decision_context = {
+            "action_code": "no_trade",
+            "summary_text": summary_text,
+            "reason_code": "data_quality_not_ready",
+            "target_position_pct": current_position_pct,
+            "recommendation_groups": recommendation_groups,
+            "primary_item": None,
+            "winning_category": "",
+            "winning_category_label": "",
+            "selected_category_score": 0.0,
+            "mapped_horizon_profile": "",
+            "lifecycle_phase": "",
+            "executable_now": False,
+            "blocked_reason": "data_quality_not_ready",
+            "planned_exit_days": None,
+            "planned_exit_rule_summary": "",
+            "category_scores": [],
+            "target_portfolio": {
+                "mode": "data_not_ready",
+                "selected_category": "",
+                "selected_category_label": "",
+                "target_weight_by_symbol": {},
+                "rows": [],
+                "notes": quality_gate["blocking_reasons"] or ["当前数据质量不足，先暂停正式建议。"],
+            },
+            "transition_plan": [],
+            "daily_action_plan": [],
+            "portfolio_review_items": [],
+            "action_counts": {},
+            "facts": facts,
+        }
+
+        advice_record = AdviceRecord(
+            advice_date=advice_date,
+            created_at=current_time,
+            session_mode=session_mode,
+            action=self.policy.action_label("no_trade"),
+            action_code="no_trade",
+            market_regime=market_snapshot["market_regime"],
+            winning_category="",
+            target_holding_days=int(getattr(preferences, "target_holding_days", 5)),
+            mapped_horizon_profile="",
+            lifecycle_phase="",
+            category_score=0.0,
+            executable_now=False,
+            blocked_reason="data_quality_not_ready",
+            planned_exit_days=None,
+            planned_exit_rule_summary="当前数据质量不足，暂不生成正式执行动作。",
+            target_position_pct=current_position_pct,
+            current_position_pct=current_position_pct,
+            summary_text=summary_text,
+            risk_text="当前数据质量不足，先不要依据这份数据主动调仓。",
+            status="active",
+            evidence_json=json.dumps(
+                {
+                    "market_snapshot": market_snapshot,
+                    "category_scores": [],
+                    "winning_category": "",
+                    "winning_category_label": "",
+                    "fallback_triggered": False,
+                    "fallback_action": "no_trade",
+                    "reason_code": "data_quality_not_ready",
+                    "candidate_count": 0,
+                    "universe_count": 0,
+                    "plan_facts": facts,
+                    "recommendation_groups": recommendation_groups,
+                    "target_portfolio": decision_context["target_portfolio"],
+                    "transition_plan": [],
+                    "daily_action_plan": [],
+                    "portfolio_review_items": [],
+                    "action_counts": {},
+                    "data_quality_gate": quality_gate,
+                },
+                ensure_ascii=False,
+            ),
+        )
+        session.add(advice_record)
+        session.flush()
+
+        advice_dict = {
+            "id": advice_record.id,
+            "advice_date": advice_record.advice_date,
+            "created_at": advice_record.created_at,
+            "session_mode": advice_record.session_mode,
+            "action": advice_record.action,
+            "action_code": advice_record.action_code,
+            "market_regime": advice_record.market_regime,
+            "target_position_pct": advice_record.target_position_pct,
+            "current_position_pct": advice_record.current_position_pct,
+            "summary_text": advice_record.summary_text,
+            "risk_text": advice_record.risk_text,
+            "items": [],
+            "executable_recommendations": [],
+            "best_unaffordable_recommendation": None,
+            "affordable_but_weak_recommendations": [],
+            "watchlist_recommendations": [],
+            "cost_inefficient_recommendations": [],
+            "show_watchlist_recommendations": False,
+            "show_cost_inefficient_recommendations": False,
+            "budget_filter_enabled": True,
+            "fee_filter_enabled": False,
+            "recommendation_counts": {
+                "executable": 0,
+                "affordable_but_weak": 0,
+                "watchlist": 0,
+                "cost_inefficient": 0,
+            },
+            "reason_code": "data_quality_not_ready",
+            "mapped_horizon_profile": "",
+            "lifecycle_phase": "",
+            "category_score": 0.0,
+            "executable_now": False,
+            "blocked_reason": "data_quality_not_ready",
+            "planned_exit_days": None,
+            "planned_exit_rule_summary": advice_record.planned_exit_rule_summary,
+            "portfolio_review_items": [],
+            "transition_plan": [],
+            "daily_action_plan": [],
+            "target_portfolio": decision_context["target_portfolio"],
+            "action_counts": {},
+        }
+
+        explanation_payload = self.explanation_engine.build(
+            advice=advice_dict,
+            scored_df=pd.DataFrame(),
+            filtered_df=pd.DataFrame(),
+            portfolio_summary=portfolio_summary,
+            market_snapshot=market_snapshot,
+            plan=decision_context,
+        )
+        session.add(
+            ExplanationRecord(
+                advice_id=advice_record.id,
+                scope="overall",
+                symbol=None,
+                title="整体决策解释",
+                summary=explanation_payload["overall"]["headline"],
+                explanation_json=json.dumps(explanation_payload["overall"], ensure_ascii=False),
+            )
+        )
+        session.commit()
+
+        self.performance_service.capture_snapshot(session, snapshot_date=advice_date)
+        advice_dict["evidence"] = json.loads(advice_record.evidence_json or "{}")
+        return advice_dict
+
     def _feature_frame(self, feature_rows: list[ETFFeature]) -> pd.DataFrame:
         if not feature_rows:
             return pd.DataFrame()
@@ -296,6 +558,12 @@ class DecisionEngine:
             [
                 {
                     "symbol": row.symbol,
+                    "latest_row_date": row.latest_row_date.isoformat() if row.latest_row_date else "",
+                    "source_code": row.source_code,
+                    "stale_data_flag": row.stale_data_flag,
+                    "quality_status": row.quality_status,
+                    "formal_eligible": row.formal_eligible,
+                    "source_request_json": row.source_request_json,
                     "close_price": row.close_price,
                     "pct_change": row.pct_change,
                     "ret_1d": row.ret_1d,
@@ -1637,12 +1905,25 @@ class DecisionEngine:
                 "risk_appetite_score": "min(max(50 + (offense_score - defense_score) * 5, 0), 100)",
                 "trend_score": "min(max(trend_positive_ratio * 0.8 + trend_strength * 2.5, 0), 100)",
             }
+        quality_summary = payload.get("quality_summary")
+        if not isinstance(quality_summary, dict):
+            quality_summary = {}
+            payload["quality_summary"] = quality_summary
+        quality_summary.setdefault("quality_status", getattr(snapshot, "quality_status", ""))
+        quality_summary.setdefault("formal_decision_ready", bool(getattr(snapshot, "formal_decision_ready", True)))
+        quality_summary.setdefault(
+            "latest_available_date",
+            snapshot.latest_available_date.isoformat() if getattr(snapshot, "latest_available_date", None) else snapshot.trade_date.isoformat(),
+        )
         return {
             "market_regime": snapshot.market_regime,
             "broad_index_score": snapshot.broad_index_score,
             "risk_appetite_score": snapshot.risk_appetite_score,
             "trend_score": snapshot.trend_score,
             "recommended_position_pct": snapshot.recommended_position_pct,
+            "data_source": getattr(snapshot, "data_source", ""),
+            "quality_status": getattr(snapshot, "quality_status", ""),
+            "formal_decision_ready": bool(getattr(snapshot, "formal_decision_ready", True)),
             "raw": payload,
         }
 

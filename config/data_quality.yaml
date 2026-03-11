@@ -1,0 +1,15 @@
+minimum_history_rows_for_features: 21
+minimum_formal_coverage_ratio: 0.85
+maximum_fallback_ratio_for_formal_decision: 0.15
+maximum_stale_ratio_for_formal_decision: 0.20
+latest_amount_to_min_avg_amount_ratio: 0.05
+minimum_latest_amount_floor: 1000000
+
+critical_symbols:
+  - "510300"
+  - "510500"
+  - "159915"
+  - "518880"
+  - "511010"
+  - "511990"
+  - "513100"

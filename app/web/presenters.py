@@ -425,15 +425,32 @@ def _status_from_market_raw(raw: dict[str, Any]) -> dict[str, Any] | None:
         return None
 
     verification_status = quality_summary.get("verification_status", "-")
+    quality_status = str(quality_summary.get("quality_status", "")).strip()
     source_code = str(source.get("code") or "").strip()
     is_demo = source_code == "fallback" or verification_status == "模拟数据"
     is_mixed = source_code == "mixed" or verification_status == "部分真实、部分回退"
+    is_blocked = quality_status == "blocked" or quality_summary.get("formal_decision_ready") is False
+    is_weak = quality_status == "weak"
     latest_available_date = quality_summary.get("latest_available_date", source.get("trade_date", "-"))
     return {
-        "badge_label": "演示数据" if is_demo else "混合数据" if is_mixed else "真实日线",
-        "tone": "warning" if is_demo or is_mixed else "neutral",
+        "badge_label": (
+            "数据未就绪"
+            if is_blocked
+            else "弱质量数据"
+            if is_weak
+            else "演示数据"
+            if is_demo
+            else "混合数据"
+            if is_mixed
+            else "真实日线"
+        ),
+        "tone": "warning" if is_blocked or is_weak or is_demo or is_mixed else "neutral",
         "summary": (
-            "当前页面基于模拟数据演示，不代表真实市场。"
+            "当前数据质量不足，系统不会生成正式建议。"
+            if is_blocked
+            else "当前页面基于部分滞后或弱质量数据，结果需要保守解释。"
+            if is_weak
+            else "当前页面基于模拟数据演示，不代表真实市场。"
             if is_demo
             else "当前页面基于部分真实、部分补全的数据。"
             if is_mixed

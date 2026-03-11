@@ -71,9 +71,17 @@ class DataEvidenceService:
                 "default_params": request_summary.get("default_params", {}),
             },
             "quality_overview": {
+                "quality_status": quality_summary.get("quality_status", "-"),
+                "formal_decision_ready": bool(quality_summary.get("formal_decision_ready", True)),
                 "passed_checks": quality_summary.get("passed_checks", 0),
                 "failed_checks": quality_summary.get("failed_checks", 0),
+                "coverage_ratio": quality_summary.get("coverage_ratio", 0.0),
+                "fallback_ratio": quality_summary.get("fallback_ratio", 0.0),
+                "stale_ratio": quality_summary.get("stale_ratio", 0.0),
                 "failed_symbols": quality_summary.get("failed_symbols", []),
+                "missing_core_symbols": quality_summary.get("missing_core_symbols", []),
+                "blocking_reasons": quality_summary.get("blocking_reasons", []),
+                "warning_reasons": quality_summary.get("warning_reasons", []),
             },
             "quality_checks": quality_checks,
             "benchmark_series": self._series_cards(benchmark_symbols, series_samples, feature_map, quality_checks),
@@ -122,9 +130,31 @@ class DataEvidenceService:
                     "symbol": symbol,
                     "name": payload.get("name", symbol),
                     "category": payload.get("category", "-"),
-                    "source": payload.get("source", "-"),
-                    "latest_row_date": payload.get("latest_row_date", "-"),
-                    "request_params": payload.get("request_params", {}),
+                    "source": getattr(feature, "source_code", payload.get("source", "-")) if feature is not None else payload.get("source", "-"),
+                    "latest_row_date": (
+                        feature.latest_row_date.isoformat()
+                        if feature is not None and getattr(feature, "latest_row_date", None)
+                        else payload.get("latest_row_date", "-")
+                    ),
+                    "requested_trade_date": (
+                        feature.trade_date.isoformat()
+                        if feature is not None and getattr(feature, "trade_date", None)
+                        else payload.get("requested_trade_date", "-")
+                    ),
+                    "stale_data_flag": bool(
+                        getattr(feature, "stale_data_flag", payload.get("stale_data_flag", False))
+                    ),
+                    "formal_eligible": bool(
+                        getattr(feature, "formal_eligible", payload.get("formal_eligible", True))
+                    ),
+                    "quality_status": getattr(feature, "quality_status", payload.get("quality_status", "-"))
+                    if feature is not None
+                    else payload.get("quality_status", "-"),
+                    "request_params": (
+                        self._parse_breakdown(getattr(feature, "source_request_json", "{}"))
+                        if feature is not None and getattr(feature, "source_request_json", "")
+                        else payload.get("request_params", {})
+                    ),
                     "rows": payload.get("rows", []),
                     "quality": quality_map.get(symbol, {}),
                     "score": round(float(feature.total_score), 2) if feature is not None else 0.0,
