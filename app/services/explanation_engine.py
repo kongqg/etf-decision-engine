@@ -2,6 +2,18 @@ from __future__ import annotations
 
 from typing import Any
 
+MARKET_REGIME_LABELS = {
+    "risk_on": "偏进攻",
+    "neutral": "中性",
+    "risk_off": "偏防守",
+}
+
+QUALITY_STATUS_LABELS = {
+    "ok": "正常",
+    "weak": "需谨慎",
+    "blocked": "已拦截",
+}
+
 
 class ExplanationEngine:
     def build(
@@ -14,26 +26,26 @@ class ExplanationEngine:
         portfolio_summary: dict[str, Any],
         quality_summary: dict[str, Any],
     ) -> dict[str, Any]:
+        market_regime_label = self._market_regime_label(market_regime.get("market_regime", "neutral"))
         reasons = [
-            f"Market regime is {market_regime.get('market_regime', 'neutral')} and drives only the budget layer.",
-            f"Total target budget is {float(allocation.get('total_budget_pct', 0.0)) * 100:.1f}%.",
-            f"Replace threshold is {float(allocation.get('replace_threshold', 0.0)):.1f} FinalScore points.",
+            f"当前市场状态是 {market_regime_label}，它主要影响预算层。",
+            f"当前目标总预算为 {float(allocation.get('total_budget_pct', 0.0)) * 100:.1f}%。",
+            f"当前替换阈值为 {float(allocation.get('replace_threshold', 0.0)):.1f} 分。",
         ]
         if quality_summary:
+            quality_status = str(quality_summary.get("quality_status", "unknown"))
             reasons.append(
-                f"Data quality status is {quality_summary.get('quality_status', 'unknown')} "
-                f"({quality_summary.get('verification_status', '')})."
+                f"当前数据质量状态为 {QUALITY_STATUS_LABELS.get(quality_status, quality_status)} "
+                f"（{quality_summary.get('verification_status', '')}）。"
             )
         if items:
-            reasons.append(
-                "Action items are generated only after comparing target weights against current holdings."
-            )
+            reasons.append("系统会先算目标仓位，再和当前持仓对比，最后才生成具体动作。")
         else:
-            reasons.append("No ETF generated a tradable delta after score, budget, and replacement checks.")
+            reasons.append("在分数、预算和替换约束之后，没有 ETF 形成可执行的仓位变化。")
 
         overall = {
             "headline": self._headline(items),
-            "market_regime": market_regime.get("market_regime", "neutral"),
+            "market_regime": market_regime_label,
             "summary": self._headline(items),
             "reasons": reasons,
             "budget": {
@@ -90,13 +102,15 @@ class ExplanationEngine:
 
     def _headline(self, items: list[dict[str, Any]]) -> str:
         if not items:
-            return "No trade today"
+            return "今天暂不交易"
         actions = {item["action"] for item in items}
         if "buy" in actions and "sell" in actions:
-            return "Rebalance the portfolio"
+            return "调仓换仓"
         if "buy" in actions:
-            return "Open or add selected ETFs"
+            return "开仓或加仓目标 ETF"
         if "sell" in actions:
-            return "Reduce or exit weak holdings"
-        return "Hold current leaders"
+            return "减仓或退出转弱持仓"
+        return "继续持有当前领先标的"
 
+    def _market_regime_label(self, market_regime: str) -> str:
+        return MARKET_REGIME_LABELS.get(str(market_regime), str(market_regime))

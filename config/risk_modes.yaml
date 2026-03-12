@@ -2,19 +2,19 @@ default_mode: balanced
 
 modes:
   conservative:
-    label: Conservative
+    label: 稳一点
     total_budget_multiplier: 0.85
     single_weight_multiplier: 0.85
     category_cap_multiplier: 0.85
     replace_threshold_delta: 2.0
   balanced:
-    label: Balanced
+    label: 正常
     total_budget_multiplier: 1.0
     single_weight_multiplier: 1.0
     category_cap_multiplier: 1.0
     replace_threshold_delta: 0.0
   aggressive:
-    label: Aggressive
+    label: 冲一点
     total_budget_multiplier: 1.10
     single_weight_multiplier: 1.10
     category_cap_multiplier: 1.10

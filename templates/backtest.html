@@ -3,73 +3,73 @@
 {% block content %}
 <section class="hero">
     <div>
-        <div class="eyebrow">Backtest</div>
-        <h2>Replay the simplified full-universe ETF strategy</h2>
-        <p>Adjust replace threshold, category count limits, and minimum FinalScore. The runner keeps open/add/reduce/exit intents for later tuning.</p>
+        <div class="eyebrow">历史回测</div>
+        <h2>回放当前这套 ETF 全市场策略</h2>
+        <p>你可以调整替换阈值、选股数量上限和最低最终分，看看这套规则在历史上会怎么跑。</p>
     </div>
 </section>
 
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">Run</div>
-            <h3>Single run backtest</h3>
+            <div class="eyebrow">运行</div>
+            <h3>单次回测</h3>
         </div>
     </div>
     <form method="post" action="/actions/run-backtest" class="settings-form">
         <label>
-            Start Date
+            开始日期
             <input type="date" name="start_date" value="{{ default_backtest_form.start_date }}">
         </label>
         <label>
-            End Date
+            结束日期
             <input type="date" name="end_date" value="{{ default_backtest_form.end_date }}">
         </label>
         <label>
-            Initial Capital
+            初始资金
             <input type="number" step="1000" min="1000" name="initial_capital" value="{{ default_backtest_form.initial_capital }}">
         </label>
         <label>
-            Risk Mode
+            风格模式
             <select name="risk_mode">
-                <option value="conservative" {% if default_backtest_form.risk_mode == "conservative" %}selected{% endif %}>Conservative</option>
-                <option value="balanced" {% if default_backtest_form.risk_mode == "balanced" %}selected{% endif %}>Balanced</option>
-                <option value="aggressive" {% if default_backtest_form.risk_mode == "aggressive" %}selected{% endif %}>Aggressive</option>
+                <option value="conservative" {% if default_backtest_form.risk_mode == "conservative" %}selected{% endif %}>稳一点</option>
+                <option value="balanced" {% if default_backtest_form.risk_mode == "balanced" %}selected{% endif %}>正常</option>
+                <option value="aggressive" {% if default_backtest_form.risk_mode == "aggressive" %}selected{% endif %}>冲一点</option>
             </select>
         </label>
         <label>
-            Slippage (bps)
+            滑点（bps）
             <input type="number" step="0.5" min="0" name="slippage_bps" value="{{ default_backtest_form.slippage_bps }}">
         </label>
         <label>
-            Execution Cost (bps)
+            统一交易成本（bps）
             <input type="number" step="0.5" min="0" name="execution_cost_bps" value="{{ default_backtest_form.execution_cost_bps }}">
         </label>
         <label>
-            Replace Threshold
+            替换阈值
             <input type="number" step="0.5" min="0" name="replace_threshold" value="{{ default_backtest_form.replace_threshold }}">
         </label>
         <label>
-            Max Selected Total
+            最多持有标的数
             <input type="number" min="1" max="10" name="max_selected_total" value="{{ default_backtest_form.max_selected_total }}">
         </label>
         <label>
-            Max Per Category
+            每个类别最多保留
             <input type="number" min="1" max="5" name="max_selected_per_category" value="{{ default_backtest_form.max_selected_per_category }}">
         </label>
         <label>
-            Min FinalScore
+            最低最终分
             <input type="number" step="0.5" min="0" max="100" name="min_final_score_for_target" value="{{ default_backtest_form.min_final_score_for_target }}">
         </label>
         <label class="checkbox-row">
             <input type="checkbox" name="use_live_trades" value="true">
-            Use existing portfolio as initial state
+            用当前真实持仓作为回测初始状态
         </label>
         <label class="checkbox-row">
             <input type="checkbox" name="allow_weak_data" value="true">
-            Allow weak-quality data
+            允许弱质量数据参与回放
         </label>
-        <button class="primary-button" type="submit">Run Backtest</button>
+        <button class="primary-button" type="submit">开始回测</button>
     </form>
 </section>
 
@@ -77,16 +77,16 @@
 <section class="card">
     <div class="section-head">
         <div>
-            <div class="eyebrow">Recent Runs</div>
-            <h3>Saved backtest results</h3>
+            <div class="eyebrow">最近结果</div>
+            <h3>已保存的回测结果</h3>
         </div>
     </div>
     <table class="data-table">
         <thead>
         <tr>
-            <th>Time</th>
-            <th>Range</th>
-            <th>Summary</th>
+            <th>时间</th>
+            <th>区间</th>
+            <th>摘要</th>
         </tr>
         </thead>
         <tbody>
@@ -105,19 +105,19 @@
 {% if backtest_result %}
 <section class="card-grid metrics">
     <article class="card metric">
-        <div class="eyebrow">Total Return</div>
+        <div class="eyebrow">累计收益率</div>
         <strong>{{ fmt_pct(backtest_result.metrics.total_return_pct) }}</strong>
     </article>
     <article class="card metric">
-        <div class="eyebrow">Annualized</div>
+        <div class="eyebrow">年化收益率</div>
         <strong>{{ fmt_pct(backtest_result.metrics.annualized_return_pct) }}</strong>
     </article>
     <article class="card metric">
-        <div class="eyebrow">Max Drawdown</div>
+        <div class="eyebrow">最大回撤</div>
         <strong>{{ fmt_pct(backtest_result.metrics.max_drawdown_pct) }}</strong>
     </article>
     <article class="card metric">
-        <div class="eyebrow">Trade Count</div>
+        <div class="eyebrow">交易次数</div>
         <strong>{{ backtest_result.metrics.trade_count }}</strong>
     </article>
 </section>
@@ -125,40 +125,40 @@
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">Intent Metrics</div>
+            <div class="eyebrow">动作统计</div>
             <h3>{{ backtest_result.overview.one_line_conclusion }}</h3>
         </div>
     </div>
     <div class="evidence-list">
-        <div><span>Open Count</span><strong>{{ backtest_result.metrics.open_count }}</strong></div>
-        <div><span>Add Count</span><strong>{{ backtest_result.metrics.add_count }}</strong></div>
-        <div><span>Reduce Count</span><strong>{{ backtest_result.metrics.reduce_count }}</strong></div>
-        <div><span>Exit Count</span><strong>{{ backtest_result.metrics.exit_count }}</strong></div>
-        <div><span>Avg Holding Days</span><strong>{{ backtest_result.metrics.avg_holding_days }}</strong></div>
-        <div><span>Turnover Ratio</span><strong>{{ backtest_result.metrics.turnover_ratio }}</strong></div>
-        <div><span>Replacement Frequency</span><strong>{{ backtest_result.metrics.replacement_frequency }}</strong></div>
-        <div><span>Final Asset</span><strong>{{ fmt_money(backtest_result.metrics.final_asset) }}</strong></div>
+        <div><span>开仓次数</span><strong>{{ backtest_result.metrics.open_count }}</strong></div>
+        <div><span>加仓次数</span><strong>{{ backtest_result.metrics.add_count }}</strong></div>
+        <div><span>减仓次数</span><strong>{{ backtest_result.metrics.reduce_count }}</strong></div>
+        <div><span>退出次数</span><strong>{{ backtest_result.metrics.exit_count }}</strong></div>
+        <div><span>平均持有天数</span><strong>{{ backtest_result.metrics.avg_holding_days }}</strong></div>
+        <div><span>换手率</span><strong>{{ backtest_result.metrics.turnover_ratio }}</strong></div>
+        <div><span>替换频率</span><strong>{{ backtest_result.metrics.replacement_frequency }}</strong></div>
+        <div><span>期末资产</span><strong>{{ fmt_money(backtest_result.metrics.final_asset) }}</strong></div>
     </div>
 </section>
 
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">Trades</div>
-            <h3>Backtest trade log</h3>
+            <div class="eyebrow">成交记录</div>
+            <h3>回测交易明细</h3>
         </div>
     </div>
     {% if backtest_result.trades %}
     <table class="data-table">
         <thead>
         <tr>
-            <th>Time</th>
+            <th>时间</th>
             <th>ETF</th>
-            <th>Side</th>
-            <th>Intent</th>
-            <th>Amount</th>
-            <th>Fee</th>
-            <th>Realized PnL</th>
+            <th>方向</th>
+            <th>意图</th>
+            <th>金额</th>
+            <th>成本</th>
+            <th>已实现盈亏</th>
         </tr>
         </thead>
         <tbody>
@@ -166,7 +166,7 @@
         <tr>
             <td>{{ row.executed_at[:16].replace("T", " ") }}</td>
             <td>{{ row.name }}<br><span class="muted">{{ row.symbol }}</span></td>
-            <td>{{ row.side }}</td>
+            <td>{{ "买入" if row.side == "buy" else "卖出" }}</td>
             <td>{{ row.intent }}</td>
             <td>{{ fmt_money(row.amount) }}</td>
             <td>{{ fmt_money(row.fee) }}</td>

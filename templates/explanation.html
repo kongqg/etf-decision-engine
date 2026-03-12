@@ -3,14 +3,14 @@
 {% block content %}
 <section class="hero split">
     <div>
-        <div class="eyebrow">Explanation</div>
-        <h2>{{ explanation.overall.headline if explanation else "No explanation yet" }}</h2>
-        <p>{{ advice.summary_text if advice else "Generate advice first." }}</p>
+        <div class="eyebrow">原因说明</div>
+        <h2>{{ explanation.overall.headline if explanation else "还没有生成说明" }}</h2>
+        <p>{{ advice.summary_text if advice else "请先生成建议。" }}</p>
     </div>
     {% if advice %}
     <div class="action-cluster">
-        <a class="primary-link" href="/advice/{{ advice.id }}">Back To Advice</a>
-        <a class="primary-link" href="/evidence/{{ advice.id }}">Evidence</a>
+        <a class="primary-link" href="/advice/{{ advice.id }}">返回建议页</a>
+        <a class="primary-link" href="/evidence/{{ advice.id }}">查看数据证据</a>
     </div>
     {% endif %}
 </section>
@@ -19,7 +19,7 @@
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">Overall</div>
+            <div class="eyebrow">整体说明</div>
             <h3>{{ explanation.overall.market_regime }}</h3>
         </div>
     </div>
@@ -29,18 +29,18 @@
         {% endfor %}
     </ul>
     <div class="evidence-list">
-        <div><span>Current Position</span><strong>{{ fmt_pct(explanation.overall.portfolio.current_position_pct * 100) }}</strong></div>
-        <div><span>Total Budget</span><strong>{{ fmt_pct(explanation.overall.budget.total_budget_pct * 100) }}</strong></div>
-        <div><span>Single Weight Cap</span><strong>{{ fmt_pct(explanation.overall.budget.single_weight_cap * 100) }}</strong></div>
-        <div><span>Cash</span><strong>{{ fmt_money(explanation.overall.portfolio.cash_balance) }}</strong></div>
+        <div><span>当前仓位</span><strong>{{ fmt_pct(explanation.overall.portfolio.current_position_pct * 100) }}</strong></div>
+        <div><span>总预算上限</span><strong>{{ fmt_pct(explanation.overall.budget.total_budget_pct * 100) }}</strong></div>
+        <div><span>单只仓位上限</span><strong>{{ fmt_pct(explanation.overall.budget.single_weight_cap * 100) }}</strong></div>
+        <div><span>现金</span><strong>{{ fmt_money(explanation.overall.portfolio.cash_balance) }}</strong></div>
     </div>
 </section>
 
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">Category Board</div>
-            <h3>Category scores and candidate board</h3>
+            <div class="eyebrow">类别看板</div>
+            <h3>类别分数与候选看板</h3>
         </div>
     </div>
     {% if explanation.overall.candidate_summary %}
@@ -48,19 +48,19 @@
         <thead>
         <tr>
             <th>ETF</th>
-            <th>Selected</th>
-            <th>FinalScore</th>
-            <th>IntraScore</th>
-            <th>CategoryScore</th>
-            <th>Global Rank</th>
-            <th>Category Rank</th>
+            <th>是否入选</th>
+            <th>最终分</th>
+            <th>单票分</th>
+            <th>类别分</th>
+            <th>全局排名</th>
+            <th>类别排名</th>
         </tr>
         </thead>
         <tbody>
         {% for row in explanation.overall.candidate_summary %}
         <tr>
             <td>{{ row.name }}<br><span class="muted">{{ row.symbol }} / {{ row.category }}</span></td>
-            <td>{{ "Yes" if row.selected else "No" }}</td>
+            <td>{{ "是" if row.selected else "否" }}</td>
             <td>{{ "%.1f"|format(row.final_score) }}</td>
             <td>{{ "%.1f"|format(row.intra_score) }}</td>
             <td>{{ "%.1f"|format(row.category_score) }}</td>
@@ -73,33 +73,33 @@
     {% endif %}
 </section>
 
-{% if explanation.items %}
+{% if explanation["items"] %}
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">Per ETF</div>
-            <h3>Why each action and intent was produced</h3>
+            <div class="eyebrow">逐只 ETF</div>
+            <h3>每个动作和意图为什么会出现</h3>
         </div>
     </div>
     <div class="card-grid two">
-        {% for item in explanation.items %}
+        {% for item in explanation["items"] %}
         <article class="sub-card">
             <h4>{{ item.title }}</h4>
             <p>{{ item.summary }}</p>
             <div class="evidence-list">
-                <div><span>Action</span><strong>{{ item.action }}</strong></div>
-                <div><span>Intent</span><strong>{{ item.intent }}</strong></div>
-                <div><span>FinalScore</span><strong>{{ "%.1f"|format(item.scores.final_score) }}</strong></div>
-                <div><span>IntraScore</span><strong>{{ "%.1f"|format(item.scores.intra_score) }}</strong></div>
-                <div><span>CategoryScore</span><strong>{{ "%.1f"|format(item.scores.category_score) }}</strong></div>
-                <div><span>Global Rank</span><strong>{{ item.ranks.global_rank }}</strong></div>
-                <div><span>Category Rank</span><strong>{{ item.ranks.category_rank }}</strong></div>
-                <div><span>Current Weight</span><strong>{{ fmt_pct(item.weights.current_weight * 100) }}</strong></div>
-                <div><span>Target Weight</span><strong>{{ fmt_pct(item.weights.target_weight * 100) }}</strong></div>
-                <div><span>Delta Weight</span><strong>{{ fmt_pct(item.weights.delta_weight * 100) }}</strong></div>
-                <div><span>Replacement</span><strong>{{ item.comparison.replacement_symbol or "-" }}</strong></div>
-                <div><span>Score Gap</span><strong>{{ "%.1f"|format(item.comparison.score_gap_vs_holding) }}</strong></div>
-                <div><span>Hold Days</span><strong>{{ item.comparison.hold_days }}</strong></div>
+                <div><span>动作</span><strong>{{ item.action }}</strong></div>
+                <div><span>意图</span><strong>{{ item.intent }}</strong></div>
+                <div><span>最终分</span><strong>{{ "%.1f"|format(item.scores.final_score) }}</strong></div>
+                <div><span>单票分</span><strong>{{ "%.1f"|format(item.scores.intra_score) }}</strong></div>
+                <div><span>类别分</span><strong>{{ "%.1f"|format(item.scores.category_score) }}</strong></div>
+                <div><span>全局排名</span><strong>{{ item.ranks.global_rank }}</strong></div>
+                <div><span>类别排名</span><strong>{{ item.ranks.category_rank }}</strong></div>
+                <div><span>当前权重</span><strong>{{ fmt_pct(item.weights.current_weight * 100) }}</strong></div>
+                <div><span>目标权重</span><strong>{{ fmt_pct(item.weights.target_weight * 100) }}</strong></div>
+                <div><span>权重变化</span><strong>{{ fmt_pct(item.weights.delta_weight * 100) }}</strong></div>
+                <div><span>替代标的</span><strong>{{ item.comparison.replacement_symbol or "-" }}</strong></div>
+                <div><span>分差</span><strong>{{ "%.1f"|format(item.comparison.score_gap_vs_holding) }}</strong></div>
+                <div><span>已持有天数</span><strong>{{ item.comparison.hold_days }}</strong></div>
             </div>
             {% if item.feature_snapshot %}
             <div class="evidence-list" style="margin-top: 12px;">

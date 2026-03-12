@@ -3,15 +3,15 @@
 {% block content %}
 <section class="hero split">
     <div>
-        <div class="eyebrow">Advice</div>
-        <h2>{{ advice.display_action if advice else "No advice yet" }}</h2>
-        <p>{{ advice.summary_text if advice else "Generate advice after refreshing market data." }}</p>
+        <div class="eyebrow">今日建议</div>
+        <h2>{{ advice.display_action if advice else "还没有生成建议" }}</h2>
+        <p>{{ advice.summary_text if advice else "请先刷新数据，再生成今日建议。" }}</p>
     </div>
     {% if advice %}
     <div class="action-cluster">
         <span class="pill big">{{ advice.market_regime }}</span>
-        <a class="primary-link" href="/explanation/{{ advice.id }}">Explanation</a>
-        <a class="primary-link" href="/evidence/{{ advice.id }}">Evidence</a>
+        <a class="primary-link" href="/explanation/{{ advice.id }}">原因说明</a>
+        <a class="primary-link" href="/evidence/{{ advice.id }}">数据证据</a>
     </div>
     {% endif %}
 </section>
@@ -19,19 +19,19 @@
 {% if advice %}
 <section class="card-grid metrics">
     <article class="card metric">
-        <div class="eyebrow">Target Position</div>
+        <div class="eyebrow">目标仓位</div>
         <strong>{{ fmt_pct(advice.target_position_pct * 100) }}</strong>
     </article>
     <article class="card metric">
-        <div class="eyebrow">Current Position</div>
+        <div class="eyebrow">当前仓位</div>
         <strong>{{ fmt_pct(advice.current_position_pct * 100) }}</strong>
     </article>
     <article class="card metric">
-        <div class="eyebrow">Created At</div>
+        <div class="eyebrow">生成时间</div>
         <strong>{{ advice.created_at[:16].replace("T", " ") }}</strong>
     </article>
     <article class="card metric">
-        <div class="eyebrow">Reason Code</div>
+        <div class="eyebrow">原因代码</div>
         <strong>{{ advice.reason_code }}</strong>
     </article>
 </section>
@@ -39,40 +39,40 @@
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">Budget</div>
-            <h3>Budget and replacement constraints</h3>
+            <div class="eyebrow">预算</div>
+            <h3>预算与替换约束</h3>
         </div>
     </div>
     <div class="evidence-list">
-        <div><span>Total Budget</span><strong>{{ fmt_pct(advice.budget_context.total_budget_pct * 100) }}</strong></div>
-        <div><span>Single Weight Cap</span><strong>{{ fmt_pct(advice.budget_context.single_weight_cap * 100) }}</strong></div>
-        <div><span>Replace Threshold</span><strong>{{ "%.1f"|format(advice.budget_context.replace_threshold) }}</strong></div>
+        <div><span>总预算上限</span><strong>{{ fmt_pct(advice.budget_context.total_budget_pct * 100) }}</strong></div>
+        <div><span>单只仓位上限</span><strong>{{ fmt_pct(advice.budget_context.single_weight_cap * 100) }}</strong></div>
+        <div><span>替换阈值</span><strong>{{ "%.1f"|format(advice.budget_context.replace_threshold) }}</strong></div>
     </div>
 </section>
 
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">Action Items</div>
-            <h3>Displayed action vs internal intent</h3>
+            <div class="eyebrow">动作明细</div>
+            <h3>展示动作与内部意图</h3>
         </div>
     </div>
-    {% if advice.items %}
+    {% if advice["items"] %}
     <table class="data-table">
         <thead>
         <tr>
             <th>ETF</th>
-            <th>Action</th>
-            <th>Intent</th>
-            <th>Current</th>
-            <th>Target</th>
-            <th>Delta</th>
-            <th>Scores</th>
-            <th>Ranks</th>
+            <th>动作</th>
+            <th>意图</th>
+            <th>当前</th>
+            <th>目标</th>
+            <th>变化</th>
+            <th>分数</th>
+            <th>排名</th>
         </tr>
         </thead>
         <tbody>
-        {% for item in advice.items %}
+        {% for item in advice["items"] %}
         <tr>
             <td>{{ item.name }}<br><span class="muted">{{ item.symbol }} / {{ item.category }}</span></td>
             <td>{{ item.action }}</td>
@@ -93,7 +93,7 @@
             <td colspan="8" class="muted">
                 {{ item.reason_short }}
                 {% if item.replacement_symbol %}
-                Replacement: {{ item.replacement_symbol }}, gap {{ "%.1f"|format(item.score_gap_vs_holding) }}, threshold {{ "%.1f"|format(item.replace_threshold_used) }}.
+                替代标的：{{ item.replacement_symbol }}，分差 {{ "%.1f"|format(item.score_gap_vs_holding) }}，替换阈值 {{ "%.1f"|format(item.replace_threshold_used) }}。
                 {% endif %}
             </td>
         </tr>
@@ -101,15 +101,15 @@
         </tbody>
     </table>
     {% else %}
-    <p>No tradable action items were generated.</p>
+    <p>本次没有生成可执行的动作明细。</p>
     {% endif %}
 </section>
 
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">Candidate Board</div>
-            <h3>Top ETF candidates after full-universe ranking</h3>
+            <div class="eyebrow">候选看板</div>
+            <h3>全市场排序后的 ETF 候选</h3>
         </div>
     </div>
     {% if advice.candidate_summary %}
@@ -117,19 +117,19 @@
         <thead>
         <tr>
             <th>ETF</th>
-            <th>Selected</th>
-            <th>FinalScore</th>
-            <th>IntraScore</th>
-            <th>CategoryScore</th>
-            <th>Global Rank</th>
-            <th>Category Rank</th>
+            <th>是否入选</th>
+            <th>最终分</th>
+            <th>单票分</th>
+            <th>类别分</th>
+            <th>全局排名</th>
+            <th>类别排名</th>
         </tr>
         </thead>
         <tbody>
         {% for row in advice.candidate_summary %}
         <tr>
             <td>{{ row.name }}<br><span class="muted">{{ row.symbol }} / {{ row.category }}</span></td>
-            <td>{{ "Yes" if row.selected else "No" }}</td>
+            <td>{{ "是" if row.selected else "否" }}</td>
             <td>{{ "%.1f"|format(row.final_score) }}</td>
             <td>{{ "%.1f"|format(row.intra_score) }}</td>
             <td>{{ "%.1f"|format(row.category_score) }}</td>

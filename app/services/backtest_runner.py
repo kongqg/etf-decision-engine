@@ -507,8 +507,8 @@ class BacktestRunner:
 
     def _one_line_conclusion(self, metrics: dict[str, Any]) -> str:
         return (
-            f"Return {metrics['total_return_pct']:.2f}%, drawdown {metrics['max_drawdown_pct']:.2f}%, "
-            f"trades {metrics['trade_count']}."
+            f"累计收益 {metrics['total_return_pct']:.2f}%，最大回撤 {metrics['max_drawdown_pct']:.2f}%，"
+            f"共交易 {metrics['trade_count']} 次。"
         )
 
     def _apply_overrides(

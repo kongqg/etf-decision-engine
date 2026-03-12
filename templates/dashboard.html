@@ -3,16 +3,16 @@
 {% block content %}
 <section class="hero split">
     <div>
-        <div class="eyebrow">Dashboard</div>
-        <h2>Simple ETF score and portfolio decision system</h2>
-        <p>The strategy ranks the full ETF universe, allocates under budget constraints, and then compares target weights with current holdings.</p>
+        <div class="eyebrow">仪表盘</div>
+        <h2>ETF 实时决策助手</h2>
+        <p>先做全市场 ETF 排序，再按预算约束分配目标仓位，最后与当前持仓对比，生成买入、持有、减仓或退出建议。</p>
     </div>
     <div class="action-cluster">
         <form action="/actions/refresh-data" method="post">
-            <button class="secondary" type="submit">Refresh Data</button>
+            <button class="secondary" type="submit">刷新数据</button>
         </form>
         <form action="/actions/decide-now" method="post">
-            <button class="primary xl" type="submit">{{ session_button_label }}</button>
+            <button class="primary xl" type="submit">立即生成今天建议</button>
         </form>
     </div>
 </section>
@@ -20,19 +20,19 @@
 {% if portfolio %}
 <section class="card-grid metrics">
     <article class="card metric">
-        <div class="eyebrow">Total Asset</div>
+        <div class="eyebrow">总资产</div>
         <strong>{{ fmt_money(portfolio.total_asset) }}</strong>
     </article>
     <article class="card metric">
-        <div class="eyebrow">Cash</div>
+        <div class="eyebrow">现金</div>
         <strong>{{ fmt_money(portfolio.cash_balance) }}</strong>
     </article>
     <article class="card metric">
-        <div class="eyebrow">Market Value</div>
+        <div class="eyebrow">持仓市值</div>
         <strong>{{ fmt_money(portfolio.market_value) }}</strong>
     </article>
     <article class="card metric">
-        <div class="eyebrow">Cumulative Return</div>
+        <div class="eyebrow">累计收益率</div>
         <strong>{{ fmt_pct(performance.cumulative_return_pct) }}</strong>
     </article>
 </section>
@@ -42,8 +42,8 @@
     <article class="card">
         <div class="section-head">
             <div>
-                <div class="eyebrow">Latest Advice</div>
-                <h3>{{ advice.display_action if advice else "No advice yet" }}</h3>
+                <div class="eyebrow">最新建议</div>
+                <h3>{{ advice.display_action if advice else "还没有生成建议" }}</h3>
             </div>
             {% if advice %}
             <span class="pill">{{ advice.market_regime }}</span>
@@ -52,38 +52,38 @@
         {% if advice %}
         <p>{{ advice.summary_text }}</p>
         <div class="evidence-list">
-            <div><span>Target Position</span><strong>{{ fmt_pct(advice.target_position_pct * 100) }}</strong></div>
-            <div><span>Current Position</span><strong>{{ fmt_pct(advice.current_position_pct * 100) }}</strong></div>
-            <div><span>Tradable Items</span><strong>{{ advice.recommendation_counts.tradable }}</strong></div>
-            <div><span>Buy Actions</span><strong>{{ advice.recommendation_counts.buy }}</strong></div>
-            <div><span>Sell Actions</span><strong>{{ advice.recommendation_counts.sell }}</strong></div>
-            <div><span>Hold Actions</span><strong>{{ advice.recommendation_counts.hold }}</strong></div>
+            <div><span>目标仓位</span><strong>{{ fmt_pct(advice.target_position_pct * 100) }}</strong></div>
+            <div><span>当前仓位</span><strong>{{ fmt_pct(advice.current_position_pct * 100) }}</strong></div>
+            <div><span>可执行条目</span><strong>{{ advice.recommendation_counts.tradable }}</strong></div>
+            <div><span>买入动作</span><strong>{{ advice.recommendation_counts.buy }}</strong></div>
+            <div><span>卖出动作</span><strong>{{ advice.recommendation_counts.sell }}</strong></div>
+            <div><span>持有动作</span><strong>{{ advice.recommendation_counts.hold }}</strong></div>
         </div>
-        <a class="text-link" href="/advice/{{ advice.id }}">Open advice</a>
-        <a class="text-link" href="/explanation/{{ advice.id }}">Open explanation</a>
-        <a class="text-link" href="/evidence/{{ advice.id }}">Open evidence</a>
+        <a class="text-link" href="/advice/{{ advice.id }}">打开建议页</a>
+        <a class="text-link" href="/explanation/{{ advice.id }}">查看原因说明</a>
+        <a class="text-link" href="/evidence/{{ advice.id }}">查看数据证据</a>
         {% else %}
-        <p>Refresh data first, then generate advice.</p>
+        <p>请先刷新数据，再生成今日建议。</p>
         {% endif %}
     </article>
 
     <article class="card">
         <div class="section-head">
             <div>
-                <div class="eyebrow">Preferences</div>
-                <h3>{{ risk_mode_labels.get(preferences.risk_mode, "Balanced") if preferences else "No user" }}</h3>
+                <div class="eyebrow">用户偏好</div>
+                <h3>{{ risk_mode_labels.get(preferences.risk_mode, "正常") if preferences else "还没有用户" }}</h3>
             </div>
         </div>
         {% if preferences %}
         <div class="evidence-list">
-            <div><span>Risk Level</span><strong>{{ preferences.risk_level }}</strong></div>
-            <div><span>Gold ETF</span><strong>{{ "On" if preferences.allow_gold else "Off" }}</strong></div>
-            <div><span>Bond ETF</span><strong>{{ "On" if preferences.allow_bond else "Off" }}</strong></div>
-            <div><span>Cross Border ETF</span><strong>{{ "On" if preferences.allow_overseas else "Off" }}</strong></div>
-            <div><span>Min Trade Amount</span><strong>{{ fmt_money(preferences.min_trade_amount) }}</strong></div>
-            <div><span>Max Total Position</span><strong>{{ fmt_pct(preferences.max_total_position_pct * 100) }}</strong></div>
+            <div><span>风险偏好</span><strong>{{ preferences.risk_level }}</strong></div>
+            <div><span>黄金 ETF</span><strong>{{ "开启" if preferences.allow_gold else "关闭" }}</strong></div>
+            <div><span>债券 ETF</span><strong>{{ "开启" if preferences.allow_bond else "关闭" }}</strong></div>
+            <div><span>跨境 ETF</span><strong>{{ "开启" if preferences.allow_overseas else "关闭" }}</strong></div>
+            <div><span>最小交易金额</span><strong>{{ fmt_money(preferences.min_trade_amount) }}</strong></div>
+            <div><span>总仓位上限</span><strong>{{ fmt_pct(preferences.max_total_position_pct * 100) }}</strong></div>
         </div>
-        <a class="text-link" href="/settings">Adjust settings</a>
+        <a class="text-link" href="/settings">调整设置</a>
         {% endif %}
     </article>
 </section>

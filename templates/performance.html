@@ -94,7 +94,7 @@
         <tr>
             <td>{{ trade.executed_at[:16].replace("T", " ") }}</td>
             <td>{{ trade.name }}<br><span class="muted">{{ trade.symbol }}</span></td>
-            <td>{{ trade.side }}</td>
+            <td>{{ "买入" if trade.side == "buy" else "卖出" }}</td>
             <td>{{ "%.3f"|format(trade.price) }}</td>
             <td>{{ fmt_money(trade.amount) }}</td>
             <td>{{ "%.0f"|format(trade.quantity) }}</td>

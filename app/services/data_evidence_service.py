@@ -8,16 +8,25 @@ from sqlalchemy.orm import Session
 from app.repositories.advice_repo import get_advice_by_id, get_latest_advice
 from app.repositories.market_repo import get_features_by_trade_date
 
+QUALITY_STATUS_LABELS = {
+    "ok": "正常",
+    "weak": "需谨慎",
+    "blocked": "已拦截",
+}
+
 
 class DataEvidenceService:
     def build(self, session: Session, advice_id: int | None = None) -> dict[str, Any]:
         advice = get_advice_by_id(session, advice_id) if advice_id is not None else get_latest_advice(session)
         if advice is None:
-            raise ValueError("No advice record is available.")
+            raise ValueError("当前还没有可用的建议记录。")
 
         evidence = self._parse_json(advice.evidence_json)
         market_snapshot = evidence.get("market_snapshot", {})
-        quality_summary = evidence.get("data_quality_gate", {}).get("summary", {})
+        quality_summary = dict(evidence.get("data_quality_gate", {}).get("summary", {}))
+        quality_status = str(quality_summary.get("quality_status", ""))
+        if quality_status:
+            quality_summary["quality_status_label"] = QUALITY_STATUS_LABELS.get(quality_status, quality_status)
         feature_rows = get_features_by_trade_date(session, advice.advice_date)
 
         top_features = []
@@ -64,4 +73,3 @@ class DataEvidenceService:
                 return {}
             return loaded if isinstance(loaded, dict) else {}
         return {}
-

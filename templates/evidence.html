@@ -3,15 +3,15 @@
 {% block content %}
 <section class="hero split">
     <div>
-        <div class="eyebrow">Evidence</div>
-        <h2>{{ evidence.headline if evidence else "No evidence yet" }}</h2>
-        <p>Evidence now focuses on quality status, category scores, and the exact feature/rank snapshot behind the latest advice.</p>
+        <div class="eyebrow">数据证据</div>
+        <h2>{{ evidence.headline if evidence else "还没有证据数据" }}</h2>
+        <p>这里主要展示数据质量、类别分数，以及本次建议背后的特征和排名快照。</p>
     </div>
     {% if advice %}
     <div class="action-cluster">
         <span class="pill big">{{ advice.display_action }}</span>
         <span class="pill big">{{ advice.market_regime }}</span>
-        <a class="primary-link" href="/advice/{{ advice.id }}">Advice</a>
+        <a class="primary-link" href="/advice/{{ advice.id }}">返回建议页</a>
     </div>
     {% endif %}
 </section>
@@ -20,50 +20,50 @@
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">Quality</div>
+            <div class="eyebrow">质量</div>
             <h3>{{ evidence.quality_summary.verification_status }}</h3>
         </div>
     </div>
     <div class="evidence-list">
-        <div><span>Status</span><strong>{{ evidence.quality_summary.quality_status }}</strong></div>
-        <div><span>Latest Available Date</span><strong>{{ evidence.quality_summary.latest_available_date }}</strong></div>
-        <div><span>Coverage Ratio</span><strong>{{ "%.1f"|format(evidence.quality_summary.coverage_ratio * 100) }}%</strong></div>
-        <div><span>Fallback Ratio</span><strong>{{ "%.1f"|format(evidence.quality_summary.fallback_ratio * 100) }}%</strong></div>
-        <div><span>Stale Ratio</span><strong>{{ "%.1f"|format(evidence.quality_summary.stale_ratio * 100) }}%</strong></div>
+        <div><span>状态</span><strong>{{ evidence.quality_summary.quality_status_label or evidence.quality_summary.quality_status }}</strong></div>
+        <div><span>最新可用日期</span><strong>{{ evidence.quality_summary.latest_available_date }}</strong></div>
+        <div><span>覆盖率</span><strong>{{ "%.1f"|format(evidence.quality_summary.coverage_ratio * 100) }}%</strong></div>
+        <div><span>回退数据占比</span><strong>{{ "%.1f"|format(evidence.quality_summary.fallback_ratio * 100) }}%</strong></div>
+        <div><span>滞后数据占比</span><strong>{{ "%.1f"|format(evidence.quality_summary.stale_ratio * 100) }}%</strong></div>
     </div>
 </section>
 
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">Budget</div>
-            <h3>Budget context used by the advice</h3>
+            <div class="eyebrow">预算</div>
+            <h3>本次建议使用的预算上下文</h3>
         </div>
     </div>
     <div class="evidence-list">
-        <div><span>Total Budget</span><strong>{{ fmt_pct(evidence.budget_context.total_budget_pct * 100) }}</strong></div>
-        <div><span>Single Weight Cap</span><strong>{{ fmt_pct(evidence.budget_context.single_weight_cap * 100) }}</strong></div>
-        <div><span>Replace Threshold</span><strong>{{ "%.1f"|format(evidence.budget_context.replace_threshold) }}</strong></div>
+        <div><span>总预算上限</span><strong>{{ fmt_pct(evidence.budget_context.total_budget_pct * 100) }}</strong></div>
+        <div><span>单只仓位上限</span><strong>{{ fmt_pct(evidence.budget_context.single_weight_cap * 100) }}</strong></div>
+        <div><span>替换阈值</span><strong>{{ "%.1f"|format(evidence.budget_context.replace_threshold) }}</strong></div>
     </div>
 </section>
 
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">Category Scores</div>
-            <h3>Category regime is no longer a hard gate; it is part of FinalScore</h3>
+            <div class="eyebrow">类别分数</div>
+            <h3>类别环境不再是硬门槛，而是最终分的一部分</h3>
         </div>
     </div>
     {% if evidence.category_scores %}
     <table class="data-table">
         <thead>
         <tr>
-            <th>Category</th>
-            <th>Category Score</th>
-            <th>Top Mean Intra</th>
-            <th>Breadth</th>
-            <th>Momentum Score</th>
-            <th>Count</th>
+            <th>类别</th>
+            <th>类别分</th>
+            <th>头部均值</th>
+            <th>广度</th>
+            <th>动量分</th>
+            <th>数量</th>
         </tr>
         </thead>
         <tbody>
@@ -85,8 +85,8 @@
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">Top ETF Snapshot</div>
-            <h3>Feature and rank snapshot used by the scoring engine</h3>
+            <div class="eyebrow">头部 ETF 快照</div>
+            <h3>本次评分使用的特征与排名快照</h3>
         </div>
     </div>
     {% if evidence.top_features %}
@@ -95,12 +95,12 @@
         <article class="sub-card">
             <h4>{{ row.symbol }}</h4>
             <div class="evidence-list">
-                <div><span>FinalScore</span><strong>{{ "%.1f"|format(row.final_score) }}</strong></div>
-                <div><span>IntraScore</span><strong>{{ "%.1f"|format(row.intra_score) }}</strong></div>
-                <div><span>CategoryScore</span><strong>{{ "%.1f"|format(row.category_score) }}</strong></div>
-                <div><span>Global Rank</span><strong>{{ row.global_rank }}</strong></div>
-                <div><span>Category Rank</span><strong>{{ row.category_rank }}</strong></div>
-                <div><span>Filter Pass</span><strong>{{ "Yes" if row.basic_filter_pass else "No" }}</strong></div>
+                <div><span>最终分</span><strong>{{ "%.1f"|format(row.final_score) }}</strong></div>
+                <div><span>单票分</span><strong>{{ "%.1f"|format(row.intra_score) }}</strong></div>
+                <div><span>类别分</span><strong>{{ "%.1f"|format(row.category_score) }}</strong></div>
+                <div><span>全局排名</span><strong>{{ row.global_rank }}</strong></div>
+                <div><span>类别排名</span><strong>{{ row.category_rank }}</strong></div>
+                <div><span>是否通过过滤</span><strong>{{ "是" if row.basic_filter_pass else "否" }}</strong></div>
             </div>
             {% if row.features %}
             <div class="evidence-list" style="margin-top: 12px;">

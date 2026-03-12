@@ -8,6 +8,50 @@ from app.core.session_mode import SESSION_MODE_HINTS, SESSION_MODE_LABELS
 from app.services.risk_mode_service import RISK_MODE_LABELS
 from app.utils.formatters import dt_string, money, pct
 
+DATA_STATUS_LABELS = {
+    "ok": "正常",
+    "weak": "需谨慎",
+    "blocked": "已拦截",
+}
+
+ACTION_LABELS = {
+    "buy": "买入",
+    "sell": "卖出",
+    "hold": "持有",
+    "no_trade": "暂不交易",
+}
+
+INTENT_LABELS = {
+    "open": "开仓",
+    "add": "加仓",
+    "hold": "持有",
+    "reduce": "减仓",
+    "exit": "退出",
+}
+
+MARKET_REGIME_LABELS = {
+    "risk_on": "偏进攻",
+    "neutral": "中性",
+    "risk_off": "偏防守",
+}
+
+CATEGORY_LABELS = {
+    "stock_etf": "股票ETF",
+    "bond_etf": "债券ETF",
+    "gold_etf": "黄金ETF",
+    "cross_border_etf": "跨境ETF",
+    "money_etf": "货币ETF",
+}
+
+REASON_CODE_LABELS = {
+    "no_target": "暂无目标",
+    "portfolio_hold": "继续持有",
+    "rebalance": "调仓换仓",
+    "new_entry_or_add": "开仓或加仓",
+    "reduce_or_exit": "减仓或退出",
+    "data_quality_not_ready": "数据未就绪",
+}
+
 
 def serialize_advice_record(advice) -> dict[str, Any] | None:
     if advice is None:
@@ -18,14 +62,18 @@ def serialize_advice_record(advice) -> dict[str, Any] | None:
     candidate_summary = _parse_json(getattr(advice, "candidate_summary_json", "{}"))
     items = []
     for item in sorted(advice.items, key=lambda row: (row.rank, row.symbol)):
+        raw_action = str(item.action)
+        raw_intent = str(getattr(item, "intent", ""))
         items.append(
             {
                 "symbol": item.symbol,
                 "name": item.name,
                 "rank": item.rank,
-                "action": item.action,
-                "intent": getattr(item, "intent", ""),
-                "category": getattr(item, "category", ""),
+                "action": ACTION_LABELS.get(raw_action, raw_action),
+                "action_code": raw_action,
+                "intent": INTENT_LABELS.get(raw_intent, raw_intent),
+                "intent_code": raw_intent,
+                "category": CATEGORY_LABELS.get(str(getattr(item, "category", "")), getattr(item, "category", "")),
                 "current_weight": float(getattr(item, "current_weight", 0.0)),
                 "target_weight": float(getattr(item, "target_weight", 0.0)),
                 "delta_weight": float(getattr(item, "delta_weight", 0.0)),
@@ -50,23 +98,28 @@ def serialize_advice_record(advice) -> dict[str, Any] | None:
         )
 
     action_counts = {
-        action: sum(1 for item in items if item["action"] == action)
+        action: sum(1 for item in items if item["action_code"] == action)
         for action in ["buy", "sell", "hold", "no_trade"]
     }
     intent_counts = {
-        intent: sum(1 for item in items if item["intent"] == intent)
+        intent: sum(1 for item in items if item["intent_code"] == intent)
         for intent in ["open", "add", "hold", "reduce", "exit"]
     }
+    raw_action = str(advice.action)
+    raw_display_action = str(getattr(advice, "display_action", raw_action))
+    raw_reason_code = str(getattr(advice, "reason_code", ""))
+    raw_market_regime = str(advice.market_regime)
     return {
         "id": advice.id,
         "advice_date": advice.advice_date.isoformat(),
         "created_at": advice.created_at.isoformat(),
         "session_mode": advice.session_mode,
-        "action": advice.action,
-        "display_action": getattr(advice, "display_action", advice.action),
+        "action": ACTION_LABELS.get(raw_action, raw_action),
+        "display_action": ACTION_LABELS.get(raw_display_action, raw_display_action),
         "action_code": getattr(advice, "action_code", advice.action),
-        "reason_code": getattr(advice, "reason_code", ""),
-        "market_regime": advice.market_regime,
+        "reason_code": REASON_CODE_LABELS.get(raw_reason_code, raw_reason_code),
+        "market_regime": MARKET_REGIME_LABELS.get(raw_market_regime, raw_market_regime),
+        "market_regime_code": raw_market_regime,
         "target_position_pct": advice.target_position_pct,
         "current_position_pct": advice.current_position_pct,
         "summary_text": advice.summary_text,
@@ -77,7 +130,9 @@ def serialize_advice_record(advice) -> dict[str, Any] | None:
         "intent_counts": intent_counts,
         "target_portfolio": target_portfolio,
         "budget_context": budget_context,
-        "candidate_summary": candidate_summary if isinstance(candidate_summary, list) else evidence.get("candidate_summary", []),
+        "candidate_summary": _serialize_candidate_summary(
+            candidate_summary if isinstance(candidate_summary, list) else evidence.get("candidate_summary", [])
+        ),
         "recommendation_counts": {
             "tradable": len(items),
             "buy": action_counts["buy"],
@@ -119,8 +174,21 @@ def serialize_explanations(records) -> dict[str, Any]:
     for record in records:
         payload = _parse_json(record.explanation_json)
         if record.scope == "overall":
+            market_regime = str(payload.get("market_regime", ""))
+            if market_regime:
+                payload["market_regime"] = MARKET_REGIME_LABELS.get(market_regime, market_regime)
+            payload["candidate_summary"] = _serialize_candidate_summary(payload.get("candidate_summary", []))
             overall = payload
         else:
+            action = str(payload.get("action", ""))
+            intent = str(payload.get("intent", ""))
+            if action:
+                payload["action"] = ACTION_LABELS.get(action, action)
+            if intent:
+                payload["intent"] = INTENT_LABELS.get(intent, intent)
+            category = str(payload.get("category", ""))
+            if category:
+                payload["category"] = CATEGORY_LABELS.get(category, category)
             items.append(payload)
     return {"overall": overall, "items": items}
 
@@ -148,11 +216,12 @@ def build_data_status(snapshot=None, advice=None) -> dict[str, Any] | None:
     raw = _parse_json(getattr(snapshot, "raw_json", "{}"))
     quality = raw.get("quality_summary", {})
     source = raw.get("source", {})
-    tone = "ok" if quality.get("quality_status") == "ok" else "warn" if quality.get("quality_status") == "weak" else "risk"
+    quality_status = str(quality.get("quality_status", "")).strip().lower()
+    tone = "ok" if quality_status == "ok" else "warn" if quality_status == "weak" else "risk"
     return {
         "tone": tone,
-        "summary": quality.get("verification_status", "No data status"),
-        "badge_label": quality.get("quality_status", "-"),
+        "summary": quality.get("verification_status", "暂无数据状态"),
+        "badge_label": DATA_STATUS_LABELS.get(quality_status, quality.get("quality_status", "-")),
         "source_label": source.get("label", "-"),
         "verification_status": quality.get("verification_status", "-"),
         "data_type": quality.get("data_type", source.get("data_type", "-")),
@@ -193,3 +262,17 @@ def _parse_json(value: Any) -> Any:
             return {}
     return {}
 
+
+def _serialize_candidate_summary(rows: Any) -> list[dict[str, Any]]:
+    if not isinstance(rows, list):
+        return []
+    payload = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        item = dict(row)
+        category = str(item.get("category", ""))
+        if category:
+            item["category"] = CATEGORY_LABELS.get(category, category)
+        payload.append(item)
+    return payload

@@ -3,27 +3,27 @@
 {% block content %}
 <section class="hero">
     <div>
-        <div class="eyebrow">Portfolio</div>
-        <h2>Current position {{ fmt_pct(portfolio.current_position_pct * 100) }}</h2>
-        <p>Holdings remain the source of truth. The strategy compares them against target weights and only then emits buy/hold/sell actions with open/add/reduce/exit intents.</p>
+        <div class="eyebrow">持仓</div>
+        <h2>当前仓位 {{ fmt_pct(portfolio.current_position_pct * 100) }}</h2>
+        <p>真实持仓是事实来源。系统会把它和目标仓位对比，然后给出买入、持有、减仓或退出建议。</p>
     </div>
 </section>
 
 <section class="card-grid metrics">
     <article class="card metric">
-        <div class="eyebrow">Cash</div>
+        <div class="eyebrow">现金</div>
         <strong>{{ fmt_money(portfolio.cash_balance) }}</strong>
     </article>
     <article class="card metric">
-        <div class="eyebrow">Market Value</div>
+        <div class="eyebrow">持仓市值</div>
         <strong>{{ fmt_money(portfolio.market_value) }}</strong>
     </article>
     <article class="card metric">
-        <div class="eyebrow">Total Asset</div>
+        <div class="eyebrow">总资产</div>
         <strong>{{ fmt_money(portfolio.total_asset) }}</strong>
     </article>
     <article class="card metric">
-        <div class="eyebrow">Net Capital Flow</div>
+        <div class="eyebrow">净出入金</div>
         <strong>{{ fmt_money(portfolio.net_capital_flow_amount) }}</strong>
     </article>
 </section>
@@ -31,8 +31,8 @@
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">Holdings</div>
-            <h3>Current holdings vs target weights</h3>
+            <div class="eyebrow">当前持仓</div>
+            <h3>当前持仓与目标仓位对比</h3>
         </div>
     </div>
     {% if portfolio.holdings %}
@@ -40,13 +40,13 @@
         <thead>
         <tr>
             <th>ETF</th>
-            <th>Quantity</th>
-            <th>Avg Cost</th>
-            <th>Last Price</th>
-            <th>Current Weight</th>
-            <th>Target Weight</th>
-            <th>Delta</th>
-            <th>Action</th>
+            <th>份额</th>
+            <th>持仓成本</th>
+            <th>最新价</th>
+            <th>当前权重</th>
+            <th>目标权重</th>
+            <th>变化</th>
+            <th>建议动作</th>
         </tr>
         </thead>
         <tbody>
@@ -70,86 +70,86 @@
         </tbody>
     </table>
     {% else %}
-    <p>No holdings yet.</p>
+    <p>当前还没有持仓。</p>
     {% endif %}
 </section>
 
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">Record Trade</div>
-            <h3>Manual trade entry</h3>
+            <div class="eyebrow">记录成交</div>
+            <h3>手动录入一笔成交</h3>
         </div>
     </div>
     <form action="/actions/record-trade" method="post" class="form-grid">
         <label>
-            <span>Symbol</span>
+            <span>代码</span>
             <input type="text" name="symbol" required>
         </label>
         <label>
-            <span>Name</span>
+            <span>名称</span>
             <input type="text" name="name" required>
         </label>
         <label>
-            <span>Side</span>
+            <span>方向</span>
             <select name="side">
-                <option value="buy">buy</option>
-                <option value="sell">sell</option>
+                <option value="buy">买入</option>
+                <option value="sell">卖出</option>
             </select>
         </label>
         <label>
-            <span>Intent</span>
+            <span>意图</span>
             <select name="intent">
                 <option value="">-</option>
-                <option value="open">open</option>
-                <option value="add">add</option>
-                <option value="hold">hold</option>
-                <option value="reduce">reduce</option>
-                <option value="exit">exit</option>
+                <option value="open">开仓</option>
+                <option value="add">加仓</option>
+                <option value="hold">持有</option>
+                <option value="reduce">减仓</option>
+                <option value="exit">退出</option>
             </select>
         </label>
         <label>
-            <span>Price</span>
+            <span>价格</span>
             <input type="number" name="price" min="0.001" step="0.001" required>
         </label>
         <label>
-            <span>Amount</span>
+            <span>金额</span>
             <input type="number" name="amount" min="0.01" step="0.01" required>
         </label>
         <label>
-            <span>Quantity</span>
+            <span>份额</span>
             <input type="number" name="quantity" min="1" step="1">
         </label>
         <label>
-            <span>Fee</span>
+            <span>费用</span>
             <input type="number" name="fee" min="0" step="0.01" value="0">
         </label>
         <label>
-            <span>Weight Before</span>
+            <span>交易前权重</span>
             <input type="number" name="weight_before" min="0" step="0.0001" value="0">
         </label>
         <label>
-            <span>Weight After</span>
+            <span>交易后权重</span>
             <input type="number" name="weight_after" min="0" step="0.0001" value="0">
         </label>
         <label>
-            <span>Advice ID</span>
+            <span>建议 ID</span>
             <input type="number" name="related_advice_id" min="1" value="{{ advice.id if advice else '' }}">
         </label>
         <label>
-            <span>Advice Item ID</span>
+            <span>建议条目 ID</span>
             <input type="number" name="advice_item_id" min="1">
         </label>
         <label class="wide-field">
-            <span>Note</span>
+            <span>备注</span>
             <input type="text" name="note">
         </label>
         <label>
-            <span>Executed At</span>
+            <span>成交时间</span>
             <input type="datetime-local" name="executed_at" value="{{ now_iso }}" required>
         </label>
         <div class="form-actions">
-            <button class="primary" type="submit">Record Trade</button>
+            <button class="primary" type="submit">记录成交</button>
         </div>
     </form>
 </section>

@@ -23,6 +23,19 @@ from app.services.universe_filter_service import UniverseFilterService
 from app.utils.dates import detect_session_mode, get_now
 from app.utils.maths import round_money
 
+ACTION_DISPLAY_LABELS = {
+    "buy": "买入",
+    "sell": "卖出",
+    "hold": "持有",
+    "no_trade": "暂不交易",
+}
+
+MARKET_REGIME_LABELS = {
+    "risk_on": "偏进攻",
+    "neutral": "中性",
+    "risk_off": "偏防守",
+}
+
 
 class DecisionEngine:
     def __init__(self) -> None:
@@ -40,7 +53,7 @@ class DecisionEngine:
         user = get_user(session)
         preferences = get_preferences(session)
         if user is None or preferences is None:
-            raise ValueError("Please initialize the user before generating advice.")
+            raise ValueError("请先初始化用户，再生成建议。")
 
         current_time = now or get_now()
         latest_trade_date = get_latest_trade_date(session)
@@ -48,14 +61,14 @@ class DecisionEngine:
             self.market_data_service.refresh_data(session, now=current_time)
             latest_trade_date = get_latest_trade_date(session)
         if latest_trade_date is None:
-            raise ValueError("No ETF feature data is available.")
+            raise ValueError("当前没有可用的 ETF 特征数据。")
 
         feature_rows = get_features_by_trade_date(session, latest_trade_date)
         if not feature_rows:
             self.market_data_service.refresh_data(session, now=current_time)
             feature_rows = get_features_by_trade_date(session, latest_trade_date)
         if not feature_rows:
-            raise ValueError("No ETF feature data is available.")
+            raise ValueError("当前没有可用的 ETF 特征数据。")
 
         market_snapshot = get_latest_market_snapshot(session)
         plan = self.build_plan_from_features(
@@ -147,7 +160,7 @@ class DecisionEngine:
             "created_at": now,
             "session_mode": session_mode,
             "action": summary_action,
-            "display_action": summary_action,
+            "display_action": self._display_action_label(summary_action),
             "action_code": summary_action,
             "reason_code": reason_code,
             "market_regime": market_regime["market_regime"],
@@ -212,13 +225,13 @@ class DecisionEngine:
             "created_at": now,
             "session_mode": session_mode,
             "action": "no_trade",
-            "display_action": "no_trade",
+            "display_action": self._display_action_label("no_trade"),
             "action_code": "no_trade",
             "reason_code": "data_quality_not_ready",
             "market_regime": market_regime["market_regime"],
             "target_position_pct": 0.0,
             "current_position_pct": portfolio_summary.get("current_position_pct", 0.0),
-            "summary_text": "Data quality is not ready for formal advice today, so the strategy stays in no_trade.",
+            "summary_text": "今天的数据质量还不足以支持正式建议，因此系统保持暂不交易。",
             "risk_text": self.risk_service.build_global_risk_note(session_mode, market_regime["market_regime"]),
             "items": [],
             "evidence": evidence,
@@ -417,7 +430,7 @@ class DecisionEngine:
 
     def _execution_note(self, *, action: str, intent: str, tradability_mode: str) -> str:
         if action == "no_trade":
-            return "No executable trade is generated today."
+            return "今天没有生成可执行交易。"
         if tradability_mode == "t1":
             return f"Intent={intent}. This ETF follows T+1 settlement, so intraday reversal is not part of the strategy layer."
         return f"Intent={intent}. This ETF is treated as T+0-capable, but timing remains an execution note, not a score driver."
@@ -456,12 +469,13 @@ class DecisionEngine:
         allocation: dict[str, Any],
     ) -> str:
         if action == "no_trade":
-            return "No ETF passed both the score and budget rules today, so the system stays in no_trade."
+            return "今天没有 ETF 同时通过分数和预算规则，因此系统保持暂不交易。"
         top_names = ", ".join(item["name"] for item in items[:3])
+        market_regime_label = self._market_regime_label(market_regime["market_regime"])
         return (
-            f"Market regime is {market_regime['market_regime']}. "
-            f"Target budget is {allocation['total_budget_pct'] * 100:.1f}%. "
-            f"Main actions focus on {top_names}."
+            f"当前市场状态为 {market_regime_label}。"
+            f"目标预算仓位为 {allocation['total_budget_pct'] * 100:.1f}%。"
+            f"本次重点关注 {top_names}。"
         )
 
     def _reason_short(
@@ -480,30 +494,35 @@ class DecisionEngine:
         category_rank = int(row.get("category_rank", 0) or 0)
         if intent == "open":
             return (
-                f"New position. FinalScore {final_score:.1f}, global rank {global_rank}, category rank {category_rank}, "
-                f"and it entered the target portfolio."
+                f"新开仓。最终分 {final_score:.1f}，全局排名 {global_rank}，类别排名 {category_rank}，"
+                f"已进入目标组合。"
             )
         if intent == "add":
             return (
-                f"Add to an existing position. Target weight {target_weight * 100:.1f}% is above current weight "
-                f"{current_weight * 100:.1f}% while the ETF remains highly ranked."
+                f"对已有持仓继续加仓。目标权重 {target_weight * 100:.1f}% 高于当前权重 "
+                f"{current_weight * 100:.1f}%，而且这只 ETF 的排名仍然靠前。"
             )
         if intent == "hold":
             return (
-                f"Keep holding. FinalScore {final_score:.1f} still keeps it competitive, so the target weight stays close "
-                f"to the current weight."
+                f"继续持有。最终分 {final_score:.1f} 仍然具备竞争力，因此目标权重与当前权重接近。"
             )
         if intent == "reduce":
             return (
-                f"Reduce exposure. Target weight {target_weight * 100:.1f}% is below current weight "
-                f"{current_weight * 100:.1f}% after the ETF weakened versus alternatives."
+                f"降低仓位。目标权重 {target_weight * 100:.1f}% 低于当前权重 "
+                f"{current_weight * 100:.1f}%，说明它相对其他候选已经转弱。"
             )
         if intent == "exit":
             replace_note = ""
             if replacement_symbol:
-                replace_note = f" It is replaced by {replacement_symbol} with a score gap of {score_gap_vs_holding:.1f}."
-            return f"Exit the position because it dropped out of the target portfolio.{replace_note}"
-        return f"{action} is not triggered today."
+                replace_note = f" 它被 {replacement_symbol} 替代，两者分差为 {score_gap_vs_holding:.1f}。"
+            return f"退出这只持仓，因为它已经掉出目标组合。{replace_note}"
+        return f"今天不会触发 {action} 动作。"
+
+    def _display_action_label(self, action: str) -> str:
+        return ACTION_DISPLAY_LABELS.get(str(action), str(action))
+
+    def _market_regime_label(self, market_regime: str) -> str:
+        return MARKET_REGIME_LABELS.get(str(market_regime), str(market_regime))
 
     def _resolve_market_regime(self, scored_df: pd.DataFrame, raw_snapshot: dict[str, Any]) -> dict[str, Any]:
         if raw_snapshot:

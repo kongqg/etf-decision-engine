@@ -59,7 +59,7 @@ def _data_status_context(db: Session, advice=None) -> dict | None:
 def home(request: Request, status: str | None = Query(default=None), db: Session = Depends(get_db)):
     session_mode = detect_session_mode()
     user = get_user(db)
-    context = page_context("Dashboard", session_mode, status)
+    context = page_context("仪表盘", session_mode, status)
     context["data_status"] = _data_status_context(db)
     if user is None:
         return templates.TemplateResponse(request=request, name="onboarding.html", context=context)
@@ -83,7 +83,7 @@ def home(request: Request, status: str | None = Query(default=None), db: Session
 def advice_page(request: Request, status: str | None = Query(default=None), db: Session = Depends(get_db)):
     advice = get_latest_advice(db)
     session_mode = detect_session_mode()
-    context = page_context("Advice", session_mode, status)
+    context = page_context("今日建议", session_mode, status)
     context["data_status"] = _data_status_context(db, advice)
     context["advice"] = serialize_advice_record(advice) if advice else None
     context["explanation"] = serialize_explanations(get_explanations_by_advice(db, advice.id)) if advice else None
@@ -94,7 +94,7 @@ def advice_page(request: Request, status: str | None = Query(default=None), db: 
 def advice_detail_page(advice_id: int, request: Request, db: Session = Depends(get_db)):
     advice = get_advice_by_id(db, advice_id)
     session_mode = detect_session_mode()
-    context = page_context("Advice", session_mode)
+    context = page_context("今日建议", session_mode)
     context["data_status"] = _data_status_context(db, advice)
     context["advice"] = serialize_advice_record(advice) if advice else None
     context["explanation"] = serialize_explanations(get_explanations_by_advice(db, advice_id)) if advice else None
@@ -105,7 +105,7 @@ def advice_detail_page(advice_id: int, request: Request, db: Session = Depends(g
 def explanation_page(advice_id: int, request: Request, db: Session = Depends(get_db)):
     advice = get_advice_by_id(db, advice_id)
     session_mode = detect_session_mode()
-    context = page_context("Explanation", session_mode)
+    context = page_context("原因说明", session_mode)
     context["data_status"] = _data_status_context(db, advice)
     context["advice"] = serialize_advice_record(advice) if advice else None
     context["explanation"] = serialize_explanations(get_explanations_by_advice(db, advice_id)) if advice else None
@@ -115,7 +115,7 @@ def explanation_page(advice_id: int, request: Request, db: Session = Depends(get
 @router.get("/evidence")
 def evidence_page(request: Request, status: str | None = Query(default=None), db: Session = Depends(get_db)):
     session_mode = detect_session_mode()
-    context = page_context("Evidence", session_mode, status)
+    context = page_context("数据证据", session_mode, status)
     latest_advice = get_latest_advice(db)
     context["data_status"] = _data_status_context(db, latest_advice)
     context["advice"] = serialize_advice_record(latest_advice) if latest_advice else None
@@ -130,7 +130,7 @@ def evidence_page(request: Request, status: str | None = Query(default=None), db
 def evidence_detail_page(advice_id: int, request: Request, db: Session = Depends(get_db)):
     session_mode = detect_session_mode()
     advice = get_advice_by_id(db, advice_id)
-    context = page_context("Evidence", session_mode)
+    context = page_context("数据证据", session_mode)
     context["data_status"] = _data_status_context(db, advice)
     context["advice"] = serialize_advice_record(advice) if advice else None
     try:
@@ -145,7 +145,7 @@ def portfolio_page(request: Request, status: str | None = Query(default=None), d
     session_mode = detect_session_mode()
     latest_advice = get_latest_advice(db)
     serialized_advice = serialize_advice_record(latest_advice)
-    context = page_context("Portfolio", session_mode, status)
+    context = page_context("持仓", session_mode, status)
     context["portfolio"] = merge_portfolio_with_advice(portfolio_service.get_portfolio_summary(db), serialized_advice)
     context["advice"] = serialized_advice
     context["data_status"] = _data_status_context(db, latest_advice)
@@ -156,7 +156,7 @@ def portfolio_page(request: Request, status: str | None = Query(default=None), d
 @router.get("/performance")
 def performance_page(request: Request, status: str | None = Query(default=None), db: Session = Depends(get_db)):
     session_mode = detect_session_mode()
-    context = page_context("Performance", session_mode, status)
+    context = page_context("绩效", session_mode, status)
     context["performance"] = performance_service.get_summary(db)
     context["portfolio"] = portfolio_service.get_portfolio_summary(db)
     context["data_status"] = _data_status_context(db)
@@ -174,7 +174,7 @@ def backtest_page(
     preferences = get_preferences(db)
     user = get_user(db)
     now = get_now().date()
-    context = page_context("Backtest", session_mode, status)
+    context = page_context("历史回测", session_mode, status)
     context["preferences"] = preferences
     context["user"] = user
     context["backtest_result"] = backtest_service.load_saved_run(run_id) if run_id else None
@@ -198,7 +198,7 @@ def backtest_page(
 @router.get("/settings")
 def settings_page(request: Request, status: str | None = Query(default=None), db: Session = Depends(get_db)):
     session_mode = detect_session_mode()
-    context = page_context("Settings", session_mode, status)
+    context = page_context("设置", session_mode, status)
     context["preferences"] = get_preferences(db)
     context["user"] = get_user(db)
     context["data_status"] = _data_status_context(db)
@@ -208,7 +208,7 @@ def settings_page(request: Request, status: str | None = Query(default=None), db
 @router.get("/history")
 def history_page(request: Request, status: str | None = Query(default=None), db: Session = Depends(get_db)):
     session_mode = detect_session_mode()
-    context = page_context("History", session_mode, status)
+    context = page_context("建议历史", session_mode, status)
     context["history_rows"] = serialize_advice_history(list_advices(db, limit=80), trade_stats_by_advice(db))
     context["data_status"] = _data_status_context(db)
     return templates.TemplateResponse(request=request, name="history.html", context=context)
@@ -250,7 +250,7 @@ def run_backtest_action(
                 },
             ),
         )
-        return RedirectResponse(url=f"/backtest?run_id={result['run_id']}&status=Backtest completed", status_code=303)
+        return RedirectResponse(url=f"/backtest?run_id={result['run_id']}&status=回测已完成", status_code=303)
     except ValueError as exc:
         return RedirectResponse(url=f"/backtest?status={exc}", status_code=303)
 
@@ -276,7 +276,7 @@ def init_user_action(
         allow_overseas=allow_overseas,
         min_trade_amount=min_trade_amount,
     )
-    return RedirectResponse(url="/?status=User initialized", status_code=303)
+    return RedirectResponse(url="/?status=用户已初始化", status_code=303)
 
 
 @router.post("/actions/update-preferences")
@@ -305,7 +305,7 @@ def update_preferences_action(
             max_single_position_pct=max_single_position_pct / 100,
             cash_reserve_pct=cash_reserve_pct / 100,
         )
-        return RedirectResponse(url="/settings?status=Preferences updated", status_code=303)
+        return RedirectResponse(url="/settings?status=偏好设置已更新", status_code=303)
     except ValueError as exc:
         return RedirectResponse(url=f"/settings?status={exc}", status_code=303)
 
@@ -313,7 +313,7 @@ def update_preferences_action(
 @router.post("/actions/refresh-data")
 def refresh_data_action(db: Session = Depends(get_db)):
     result = market_data_service.refresh_data(db)
-    return RedirectResponse(url=f"/?status=Data refreshed ({result['data_source']})", status_code=303)
+    return RedirectResponse(url=f"/?status=数据已刷新（{result['data_source']}）", status_code=303)
 
 
 @router.post("/actions/decide-now")
@@ -365,7 +365,7 @@ def record_trade_action(
         )
         portfolio_service.update_market_prices(db)
         performance_service.capture_snapshot(db, snapshot_date=trade.executed_at.date())
-        return RedirectResponse(url="/portfolio?status=Trade recorded", status_code=303)
+        return RedirectResponse(url="/portfolio?status=成交已记录", status_code=303)
     except ValueError as exc:
         return RedirectResponse(url=f"/portfolio?status={exc}", status_code=303)
 

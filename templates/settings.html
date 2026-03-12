@@ -29,16 +29,16 @@
         <label>
             <span>风险模式</span>
             <select name="risk_mode">
-                <option value="conservative" {% if preferences.risk_mode == "conservative" %}selected{% endif %}>conservative</option>
-                <option value="balanced" {% if preferences.risk_mode == "balanced" %}selected{% endif %}>balanced</option>
-                <option value="aggressive" {% if preferences.risk_mode == "aggressive" %}selected{% endif %}>aggressive</option>
+                <option value="conservative" {% if preferences.risk_mode == "conservative" %}selected{% endif %}>稳一点</option>
+                <option value="balanced" {% if preferences.risk_mode == "balanced" %}selected{% endif %}>正常</option>
+                <option value="aggressive" {% if preferences.risk_mode == "aggressive" %}selected{% endif %}>冲一点</option>
             </select>
             <small class="muted">风险模式只调整预算和替换阈值，不再改评分公式。</small>
         </label>
         <label>
             <span>最小建议金额</span>
             <input type="number" name="min_trade_amount" min="0.01" step="0.01" value="{{ preferences.min_trade_amount }}" required>
-            <small class="muted">低于这个金额的仓位变化会被视为 no_trade 或 hold。</small>
+            <small class="muted">低于这个金额的仓位变化会被视为暂不交易或继续持有。</small>
         </label>
         <label>
             <span>总仓位上限</span>

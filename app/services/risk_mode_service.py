@@ -8,9 +8,9 @@ from app.core.config import get_settings, load_yaml_config
 
 
 RISK_MODE_LABELS = {
-    "conservative": "Conservative",
-    "balanced": "Balanced",
-    "aggressive": "Aggressive",
+    "conservative": "稳一点",
+    "balanced": "正常",
+    "aggressive": "冲一点",
 }
 
 
@@ -36,7 +36,7 @@ class RiskModeService:
         payload = self.modes.get(normalized, self.modes.get(self.default_mode, {}))
         return RiskModeProfile(
             risk_mode=normalized,
-            label=str(payload.get("label", RISK_MODE_LABELS.get(normalized, "Balanced"))),
+            label=str(payload.get("label", RISK_MODE_LABELS.get(normalized, "正常"))),
             total_budget_multiplier=float(payload.get("total_budget_multiplier", 1.0)),
             single_weight_multiplier=float(payload.get("single_weight_multiplier", 1.0)),
             category_cap_multiplier=float(payload.get("category_cap_multiplier", 1.0)),
@@ -54,4 +54,3 @@ class RiskModeService:
 @lru_cache(maxsize=1)
 def get_risk_mode_service() -> RiskModeService:
     return RiskModeService()
-
