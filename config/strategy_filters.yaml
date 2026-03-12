@@ -1,0 +1,14 @@
+min_history_days: 21
+min_avg_amount_20d: 10000000
+min_latest_amount: 1000000
+max_missing_ratio: 0.10
+max_volatility_20d: 8.0
+min_liquidity_score: 0.0
+exclude_fallback_sources: true
+exclude_stale_data: true
+exclude_anomaly: true
+
+preference_exclusions:
+  gold_etf: allow_gold
+  bond_etf: allow_bond
+  cross_border_etf: allow_overseas

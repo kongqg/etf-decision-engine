@@ -2,36 +2,32 @@ execution:
   default_slippage_bps: 3.0
   annualization_days: 252
 
-rolling_validation:
-  default_train_days: 60
-  default_validation_days: 20
-  default_step_days: 20
-
-calibration:
+grid_search:
   objective_weights:
     total_return_weight: 1.0
-    max_drawdown_weight: 0.7
-    stability_weight: 20.0
-    turnover_penalty_weight: 1.5
-    trade_count_penalty_weight: 0.12
+    max_drawdown_weight: 0.6
+    turnover_penalty_weight: 0.5
+    replacement_penalty_weight: 0.4
   search_space:
-    fallback.offensive_threshold:
-      - -4.0
-      - 0.0
-      - 4.0
-    decision_thresholds.open_threshold:
-      - -4.0
-      - 0.0
-      - 2.0
-    decision_thresholds.reduce_threshold:
-      - -2.0
-      - 0.0
-      - 2.0
-    decision_thresholds.full_exit_threshold:
-      - -4.0
-      - 0.0
-      - 4.0
-  target_holding_days_candidates:
-    - 4
-    - 5
-    - 7
+    intra_score_weights.momentum_20d_rank:
+      - 0.25
+      - 0.30
+      - 0.35
+    intra_score_weights.trend_rank:
+      - 0.10
+      - 0.15
+      - 0.20
+    final_score_weights.category_score:
+      - 0.20
+      - 0.30
+      - 0.40
+    selection.replace_threshold:
+      - 5.0
+      - 8.0
+      - 10.0
+    selection.max_selected_total:
+      - 2
+      - 3
+    selection.max_selected_per_category:
+      - 1
+      - 2

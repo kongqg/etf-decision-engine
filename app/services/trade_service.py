@@ -78,6 +78,10 @@ class TradeService:
             fee=fee,
             realized_pnl=realized_pnl,
             related_advice_id=payload.get("related_advice_id"),
+            advice_item_id=payload.get("advice_item_id"),
+            intent=str(payload.get("intent", "")),
+            weight_before=float(payload.get("weight_before", 0.0) or 0.0),
+            weight_after=float(payload.get("weight_after", 0.0) or 0.0),
             note=note,
         )
         session.add(trade)

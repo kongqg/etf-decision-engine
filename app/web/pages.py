@@ -14,16 +14,15 @@ from app.repositories.advice_repo import get_advice_by_id, get_explanations_by_a
 from app.repositories.market_repo import get_latest_market_snapshot
 from app.repositories.portfolio_repo import trade_stats_by_advice
 from app.repositories.user_repo import get_preferences, get_user
-from app.services.decision_engine import DecisionEngine
-from app.services.data_evidence_service import DataEvidenceService
+from app.services.backtest_service import BacktestRequest, BacktestService
 from app.services.capital_flow_service import CapitalFlowService
+from app.services.data_evidence_service import DataEvidenceService
+from app.services.decision_engine import DecisionEngine
 from app.services.market_data_service import MarketDataService
 from app.services.performance_service import PerformanceService
 from app.services.portfolio_service import PortfolioService
 from app.services.trade_service import TradeService
 from app.services.user_service import UserService
-from app.services.backtest_service import BacktestRequest, BacktestService
-from app.services.validation_service import RollingValidationRequest, ValidationService
 from app.utils.dates import detect_session_mode, get_now
 from app.web.presenters import (
     build_data_status,
@@ -48,17 +47,6 @@ trade_service = TradeService()
 capital_flow_service = CapitalFlowService()
 performance_service = PerformanceService()
 backtest_service = BacktestService()
-validation_service = ValidationService()
-
-
-def _parse_number_list(raw: str, *, cast=float) -> list:
-    values = []
-    for chunk in str(raw or "").split(","):
-        text = chunk.strip()
-        if not text:
-            continue
-        values.append(cast(text))
-    return values
 
 
 def _data_status_context(db: Session, advice=None) -> dict | None:
@@ -71,25 +59,21 @@ def _data_status_context(db: Session, advice=None) -> dict | None:
 def home(request: Request, status: str | None = Query(default=None), db: Session = Depends(get_db)):
     session_mode = detect_session_mode()
     user = get_user(db)
+    context = page_context("Dashboard", session_mode, status)
+    context["data_status"] = _data_status_context(db)
     if user is None:
-        context = page_context("初始化", session_mode, status)
-        context["data_status"] = _data_status_context(db)
         return templates.TemplateResponse(request=request, name="onboarding.html", context=context)
 
     preferences = get_preferences(db)
     portfolio = portfolio_service.get_portfolio_summary(db)
     latest_advice = get_latest_advice(db)
-    advice = serialize_advice_record(latest_advice)
-    performance = performance_service.get_summary(db)
-    context = page_context("仪表盘", session_mode, status)
     context.update(
         {
             "user": user,
             "preferences": preferences,
             "portfolio": portfolio,
-            "advice": advice,
-            "performance": performance,
-            "data_status": _data_status_context(db, latest_advice),
+            "advice": serialize_advice_record(latest_advice),
+            "performance": performance_service.get_summary(db),
         }
     )
     return templates.TemplateResponse(request=request, name="dashboard.html", context=context)
@@ -99,12 +83,10 @@ def home(request: Request, status: str | None = Query(default=None), db: Session
 def advice_page(request: Request, status: str | None = Query(default=None), db: Session = Depends(get_db)):
     advice = get_latest_advice(db)
     session_mode = detect_session_mode()
-    context = page_context("今日建议", session_mode, status)
+    context = page_context("Advice", session_mode, status)
     context["data_status"] = _data_status_context(db, advice)
-    if advice is None:
-        return templates.TemplateResponse(request=request, name="advice.html", context=context)
-    context["advice"] = serialize_advice_record(advice)
-    context["explanation"] = serialize_explanations(get_explanations_by_advice(db, advice.id))
+    context["advice"] = serialize_advice_record(advice) if advice else None
+    context["explanation"] = serialize_explanations(get_explanations_by_advice(db, advice.id)) if advice else None
     return templates.TemplateResponse(request=request, name="advice.html", context=context)
 
 
@@ -112,7 +94,7 @@ def advice_page(request: Request, status: str | None = Query(default=None), db: 
 def advice_detail_page(advice_id: int, request: Request, db: Session = Depends(get_db)):
     advice = get_advice_by_id(db, advice_id)
     session_mode = detect_session_mode()
-    context = page_context("建议详情", session_mode)
+    context = page_context("Advice", session_mode)
     context["data_status"] = _data_status_context(db, advice)
     context["advice"] = serialize_advice_record(advice) if advice else None
     context["explanation"] = serialize_explanations(get_explanations_by_advice(db, advice_id)) if advice else None
@@ -123,7 +105,7 @@ def advice_detail_page(advice_id: int, request: Request, db: Session = Depends(g
 def explanation_page(advice_id: int, request: Request, db: Session = Depends(get_db)):
     advice = get_advice_by_id(db, advice_id)
     session_mode = detect_session_mode()
-    context = page_context("解释详情", session_mode)
+    context = page_context("Explanation", session_mode)
     context["data_status"] = _data_status_context(db, advice)
     context["advice"] = serialize_advice_record(advice) if advice else None
     context["explanation"] = serialize_explanations(get_explanations_by_advice(db, advice_id)) if advice else None
@@ -133,40 +115,37 @@ def explanation_page(advice_id: int, request: Request, db: Session = Depends(get
 @router.get("/evidence")
 def evidence_page(request: Request, status: str | None = Query(default=None), db: Session = Depends(get_db)):
     session_mode = detect_session_mode()
-    context = page_context("数据证据", session_mode, status)
+    context = page_context("Evidence", session_mode, status)
+    latest_advice = get_latest_advice(db)
+    context["data_status"] = _data_status_context(db, latest_advice)
+    context["advice"] = serialize_advice_record(latest_advice) if latest_advice else None
     try:
-        evidence = data_evidence_service.build(db)
-        context["evidence"] = evidence
-        advice = get_advice_by_id(db, evidence["advice_id"])
-        context["advice"] = serialize_advice_record(advice)
-        context["data_status"] = _data_status_context(db, advice)
+        context["evidence"] = data_evidence_service.build(db)
     except ValueError:
         context["evidence"] = None
-        context["advice"] = None
-        context["data_status"] = _data_status_context(db)
     return templates.TemplateResponse(request=request, name="evidence.html", context=context)
 
 
 @router.get("/evidence/{advice_id}")
 def evidence_detail_page(advice_id: int, request: Request, db: Session = Depends(get_db)):
     session_mode = detect_session_mode()
-    context = page_context("数据证据", session_mode)
+    advice = get_advice_by_id(db, advice_id)
+    context = page_context("Evidence", session_mode)
+    context["data_status"] = _data_status_context(db, advice)
+    context["advice"] = serialize_advice_record(advice) if advice else None
     try:
         context["evidence"] = data_evidence_service.build(db, advice_id=advice_id)
     except ValueError:
         context["evidence"] = None
-    advice = get_advice_by_id(db, advice_id)
-    context["data_status"] = _data_status_context(db, advice)
-    context["advice"] = serialize_advice_record(advice) if advice else None
     return templates.TemplateResponse(request=request, name="evidence.html", context=context)
 
 
 @router.get("/portfolio")
 def portfolio_page(request: Request, status: str | None = Query(default=None), db: Session = Depends(get_db)):
     session_mode = detect_session_mode()
-    context = page_context("持仓", session_mode, status)
     latest_advice = get_latest_advice(db)
     serialized_advice = serialize_advice_record(latest_advice)
+    context = page_context("Portfolio", session_mode, status)
     context["portfolio"] = merge_portfolio_with_advice(portfolio_service.get_portfolio_summary(db), serialized_advice)
     context["advice"] = serialized_advice
     context["data_status"] = _data_status_context(db, latest_advice)
@@ -177,7 +156,7 @@ def portfolio_page(request: Request, status: str | None = Query(default=None), d
 @router.get("/performance")
 def performance_page(request: Request, status: str | None = Query(default=None), db: Session = Depends(get_db)):
     session_mode = detect_session_mode()
-    context = page_context("绩效", session_mode, status)
+    context = page_context("Performance", session_mode, status)
     context["performance"] = performance_service.get_summary(db)
     context["portfolio"] = portfolio_service.get_portfolio_summary(db)
     context["data_status"] = _data_status_context(db)
@@ -195,31 +174,22 @@ def backtest_page(
     preferences = get_preferences(db)
     user = get_user(db)
     now = get_now().date()
-    selected_run = backtest_service.load_saved_run(run_id) if run_id else None
-    latest_runs = backtest_service.list_saved_runs(limit=12)
-    default_end_date = now
-    default_start_date = now - timedelta(days=120)
-    context = page_context("历史回测", session_mode, status)
+    context = page_context("Backtest", session_mode, status)
     context["preferences"] = preferences
     context["user"] = user
-    context["backtest_result"] = selected_run
-    context["latest_backtest_runs"] = latest_runs
+    context["backtest_result"] = backtest_service.load_saved_run(run_id) if run_id else None
+    context["latest_backtest_runs"] = backtest_service.list_saved_runs(limit=12)
     context["default_backtest_form"] = {
-        "start_date": default_start_date.isoformat(),
-        "end_date": default_end_date.isoformat(),
+        "start_date": (now - timedelta(days=120)).isoformat(),
+        "end_date": now.isoformat(),
         "initial_capital": float(user.initial_capital) if user is not None else 100000.0,
         "risk_mode": getattr(preferences, "risk_mode", "balanced") if preferences is not None else "balanced",
-        "target_holding_days": int(getattr(preferences, "target_holding_days", 5)) if preferences is not None else 5,
-        "train_days": int(validation_service.config.get("rolling_validation", {}).get("default_train_days", 60)),
-        "validation_days": int(validation_service.config.get("rolling_validation", {}).get("default_validation_days", 20)),
-        "step_days": int(validation_service.config.get("rolling_validation", {}).get("default_step_days", 20)),
         "slippage_bps": float(backtest_service.config.get("execution", {}).get("default_slippage_bps", 3.0)),
         "execution_cost_bps": float(backtest_service.execution_cost_service.execution_cost_bps()),
-        "offensive_threshold_deltas": "-4,0,4",
-        "open_threshold_deltas": "-4,0,2",
-        "reduce_threshold_deltas": "-2,0,2",
-        "full_exit_threshold_deltas": "-4,0,4",
-        "target_holding_day_candidates": "4,5,7",
+        "replace_threshold": 8.0,
+        "max_selected_total": 3,
+        "max_selected_per_category": 2,
+        "min_final_score_for_target": 55.0,
     }
     context["data_status"] = _data_status_context(db)
     return templates.TemplateResponse(request=request, name="backtest.html", context=context)
@@ -228,9 +198,8 @@ def backtest_page(
 @router.get("/settings")
 def settings_page(request: Request, status: str | None = Query(default=None), db: Session = Depends(get_db)):
     session_mode = detect_session_mode()
-    preferences = get_preferences(db)
-    context = page_context("设置", session_mode, status)
-    context["preferences"] = preferences
+    context = page_context("Settings", session_mode, status)
+    context["preferences"] = get_preferences(db)
     context["user"] = get_user(db)
     context["data_status"] = _data_status_context(db)
     return templates.TemplateResponse(request=request, name="settings.html", context=context)
@@ -239,9 +208,8 @@ def settings_page(request: Request, status: str | None = Query(default=None), db
 @router.get("/history")
 def history_page(request: Request, status: str | None = Query(default=None), db: Session = Depends(get_db)):
     session_mode = detect_session_mode()
-    context = page_context("建议历史", session_mode, status)
-    advice_rows = list_advices(db, limit=80)
-    context["history_rows"] = serialize_advice_history(advice_rows, trade_stats_by_advice(db))
+    context = page_context("History", session_mode, status)
+    context["history_rows"] = serialize_advice_history(list_advices(db, limit=80), trade_stats_by_advice(db))
     context["data_status"] = _data_status_context(db)
     return templates.TemplateResponse(request=request, name="history.html", context=context)
 
@@ -252,74 +220,37 @@ def run_backtest_action(
     end_date: str = Form(...),
     initial_capital: float = Form(...),
     risk_mode: str = Form(default="balanced"),
-    target_holding_days: int = Form(default=5),
-    auto_calibrate: bool = Form(default=False),
-    train_days: int = Form(default=60),
-    validation_days: int = Form(default=20),
-    step_days: int = Form(default=20),
     slippage_bps: float = Form(default=3.0),
     execution_cost_bps: float = Form(default=5.0),
-    fee_rate_override: str = Form(default=""),
-    min_fee_override: str = Form(default=""),
     use_live_trades: bool = Form(default=False),
     allow_weak_data: bool = Form(default=False),
-    offensive_threshold_deltas: str = Form(default="-4,0,4"),
-    open_threshold_deltas: str = Form(default="-4,0,2"),
-    reduce_threshold_deltas: str = Form(default="-2,0,2"),
-    full_exit_threshold_deltas: str = Form(default="-4,0,4"),
-    target_holding_day_candidates: str = Form(default="4,5,7"),
+    replace_threshold: float = Form(default=8.0),
+    max_selected_total: int = Form(default=3),
+    max_selected_per_category: int = Form(default=2),
+    min_final_score_for_target: float = Form(default=55.0),
     db: Session = Depends(get_db),
 ):
     try:
-        parsed_start = date.fromisoformat(start_date)
-        parsed_end = date.fromisoformat(end_date)
-        parsed_fee_rate = float(fee_rate_override) if str(fee_rate_override).strip() else None
-        parsed_min_fee = float(min_fee_override) if str(min_fee_override).strip() else None
-        if auto_calibrate:
-            result = validation_service.run(
-                db,
-                RollingValidationRequest(
-                    start_date=parsed_start,
-                    end_date=parsed_end,
-                    initial_capital=initial_capital,
-                    train_days=train_days,
-                    validation_days=validation_days,
-                    step_days=step_days,
-                    use_live_trades=use_live_trades,
-                    risk_mode=risk_mode,
-                    slippage_bps=slippage_bps,
-                    execution_cost_bps_override=execution_cost_bps,
-                    fee_rate_override=parsed_fee_rate,
-                    min_fee_override=parsed_min_fee,
-                    strict_data_quality=not allow_weak_data,
-                    search_space={
-                        "fallback.offensive_threshold": _parse_number_list(offensive_threshold_deltas, cast=float),
-                        "decision_thresholds.open_threshold": _parse_number_list(open_threshold_deltas, cast=float),
-                        "decision_thresholds.reduce_threshold": _parse_number_list(reduce_threshold_deltas, cast=float),
-                        "decision_thresholds.full_exit_threshold": _parse_number_list(full_exit_threshold_deltas, cast=float),
-                    },
-                    target_holding_days_candidates=_parse_number_list(target_holding_day_candidates, cast=int),
-                ),
-            )
-            return RedirectResponse(url=f"/backtest?run_id={result['run_id']}&status=滚动验证已完成", status_code=303)
-
         result = backtest_service.run(
             db,
             BacktestRequest(
-                start_date=parsed_start,
-                end_date=parsed_end,
+                start_date=date.fromisoformat(start_date),
+                end_date=date.fromisoformat(end_date),
                 initial_capital=initial_capital,
                 use_live_trades=use_live_trades,
                 risk_mode=risk_mode,
-                target_holding_days=target_holding_days,
                 slippage_bps=slippage_bps,
                 execution_cost_bps_override=execution_cost_bps,
-                fee_rate_override=parsed_fee_rate,
-                min_fee_override=parsed_min_fee,
                 strict_data_quality=not allow_weak_data,
+                config_overrides={
+                    "selection.replace_threshold": replace_threshold,
+                    "selection.max_selected_total": max_selected_total,
+                    "selection.max_selected_per_category": max_selected_per_category,
+                    "selection.min_final_score_for_target": min_final_score_for_target,
+                },
             ),
         )
-        return RedirectResponse(url=f"/backtest?run_id={result['run_id']}&status=回测已完成", status_code=303)
+        return RedirectResponse(url=f"/backtest?run_id={result['run_id']}&status=Backtest completed", status_code=303)
     except ValueError as exc:
         return RedirectResponse(url=f"/backtest?status={exc}", status_code=303)
 
@@ -333,7 +264,6 @@ def init_user_action(
     allow_bond: bool = Form(default=False),
     allow_overseas: bool = Form(default=False),
     min_trade_amount: float = Form(default=settings.default_min_advice_amount),
-    target_holding_days: int = Form(default=5),
     db: Session = Depends(get_db),
 ):
     user_service.init_user(
@@ -345,9 +275,8 @@ def init_user_action(
         allow_bond=allow_bond,
         allow_overseas=allow_overseas,
         min_trade_amount=min_trade_amount,
-        target_holding_days=target_holding_days,
     )
-    return RedirectResponse(url="/?status=用户已初始化", status_code=303)
+    return RedirectResponse(url="/?status=User initialized", status_code=303)
 
 
 @router.post("/actions/update-preferences")
@@ -358,7 +287,6 @@ def update_preferences_action(
     allow_bond: bool = Form(default=False),
     allow_overseas: bool = Form(default=False),
     min_trade_amount: float = Form(default=settings.default_min_advice_amount),
-    target_holding_days: int = Form(default=5),
     max_total_position_pct: float = Form(...),
     max_single_position_pct: float = Form(...),
     cash_reserve_pct: float = Form(...),
@@ -373,12 +301,11 @@ def update_preferences_action(
             allow_bond=allow_bond,
             allow_overseas=allow_overseas,
             min_trade_amount=min_trade_amount,
-            target_holding_days=target_holding_days,
             max_total_position_pct=max_total_position_pct / 100,
             max_single_position_pct=max_single_position_pct / 100,
             cash_reserve_pct=cash_reserve_pct / 100,
         )
-        return RedirectResponse(url="/settings?status=偏好已更新", status_code=303)
+        return RedirectResponse(url="/settings?status=Preferences updated", status_code=303)
     except ValueError as exc:
         return RedirectResponse(url=f"/settings?status={exc}", status_code=303)
 
@@ -386,7 +313,7 @@ def update_preferences_action(
 @router.post("/actions/refresh-data")
 def refresh_data_action(db: Session = Depends(get_db)):
     result = market_data_service.refresh_data(db)
-    return RedirectResponse(url=f"/?status=数据已刷新（{result['data_source']}）", status_code=303)
+    return RedirectResponse(url=f"/?status=Data refreshed ({result['data_source']})", status_code=303)
 
 
 @router.post("/actions/decide-now")
@@ -408,27 +335,37 @@ def record_trade_action(
     quantity: float | None = Form(default=None),
     fee: float = Form(default=0.0),
     related_advice_id: int | None = Form(default=None),
+    advice_item_id: int | None = Form(default=None),
+    intent: str = Form(default=""),
+    weight_before: float = Form(default=0.0),
+    weight_after: float = Form(default=0.0),
     note: str = Form(default=""),
     executed_at: str = Form(...),
     db: Session = Depends(get_db),
 ):
     try:
-        payload = {
-            "symbol": symbol,
-            "name": name,
-            "side": side,
-            "price": price,
-            "amount": amount,
-            "quantity": quantity,
-            "fee": fee,
-            "related_advice_id": related_advice_id,
-            "note": note,
-            "executed_at": datetime.fromisoformat(executed_at),
-        }
-        trade = trade_service.record_trade(db, payload)
+        trade = trade_service.record_trade(
+            db,
+            {
+                "symbol": symbol,
+                "name": name,
+                "side": side,
+                "price": price,
+                "amount": amount,
+                "quantity": quantity,
+                "fee": fee,
+                "related_advice_id": related_advice_id,
+                "advice_item_id": advice_item_id,
+                "intent": intent,
+                "weight_before": weight_before,
+                "weight_after": weight_after,
+                "note": note,
+                "executed_at": datetime.fromisoformat(executed_at),
+            },
+        )
         portfolio_service.update_market_prices(db)
         performance_service.capture_snapshot(db, snapshot_date=trade.executed_at.date())
-        return RedirectResponse(url="/portfolio?status=成交已记录", status_code=303)
+        return RedirectResponse(url="/portfolio?status=Trade recorded", status_code=303)
     except ValueError as exc:
         return RedirectResponse(url=f"/portfolio?status={exc}", status_code=303)
 
@@ -451,9 +388,7 @@ def adjust_capital_action(
                 "executed_at": datetime.fromisoformat(executed_at),
             },
         )
-        portfolio_service.update_market_prices(db)
         performance_service.capture_snapshot(db, snapshot_date=flow.executed_at.date())
-        action_label = "入金" if flow.flow_type == "deposit" else "出金"
-        return RedirectResponse(url=f"/portfolio?status={action_label}已记录", status_code=303)
+        return RedirectResponse(url="/portfolio?status=Capital adjusted", status_code=303)
     except ValueError as exc:
         return RedirectResponse(url=f"/portfolio?status={exc}", status_code=303)

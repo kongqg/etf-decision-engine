@@ -16,6 +16,8 @@ from app.services.decision_policy_service import get_decision_policy_service
 from app.services.data_quality_service import DataQualityService
 from app.services.feature_engine import FeatureEngine
 from app.services.market_regime_service import MarketRegimeService
+from app.services.scoring_engine import ScoringEngine
+from app.services.universe_filter_service import UniverseFilterService
 from app.utils.dates import detect_session_mode, get_now, latest_market_date
 
 
@@ -68,6 +70,8 @@ class MarketDataService:
         self.market_regime_service = MarketRegimeService()
         self.data_quality_service = DataQualityService()
         self.policy = get_decision_policy_service()
+        self.filter_service = UniverseFilterService()
+        self.scoring_engine = ScoringEngine()
         self.risk_rules = load_yaml_config(settings.config_dir / "risk_rules.yaml")
         self.source_loader_map = {
             "akshare": self._load_history_from_akshare,
@@ -191,6 +195,9 @@ class MarketDataService:
 
         features_df = pd.DataFrame(rows)
         features_df = self._apply_decision_metadata(features_df)
+        filtered_for_scoring = self.filter_service.apply(features_df)
+        scoring_result = self.scoring_engine.score(filtered_for_scoring)
+        features_df = scoring_result["scored_df"]
         formal_market_df = features_df[features_df["formal_eligible"]].copy()
         snapshot_payload = self.market_regime_service.evaluate(formal_market_df if not formal_market_df.empty else features_df)
 
@@ -248,10 +255,25 @@ class MarketDataService:
                 decision_category=str(row["decision_category"]),
                 tradability_mode=str(row["tradability_mode"]),
                 anomaly_flag=bool(row["anomaly_flag"]),
-                filter_pass=False,
-                total_score=0.0,
-                rank_in_pool=None,
-                breakdown_json=json.dumps({}, ensure_ascii=False),
+                filter_pass=bool(row.get("filter_pass", False)),
+                total_score=float(row.get("total_score", row.get("final_score", 0.0))),
+                rank_in_pool=int(row["rank_in_pool"]) if pd.notna(row.get("rank_in_pool")) else None,
+                breakdown_json=str(row.get("breakdown_json", json.dumps({}, ensure_ascii=False))),
+                momentum_5d_rank=float(row.get("momentum_5d_rank", 0.0)),
+                momentum_10d_rank=float(row.get("momentum_10d_rank", 0.0)),
+                momentum_20d_rank=float(row.get("momentum_20d_rank", 0.0)),
+                trend_rank=float(row.get("trend_rank", 0.0)),
+                volatility_rank=float(row.get("volatility_rank", 0.0)),
+                drawdown_rank=float(row.get("drawdown_rank", 0.0)),
+                liquidity_rank=float(row.get("liquidity_rank", 0.0)),
+                intra_score=float(row.get("intra_score", 0.0)),
+                category_score=float(row.get("category_score", 0.0)),
+                final_score=float(row.get("final_score", 0.0)),
+                global_rank=int(row["global_rank"]) if pd.notna(row.get("global_rank")) else None,
+                category_rank=int(row["category_rank"]) if pd.notna(row.get("category_rank")) else None,
+                basic_filter_pass=bool(row.get("basic_filter_pass", False)),
+                basic_filter_reason=str(row.get("basic_filter_reason", "")),
+                score_breakdown_json=str(row.get("score_breakdown_json", row.get("breakdown_json", "{}"))),
             )
             for _, row in features_df.iterrows()
         ]
@@ -276,10 +298,11 @@ class MarketDataService:
                 risk_appetite_score=float(snapshot_payload["risk_appetite_score"]),
                 trend_score=float(snapshot_payload["trend_score"]),
                 recommended_position_pct=float(snapshot_payload["recommended_position_pct"]),
+                budget_total_pct=float(snapshot_payload.get("budget_total_pct", snapshot_payload["recommended_position_pct"])),
+                budget_by_category_json=json.dumps(snapshot_payload.get("budget_by_category", {}), ensure_ascii=False),
                 raw_json=json.dumps(
                     {
                         "evidence": snapshot_payload["evidence"],
-                        "formulas": snapshot_payload["formulas"],
                         "source": {
                             "code": data_source,
                             "label": source_meta["label"],
@@ -307,6 +330,7 @@ class MarketDataService:
                                 "end_date": trade_date.strftime("%Y%m%d"),
                             },
                         },
+                        "category_scores": scoring_result["category_scores"],
                         "quality_summary": quality_summary,
                         "quality_checks": quality_checks,
                         "series_samples": series_samples,
@@ -343,6 +367,7 @@ class MarketDataService:
             result_type="expand",
         )
         df["decision_category"] = decision_meta["category"]
+        df["category_label"] = decision_meta["category_label"]
         df["tradability_mode"] = decision_meta["tradability_mode"]
         category_return = df.groupby("decision_category")["momentum_10d"].transform("mean")
         df["category_return_10d"] = category_return.fillna(0.0)

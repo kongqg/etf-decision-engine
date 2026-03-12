@@ -1,0 +1,29 @@
+thresholds:
+  risk_on_min_score: 60.0
+  neutral_min_score: 40.0
+
+budgets:
+  risk_on:
+    total_budget_pct: 0.80
+    category_caps:
+      stock_etf: 0.60
+      bond_etf: 0.35
+      gold_etf: 0.20
+      cross_border_etf: 0.25
+      money_etf: 0.15
+  neutral:
+    total_budget_pct: 0.55
+    category_caps:
+      stock_etf: 0.40
+      bond_etf: 0.30
+      gold_etf: 0.20
+      cross_border_etf: 0.20
+      money_etf: 0.15
+  risk_off:
+    total_budget_pct: 0.25
+    category_caps:
+      stock_etf: 0.15
+      bond_etf: 0.20
+      gold_etf: 0.15
+      cross_border_etf: 0.10
+      money_etf: 0.10

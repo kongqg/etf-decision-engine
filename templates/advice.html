@@ -3,16 +3,15 @@
 {% block content %}
 <section class="hero split">
     <div>
-        <div class="eyebrow">今日建议</div>
-        <h2>{{ advice.action if advice else "还没有建议记录" }}</h2>
-        <p>{{ advice.summary_text if advice else "先去首页刷新数据，再生成建议。" }}</p>
+        <div class="eyebrow">Advice</div>
+        <h2>{{ advice.display_action if advice else "No advice yet" }}</h2>
+        <p>{{ advice.summary_text if advice else "Generate advice after refreshing market data." }}</p>
     </div>
     {% if advice %}
     <div class="action-cluster">
         <span class="pill big">{{ advice.market_regime }}</span>
-        <span class="pill big">{{ session_button_label }}</span>
-        <a class="primary-link" href="/explanation/{{ advice.id }}">查看完整解释</a>
-        <a class="primary-link" href="/evidence/{{ advice.id }}">查看数据证据</a>
+        <a class="primary-link" href="/explanation/{{ advice.id }}">Explanation</a>
+        <a class="primary-link" href="/evidence/{{ advice.id }}">Evidence</a>
     </div>
     {% endif %}
 </section>
@@ -20,436 +19,127 @@
 {% if advice %}
 <section class="card-grid metrics">
     <article class="card metric">
-        <div class="eyebrow">建议总仓位</div>
+        <div class="eyebrow">Target Position</div>
         <strong>{{ fmt_pct(advice.target_position_pct * 100) }}</strong>
     </article>
     <article class="card metric">
-        <div class="eyebrow">当前仓位</div>
+        <div class="eyebrow">Current Position</div>
         <strong>{{ fmt_pct(advice.current_position_pct * 100) }}</strong>
     </article>
     <article class="card metric">
-        <div class="eyebrow">生成时间</div>
+        <div class="eyebrow">Created At</div>
         <strong>{{ advice.created_at[:16].replace("T", " ") }}</strong>
     </article>
     <article class="card metric">
-        <div class="eyebrow">主要风险</div>
-        <strong>{{ advice.risk_text }}</strong>
+        <div class="eyebrow">Reason Code</div>
+        <strong>{{ advice.reason_code }}</strong>
     </article>
 </section>
 
-{% if explanation and explanation["overall"] %}
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">为什么这样建议</div>
-            <h3>{{ explanation["overall"]["headline"] }}</h3>
+            <div class="eyebrow">Budget</div>
+            <h3>Budget and replacement constraints</h3>
         </div>
     </div>
     <div class="evidence-list">
-        {% for item in explanation["overall"]["evidence"] %}
-        <div><span>{{ item.label }}</span><strong>{{ item.value }}</strong></div>
-        {% endfor %}
+        <div><span>Total Budget</span><strong>{{ fmt_pct(advice.budget_context.total_budget_pct * 100) }}</strong></div>
+        <div><span>Single Weight Cap</span><strong>{{ fmt_pct(advice.budget_context.single_weight_cap * 100) }}</strong></div>
+        <div><span>Replace Threshold</span><strong>{{ "%.1f"|format(advice.budget_context.replace_threshold) }}</strong></div>
     </div>
-    <div class="evidence-list" style="margin-top: 14px;">
-        {% for item in explanation["overall"]["source_info"] %}
-        <div><span>{{ item.label }}</span><strong>{{ item.value }}</strong></div>
-        {% endfor %}
-    </div>
-    <ul class="plain-list">
-        {% for reason in explanation["overall"]["reasons"] %}
-        <li>{{ reason }}</li>
-        {% endfor %}
-    </ul>
-    <div class="evidence-list" style="margin-top: 14px;">
-        <div><span>系统出手规则</span><strong>{{ explanation["overall"]["execution_rule"]["result"] }}</strong></div>
-        <div><span>当前最高分</span><strong>{{ "%.1f"|format(explanation["overall"]["execution_rule"]["top_score"]) }}</strong></div>
-        <div><span>分数阈值</span><strong>{{ "%.1f"|format(explanation["overall"]["execution_rule"]["threshold"]) }}</strong></div>
-    </div>
-    <p class="muted">{{ explanation["overall"]["source_note"] }}</p>
-    <p class="muted">{{ explanation["overall"]["session_hint"] }}</p>
 </section>
-{% endif %}
 
-{% if advice["transition_plan"] %}
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">目标组合</div>
-            <h3>先确定目标组合，再看当前组合怎么过渡过去</h3>
+            <div class="eyebrow">Action Items</div>
+            <h3>Displayed action vs internal intent</h3>
         </div>
     </div>
-    {% if explanation and explanation["overall"] and explanation["overall"]["portfolio_transition"]["notes"] %}
-    <ul class="plain-list">
-        {% for note in explanation["overall"]["portfolio_transition"]["notes"] %}
-        <li>{{ note }}</li>
-        {% endfor %}
-    </ul>
-    {% endif %}
+    {% if advice.items %}
     <table class="data-table">
         <thead>
         <tr>
             <th>ETF</th>
-            <th>当前权重</th>
-            <th>目标权重</th>
-            <th>权重变化</th>
-            <th>正式动作</th>
-            <th>执行状态</th>
+            <th>Action</th>
+            <th>Intent</th>
+            <th>Current</th>
+            <th>Target</th>
+            <th>Delta</th>
+            <th>Scores</th>
+            <th>Ranks</th>
         </tr>
         </thead>
         <tbody>
-        {% for item in advice["transition_plan"] %}
+        {% for item in advice.items %}
         <tr>
-            <td>{{ item.name }}<br><span class="muted">{{ item.symbol }}</span></td>
+            <td>{{ item.name }}<br><span class="muted">{{ item.symbol }} / {{ item.category }}</span></td>
+            <td>{{ item.action }}</td>
+            <td>{{ item.intent }}</td>
             <td>{{ fmt_pct(item.current_weight * 100) }}</td>
             <td>{{ fmt_pct(item.target_weight * 100) }}</td>
             <td>{{ fmt_pct(item.delta_weight * 100) }}</td>
-            <td>{{ item.action }}<br><span class="muted">{{ item.transition_label }}</span></td>
-            <td>{{ item.execution_status }}{% if item.blocked_reason %}<br><span class="muted">{{ item.blocked_reason }}</span>{% endif %}</td>
+            <td>
+                F {{ "%.1f"|format(item.final_score) }}<br>
+                <span class="muted">I {{ "%.1f"|format(item.intra_score) }} / C {{ "%.1f"|format(item.category_score) }}</span>
+            </td>
+            <td>
+                G {{ item.global_rank }}<br>
+                <span class="muted">C {{ item.category_rank }}</span>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="8" class="muted">
+                {{ item.reason_short }}
+                {% if item.replacement_symbol %}
+                Replacement: {{ item.replacement_symbol }}, gap {{ "%.1f"|format(item.score_gap_vs_holding) }}, threshold {{ "%.1f"|format(item.replace_threshold_used) }}.
+                {% endif %}
+            </td>
         </tr>
         {% endfor %}
         </tbody>
     </table>
-</section>
-{% endif %}
-
-<section class="card wide">
-    <div class="section-head">
-        <div>
-            <div class="eyebrow">可执行推荐</div>
-            <h3>本次最值得先执行的动作</h3>
-        </div>
-    </div>
-    {% if advice["executable_recommendations"] %}
-    <div class="card-grid three">
-        {% for item in advice["executable_recommendations"] %}
-        <article class="pick-card">
-            <div class="pick-head">
-                <div>
-                    <h4>{{ item.name }}</h4>
-                    <p>{{ item.symbol }}</p>
-                </div>
-                <div class="action-cluster">
-                    <span class="pill">{{ item.execution_status }}</span>
-                    <span class="pill">{{ item.asset_class|default("未知类别") }}</span>
-                    <span class="pill">{{ item.trade_mode|default("-") }}</span>
-                    <span class="pill">{{ item.risk_level }}</span>
-                </div>
-            </div>
-            <div class="pick-metrics">
-                <div><span>建议金额</span><strong>{{ fmt_money(item.suggested_amount|default(0, true)) }}</strong></div>
-                <div><span>1手门槛</span><strong>{{ fmt_money(item.min_order_amount|default(0, true)) }}</strong></div>
-                <div><span>决策分</span><strong>{{ "%.1f"|format(item.score|default(item.decision_score|default(0, true), true)) }}</strong></div>
-                <div><span>统一成本</span><strong>{{ "%.1f"|format(item.execution_cost_bps|default(0)) }} bps</strong></div>
-                <div><span>成本前优势</span><strong>{{ "%.1f"|format(item.expected_edge_before_cost|default(0)) }} bps</strong></div>
-                <div><span>成本后优势</span><strong>{{ "%.1f"|format(item.expected_edge_after_cost|default(0)) }} bps</strong></div>
-                <div><span>预计执行成本</span><strong>{{ fmt_money(item.estimated_execution_cost|default(item.estimated_fee|default(0))) }}</strong></div>
-                <div><span>当前权重</span><strong>{{ fmt_pct(item.current_weight * 100) }}</strong></div>
-                <div><span>目标权重</span><strong>{{ fmt_pct(item.target_weight * 100) }}</strong></div>
-            </div>
-            {% if item.is_budget_substitute %}
-            <p class="muted">主配置首选：{{ item.primary_asset_class }}。这只是预算内替代执行，不是当前主配置首选。</p>
-            {% endif %}
-            <p>{{ item.execution_note or item.reason_short }}</p>
-            {% if item.execution_timing_mode %}
-            <div class="pick-metrics">
-                <div><span>执行节奏</span><strong>{{ item.execution_timing_label or item.execution_timing_mode or "执行提示" }}</strong></div>
-                <div><span>是否启用时间优化</span><strong>{{ "是" if item.timing_rule_applied else "否" }}</strong></div>
-                <div><span>建议时段</span><strong>{{ item.recommended_execution_windows|join(" / ") if item.recommended_execution_windows else "-" }}</strong></div>
-                <div><span>尽量避开</span><strong>{{ item.avoid_execution_windows|join(" / ") if item.avoid_execution_windows else "-" }}</strong></div>
-            </div>
-            {% endif %}
-            <p class="muted">{{ item.trade_mode_note|default("") }}</p>
-            {% if item.timing_note %}
-            <p class="muted">{{ item.timing_note }}</p>
-            {% endif %}
-            <a class="primary-link" href="/explanation/{{ advice.id }}">查看为什么推荐它</a>
-        </article>
-        {% endfor %}
-    </div>
-    <div class="score-compare">
-        {% for item in advice["executable_recommendations"] %}
-        {% set bar_width = 0 if item.score < 0 else 100 if item.score > 100 else item.score %}
-        <div class="bar-row">
-            <span>{{ item.name }}</span>
-            <div class="bar-track"><div class="bar-fill" style="width: {{ bar_width }}%;"></div></div>
-            <strong>{{ "%.1f"|format(item.score) }}</strong>
-        </div>
-        {% endfor %}
-    </div>
     {% else %}
-    <p>本次没有生成可直接执行的 ETF 买入建议。下面如果有“买得起但当前不建议买”“关注标的”或“手续费暂不划算”，说明它们各有原因，不适合现在马上下单。</p>
+    <p>No tradable action items were generated.</p>
     {% endif %}
 </section>
 
-{% if advice["portfolio_review_items"] %}
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">持仓复核</div>
-            <h3>当前持仓这次分别怎么处理</h3>
+            <div class="eyebrow">Candidate Board</div>
+            <h3>Top ETF candidates after full-universe ranking</h3>
         </div>
     </div>
-    <div class="card-grid three">
-        {% for item in advice["portfolio_review_items"] %}
-        <article class="pick-card">
-            <div class="pick-head">
-                <div>
-                    <h4>{{ item.name }}</h4>
-                    <p>{{ item.symbol }}</p>
-                </div>
-                <div class="action-cluster">
-                    <span class="pill">{{ item.action }}</span>
-                    <span class="pill">{{ item.execution_status }}</span>
-                </div>
-            </div>
-            <div class="pick-metrics">
-                <div><span>当前权重</span><strong>{{ fmt_pct(item.current_weight * 100) }}</strong></div>
-                <div><span>目标权重</span><strong>{{ fmt_pct(item.target_weight * 100) }}</strong></div>
-                <div><span>权重变化</span><strong>{{ fmt_pct(item.delta_weight * 100) }}</strong></div>
-                <div><span>浮动收益率</span><strong>{{ fmt_pct(item.current_return_pct * 100) }}</strong></div>
-            </div>
-            <p>{{ item.execution_note }}</p>
-            {% if item.filter_reasons %}
-            <p class="muted">本轮不适合继续新开仓：{{ item.filter_reasons|join("、") }}</p>
-            {% endif %}
-        </article>
+    {% if advice.candidate_summary %}
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>ETF</th>
+            <th>Selected</th>
+            <th>FinalScore</th>
+            <th>IntraScore</th>
+            <th>CategoryScore</th>
+            <th>Global Rank</th>
+            <th>Category Rank</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in advice.candidate_summary %}
+        <tr>
+            <td>{{ row.name }}<br><span class="muted">{{ row.symbol }} / {{ row.category }}</span></td>
+            <td>{{ "Yes" if row.selected else "No" }}</td>
+            <td>{{ "%.1f"|format(row.final_score) }}</td>
+            <td>{{ "%.1f"|format(row.intra_score) }}</td>
+            <td>{{ "%.1f"|format(row.category_score) }}</td>
+            <td>{{ row.global_rank }}</td>
+            <td>{{ row.category_rank }}</td>
+        </tr>
         {% endfor %}
-    </div>
-</section>
-{% endif %}
-
-{% if advice["best_unaffordable_recommendation"] %}
-<section class="card wide">
-    <div class="section-head">
-        <div>
-            <div class="eyebrow">当前最优但暂时买不起</div>
-            <h3>这只 ETF 现在仍是更优先的选择，只是你这次还买不起 1 手</h3>
-        </div>
-    </div>
-    {% set item = advice["best_unaffordable_recommendation"] %}
-    <article class="pick-card">
-        <div class="pick-head">
-            <div>
-                <h4>{{ item.name }}</h4>
-                <p>{{ item.symbol }}</p>
-            </div>
-            <div class="action-cluster">
-                <span class="pill">当前最优但买不起</span>
-                <span class="pill">{{ item.asset_class|default("未知类别") }}</span>
-                <span class="pill">{{ item.trade_mode|default("-") }}</span>
-                <span class="pill">{{ item.risk_level }}</span>
-            </div>
-        </div>
-        <div class="pick-metrics">
-            <div><span>决策分</span><strong>{{ "%.1f"|format(item.score) }}</strong></div>
-            <div><span>建议金额</span><strong>{{ fmt_money(item.suggested_amount) }}</strong></div>
-            <div><span>1手门槛</span><strong>{{ fmt_money(item.min_order_amount) }}</strong></div>
-            <div><span>还差金额</span><strong>{{ fmt_money(item.budget_gap_to_min_order) }}</strong></div>
-        </div>
-        <p>{{ item.best_unaffordable_reason or item.not_executable_reason or item.execution_note }}</p>
-        {% if item.execution_timing_mode %}
-        <div class="pick-metrics">
-            <div><span>执行节奏</span><strong>{{ item.execution_timing_label or item.execution_timing_mode or "执行提示" }}</strong></div>
-            <div><span>是否启用时间优化</span><strong>{{ "是" if item.timing_rule_applied else "否" }}</strong></div>
-            <div><span>建议时段</span><strong>{{ item.recommended_execution_windows|join(" / ") if item.recommended_execution_windows else "-" }}</strong></div>
-            <div><span>尽量避开</span><strong>{{ item.avoid_execution_windows|join(" / ") if item.avoid_execution_windows else "-" }}</strong></div>
-        </div>
-        {% endif %}
-        <p class="muted">{{ item.trade_mode_note|default("") }}</p>
-        {% if item.timing_note %}
-        <p class="muted">{{ item.timing_note }}</p>
-        {% endif %}
-        <a class="primary-link" href="/explanation/{{ advice.id }}">查看为什么它仍然是当前最优</a>
-    </article>
-</section>
-{% endif %}
-
-{% if advice["affordable_but_weak_recommendations"] %}
-<section class="card wide">
-    <div class="section-head">
-        <div>
-            <div class="eyebrow">买得起但当前不建议买</div>
-            <h3>这些 ETF 在当前仓位内买得起 1 手，但这次信号还不够强</h3>
-        </div>
-    </div>
-    <div class="card-grid three">
-        {% for item in advice["affordable_but_weak_recommendations"] %}
-        <article class="pick-card">
-            <div class="pick-head">
-                <div>
-                    <h4>{{ item.name }}</h4>
-                    <p>{{ item.symbol }}</p>
-                </div>
-                <div class="action-cluster">
-                    <span class="pill">{{ item.execution_status }}</span>
-                    <span class="pill">{{ item.asset_class|default("未知类别") }}</span>
-                    <span class="pill">{{ item.trade_mode|default("-") }}</span>
-                    <span class="pill">{{ item.risk_level }}</span>
-                </div>
-            </div>
-            <div class="pick-metrics">
-                <div><span>建议金额</span><strong>{{ fmt_money(item.suggested_amount) }}</strong></div>
-                <div><span>1手门槛</span><strong>{{ fmt_money(item.min_order_amount) }}</strong></div>
-                <div><span>决策分</span><strong>{{ "%.1f"|format(item.score) }}</strong></div>
-                <div><span>统一成本</span><strong>{{ "%.1f"|format(item.execution_cost_bps|default(0)) }} bps</strong></div>
-                <div><span>成本后优势</span><strong>{{ "%.1f"|format(item.expected_edge_after_cost|default(0)) }} bps</strong></div>
-                <div><span>预计执行成本</span><strong>{{ fmt_money(item.estimated_execution_cost|default(item.estimated_fee|default(0))) }}</strong></div>
-            </div>
-            <p>{{ item.execution_note or item.reason_short }}</p>
-            {% if item.weak_signal_reason %}
-            <p class="muted">{{ item.weak_signal_reason }}</p>
-            {% endif %}
-            {% if item.execution_timing_mode %}
-            <div class="pick-metrics">
-                <div><span>执行节奏</span><strong>{{ item.execution_timing_label or item.execution_timing_mode or "执行提示" }}</strong></div>
-                <div><span>是否启用时间优化</span><strong>{{ "是" if item.timing_rule_applied else "否" }}</strong></div>
-                <div><span>建议时段</span><strong>{{ item.recommended_execution_windows|join(" / ") if item.recommended_execution_windows else "-" }}</strong></div>
-                <div><span>尽量避开</span><strong>{{ item.avoid_execution_windows|join(" / ") if item.avoid_execution_windows else "-" }}</strong></div>
-            </div>
-            {% endif %}
-            <p class="muted">{{ item.trade_mode_note|default("") }}</p>
-            {% if item.timing_note %}
-            <p class="muted">{{ item.timing_note }}</p>
-            {% endif %}
-            <a class="primary-link" href="/explanation/{{ advice.id }}">查看为什么现在不建议买</a>
-        </article>
-        {% endfor %}
-    </div>
-</section>
-{% endif %}
-
-{% set other_watchlist = advice["watchlist_recommendations"] | rejectattr("is_best_unaffordable") | list %}
-{% if advice["show_watchlist_recommendations"] and other_watchlist %}
-<section class="card wide">
-    <div class="section-head">
-        <div>
-            <div class="eyebrow">关注标的</div>
-            <h3>这些 ETF 值得看，但当前预算还买不起 1 手</h3>
-        </div>
-    </div>
-    <div class="card-grid three">
-        {% for item in other_watchlist %}
-        <article class="pick-card">
-            <div class="pick-head">
-                <div>
-                    <h4>{{ item.name }}</h4>
-                    <p>{{ item.symbol }}</p>
-                </div>
-                <div class="action-cluster">
-                    <span class="pill">{{ item.execution_status }}</span>
-                    <span class="pill">{{ item.asset_class|default("未知类别") }}</span>
-                    <span class="pill">{{ item.trade_mode|default("-") }}</span>
-                    <span class="pill">{{ item.risk_level }}</span>
-                </div>
-            </div>
-            <div class="pick-metrics">
-                <div><span>建议金额</span><strong>{{ fmt_money(item.suggested_amount) }}</strong></div>
-                <div><span>1手门槛</span><strong>{{ fmt_money(item.min_order_amount) }}</strong></div>
-                <div><span>还差金额</span><strong>{{ fmt_money(item.budget_gap_to_min_order) }}</strong></div>
-                <div><span>统一成本</span><strong>{{ "%.1f"|format(item.execution_cost_bps|default(0)) }} bps</strong></div>
-                <div><span>成本后优势</span><strong>{{ "%.1f"|format(item.expected_edge_after_cost|default(0)) }} bps</strong></div>
-                <div><span>预计执行成本</span><strong>{{ fmt_money(item.estimated_execution_cost|default(item.estimated_fee|default(0))) }}</strong></div>
-            </div>
-            <p>{{ item.not_executable_reason or item.execution_note }}</p>
-            {% if item.execution_timing_mode %}
-            <div class="pick-metrics">
-                <div><span>执行节奏</span><strong>{{ item.execution_timing_label or item.execution_timing_mode or "执行提示" }}</strong></div>
-                <div><span>是否启用时间优化</span><strong>{{ "是" if item.timing_rule_applied else "否" }}</strong></div>
-                <div><span>建议时段</span><strong>{{ item.recommended_execution_windows|join(" / ") if item.recommended_execution_windows else "-" }}</strong></div>
-                <div><span>尽量避开</span><strong>{{ item.avoid_execution_windows|join(" / ") if item.avoid_execution_windows else "-" }}</strong></div>
-            </div>
-            {% endif %}
-            <p class="muted">{{ item.trade_mode_note|default("") }}</p>
-            {% if item.timing_note %}
-            <p class="muted">{{ item.timing_note }}</p>
-            {% endif %}
-            <a class="primary-link" href="/explanation/{{ advice.id }}">查看为什么先关注它</a>
-        </article>
-        {% endfor %}
-    </div>
-</section>
-{% endif %}
-
-{% if advice["show_cost_inefficient_recommendations"] and advice["cost_inefficient_recommendations"] %}
-<section class="card wide">
-    <div class="section-head">
-        <div>
-            <div class="eyebrow">手续费暂不划算</div>
-            <h3>这些 ETF 方向没问题，但这次金额太小，交易成本偏高</h3>
-        </div>
-    </div>
-    <div class="card-grid three">
-        {% for item in advice["cost_inefficient_recommendations"] %}
-        <article class="pick-card">
-            <div class="pick-head">
-                <div>
-                    <h4>{{ item.name }}</h4>
-                    <p>{{ item.symbol }}</p>
-                </div>
-                <div class="action-cluster">
-                    <span class="pill">{{ item.execution_status }}</span>
-                    <span class="pill">{{ item.asset_class|default("未知类别") }}</span>
-                    <span class="pill">{{ item.trade_mode|default("-") }}</span>
-                </div>
-            </div>
-            <div class="pick-metrics">
-                <div><span>建议金额</span><strong>{{ fmt_money(item.suggested_amount) }}</strong></div>
-                <div><span>统一成本</span><strong>{{ "%.1f"|format(item.execution_cost_bps|default(0)) }} bps</strong></div>
-                <div><span>预计执行成本</span><strong>{{ fmt_money(item.estimated_execution_cost|default(item.estimated_fee|default(0))) }}</strong></div>
-                <div><span>成本后优势</span><strong>{{ "%.1f"|format(item.expected_edge_after_cost|default(0)) }} bps</strong></div>
-                <div><span>综合得分</span><strong>{{ "%.1f"|format(item.score) }}</strong></div>
-            </div>
-            <p>{{ item.cost_reason or item.execution_note }}</p>
-            {% if item.execution_timing_mode %}
-            <div class="pick-metrics">
-                <div><span>执行节奏</span><strong>{{ item.execution_timing_label or item.execution_timing_mode or "执行提示" }}</strong></div>
-                <div><span>是否启用时间优化</span><strong>{{ "是" if item.timing_rule_applied else "否" }}</strong></div>
-                <div><span>建议时段</span><strong>{{ item.recommended_execution_windows|join(" / ") if item.recommended_execution_windows else "-" }}</strong></div>
-                <div><span>尽量避开</span><strong>{{ item.avoid_execution_windows|join(" / ") if item.avoid_execution_windows else "-" }}</strong></div>
-            </div>
-            {% endif %}
-            <p class="muted">{{ item.trade_mode_note|default("") }}</p>
-            {% if item.timing_note %}
-            <p class="muted">{{ item.timing_note }}</p>
-            {% endif %}
-            <a class="primary-link" href="/explanation/{{ advice.id }}">查看为什么暂不执行</a>
-        </article>
-        {% endfor %}
-    </div>
-</section>
-{% endif %}
-
-{% if not advice["executable_recommendations"] and not advice["affordable_but_weak_recommendations"] and not advice["watchlist_recommendations"] and not advice["cost_inefficient_recommendations"] and explanation and explanation["overall"]["watchlist"] %}
-<section class="card wide">
-    <div class="section-head">
-        <div>
-            <div class="eyebrow">候选池</div>
-            <h3>当前值得继续观察的 ETF</h3>
-        </div>
-    </div>
-    <div class="card-grid three">
-        {% for item in explanation["overall"]["watchlist"] %}
-        <article class="pick-card">
-            <div class="pick-head">
-                <div>
-                    <h4>{{ item.name }}</h4>
-                    <p>{{ item.symbol }}</p>
-                </div>
-                <span class="pill">候选第 {{ item.rank }}</span>
-            </div>
-            <div class="pick-metrics">
-                <div><span>综合得分</span><strong>{{ "%.1f"|format(item.score) }}</strong></div>
-                <div><span>5日动量</span><strong>{{ "%.2f"|format(item.momentum_5d) }}%</strong></div>
-            </div>
-            <p>{{ item.note }}</p>
-        </article>
-        {% endfor %}
-    </div>
-</section>
-{% endif %}
-{% else %}
-<section class="card">
-    <p>暂无建议记录。去首页点击“{{ session_button_label }}”。</p>
+        </tbody>
+    </table>
+    {% endif %}
 </section>
 {% endif %}
 {% endblock %}

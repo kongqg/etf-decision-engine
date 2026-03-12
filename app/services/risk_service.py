@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 from app.core.config import get_settings, load_yaml_config
 
 
@@ -18,21 +16,12 @@ class RiskService:
 
     def build_global_risk_note(self, session_mode: str, market_regime: str) -> str:
         mode_note = {
-            "intraday": "当前在交易时段，建议仍以分批执行为主，不要一次满仓。",
-            "preopen": "当前还没正式连续交易，开盘后如果明显高开，不要机械追价。",
-            "after_close": "当前已收盘，今晚输出的是明日预案，不是现在立刻成交建议。",
-            "closed": "当前为休市阶段，系统仅给下一交易日预案。",
-        }[session_mode]
-        return f"{mode_note} 当前市场状态为{market_regime}，若后续走势明显转弱，应优先减少执行。"
-
-    def position_action_hint(self, row: Any, market_regime: str) -> str:
-        if market_regime == "观望":
-            return "等待更强信号"
-        if row.get("rank_in_pool", 99) <= 2:
-            return "继续持有"
-        if row.get("rank_in_pool", 99) <= 5:
-            return "观察后续强弱"
-        return "考虑减仓"
+            "intraday": "当前处于交易时段，执行上优先分批，不把日内节奏当成策略信号。",
+            "preopen": "当前尚未连续竞价，开盘前建议把注意力放在预算和成交约束，而不是追单。",
+            "after_close": "当前已收盘，这是一份下一交易日的计划，不是即时成交指令。",
+            "closed": "当前为休市阶段，系统只输出下一交易日的候选组合和预算。",
+        }.get(session_mode, "当前为非连续交易时段，系统输出的是计划而非即时成交指令。")
+        return f"{mode_note} 当前市场状态为 {market_regime}，仓位预算会随状态调整，但不会直接替代 ETF 打分。"
 
     def _risk_category_key(self, category: str) -> str:
         mapping = {

@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="hero">
+<section class="hero split">
     <div>
-        <div class="eyebrow">解释详情</div>
-        <h2>{{ explanation["overall"]["headline"] if explanation else "还没有解释内容" }}</h2>
-        <p>{{ advice.summary_text if advice else "先生成一条建议。" }}</p>
+        <div class="eyebrow">Explanation</div>
+        <h2>{{ explanation.overall.headline if explanation else "No explanation yet" }}</h2>
+        <p>{{ advice.summary_text if advice else "Generate advice first." }}</p>
     </div>
     {% if advice %}
     <div class="action-cluster">
-        <a class="primary-link" href="/advice/{{ advice.id }}">返回建议页</a>
-        <a class="primary-link" href="/evidence/{{ advice.id }}">查看数据证据</a>
+        <a class="primary-link" href="/advice/{{ advice.id }}">Back To Advice</a>
+        <a class="primary-link" href="/evidence/{{ advice.id }}">Evidence</a>
     </div>
     {% endif %}
 </section>
@@ -19,263 +19,107 @@
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">整体判断</div>
-            <h3>{{ explanation["overall"]["market_regime"] }}</h3>
+            <div class="eyebrow">Overall</div>
+            <h3>{{ explanation.overall.market_regime }}</h3>
         </div>
     </div>
-    <div class="evidence-list">
-        {% for item in explanation["overall"]["evidence"] %}
-        <div><span>{{ item.label }}</span><strong>{{ item.value }}</strong></div>
-        {% endfor %}
-    </div>
     <ul class="plain-list">
-        {% for reason in explanation["overall"]["reasons"] %}
+        {% for reason in explanation.overall.reasons %}
         <li>{{ reason }}</li>
         {% endfor %}
     </ul>
-    <ul class="plain-list">
-        {% for risk in explanation["overall"]["risks"] %}
-        <li>{{ risk }}</li>
-        {% endfor %}
-    </ul>
-    <p class="muted">{{ explanation["overall"]["session_hint"] }}</p>
-</section>
-
-<section class="card wide">
-    <div class="section-head">
-        <div>
-            <div class="eyebrow">执行路由</div>
-            <h3>动作是怎么落到 T+0 / T+1 规则上的</h3>
-        </div>
-    </div>
-    <p>{{ explanation["overall"]["execution_rule"]["rule"] }}</p>
     <div class="evidence-list">
-        <div><span>开仓阈值</span><strong>{{ "%.1f"|format(explanation["overall"]["execution_rule"]["threshold"]) }}</strong></div>
-        <div><span>当前最高决策分</span><strong>{{ "%.1f"|format(explanation["overall"]["execution_rule"]["top_score"]) }}</strong></div>
-        <div><span>最终动作</span><strong>{{ explanation["overall"]["execution_rule"]["result"] }}</strong></div>
-        <div><span>是否可立即执行</span><strong>{{ "是" if explanation["overall"]["execution_rule"]["executable_now"] else "否" }}</strong></div>
-        <div><span>阻塞原因</span><strong>{{ explanation["overall"]["execution_rule"]["blocked_reason"] or "-" }}</strong></div>
-        <div><span>统一交易成本</span><strong>{{ "%.1f"|format(explanation["overall"]["execution_rule"]["execution_cost_bps"]) }} bps</strong></div>
-        <div><span>成本前优势</span><strong>{{ "%.1f"|format(explanation["overall"]["execution_rule"]["expected_edge_before_cost"]) }} bps</strong></div>
-        <div><span>成本后优势</span><strong>{{ "%.1f"|format(explanation["overall"]["execution_rule"]["expected_edge_after_cost"]) }} bps</strong></div>
-        <div><span>目标持有天数</span><strong>{{ explanation["overall"]["execution_rule"]["target_holding_days"] }}</strong></div>
-        <div><span>胜出类别得分</span><strong>{{ "%.1f"|format(explanation["overall"]["execution_rule"]["selected_category_score"]) }}</strong></div>
+        <div><span>Current Position</span><strong>{{ fmt_pct(explanation.overall.portfolio.current_position_pct * 100) }}</strong></div>
+        <div><span>Total Budget</span><strong>{{ fmt_pct(explanation.overall.budget.total_budget_pct * 100) }}</strong></div>
+        <div><span>Single Weight Cap</span><strong>{{ fmt_pct(explanation.overall.budget.single_weight_cap * 100) }}</strong></div>
+        <div><span>Cash</span><strong>{{ fmt_money(explanation.overall.portfolio.cash_balance) }}</strong></div>
     </div>
 </section>
 
-{% if explanation["overall"]["portfolio_transition"]["rows"] %}
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">目标组合与过渡</div>
-            <h3>当前组合要往哪里走，以及为什么不是一步到位</h3>
+            <div class="eyebrow">Category Board</div>
+            <h3>Category scores and candidate board</h3>
         </div>
     </div>
-    <ul class="plain-list">
-        {% for note in explanation["overall"]["portfolio_transition"]["notes"] %}
-        <li>{{ note }}</li>
-        {% endfor %}
-    </ul>
+    {% if explanation.overall.candidate_summary %}
     <table class="data-table">
         <thead>
         <tr>
             <th>ETF</th>
-            <th>当前权重</th>
-            <th>目标权重</th>
-            <th>权重变化</th>
-            <th>正式动作</th>
-            <th>执行状态</th>
+            <th>Selected</th>
+            <th>FinalScore</th>
+            <th>IntraScore</th>
+            <th>CategoryScore</th>
+            <th>Global Rank</th>
+            <th>Category Rank</th>
         </tr>
         </thead>
         <tbody>
-        {% for row in explanation["overall"]["portfolio_transition"]["rows"] %}
+        {% for row in explanation.overall.candidate_summary %}
         <tr>
-            <td>{{ row.name }}<br><span class="muted">{{ row.symbol }}</span></td>
-            <td>{{ "%.1f"|format(row.current_weight * 100) }}%</td>
-            <td>{{ "%.1f"|format(row.target_weight * 100) }}%</td>
-            <td>{{ "%.1f"|format(row.delta_weight * 100) }}%</td>
-            <td>{{ row.action }}<br><span class="muted">{{ row.transition_label }}</span></td>
-            <td>{{ row.execution_status }}{% if row.blocked_reason %}<br><span class="muted">{{ row.blocked_reason }}</span>{% endif %}</td>
-        </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-</section>
-{% endif %}
-
-{% if explanation["overall"]["winning_category_explanation"] %}
-<section class="card wide">
-    <div class="section-head">
-        <div>
-            <div class="eyebrow">类别优先</div>
-            <h3>为什么这次先看这条赛道</h3>
-        </div>
-    </div>
-    <p>{{ explanation["overall"]["winning_category_explanation"]["why"] }}</p>
-    <table class="data-table">
-        <thead>
-        <tr>
-            <th>类别</th>
-            <th>类别分</th>
-            <th>样本数</th>
-            <th>10日动量</th>
-            <th>趋势</th>
-            <th>广度</th>
-            <th>10日波动</th>
-            <th>20日回撤</th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for row in explanation["overall"]["category_scores"] %}
-        <tr>
-            <td>{{ row.category_label }}</td>
+            <td>{{ row.name }}<br><span class="muted">{{ row.symbol }} / {{ row.category }}</span></td>
+            <td>{{ "Yes" if row.selected else "No" }}</td>
+            <td>{{ "%.1f"|format(row.final_score) }}</td>
+            <td>{{ "%.1f"|format(row.intra_score) }}</td>
             <td>{{ "%.1f"|format(row.category_score) }}</td>
-            <td>{{ row.symbol_count }}</td>
-            <td>{{ "%.2f"|format(row.raw_metrics.momentum_10d) }}</td>
-            <td>{{ "%.2f"|format(row.raw_metrics.trend_strength) }}</td>
-            <td>{{ "%.2f"|format(row.raw_metrics.breadth) }}</td>
-            <td>{{ "%.2f"|format(row.raw_metrics.volatility_10d) }}</td>
-            <td>{{ "%.2f"|format(row.raw_metrics.drawdown_20d) }}</td>
+            <td>{{ row.global_rank }}</td>
+            <td>{{ row.category_rank }}</td>
         </tr>
         {% endfor %}
         </tbody>
     </table>
+    {% endif %}
 </section>
-{% endif %}
 
-{% if explanation["items"] %}
+{% if explanation.items %}
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">标的解释</div>
-            <h3>为什么是它，以及为什么现在是这个动作</h3>
+            <div class="eyebrow">Per ETF</div>
+            <h3>Why each action and intent was produced</h3>
         </div>
     </div>
-    <div class="card-grid three">
-        {% for item in explanation["items"] %}
+    <div class="card-grid two">
+        {% for item in explanation.items %}
         <article class="sub-card">
             <h4>{{ item.title }}</h4>
             <p>{{ item.summary }}</p>
             <div class="evidence-list">
-                <div><span>类别</span><strong>{{ item.category_label }}</strong></div>
-                <div><span>动作</span><strong>{{ item.execution.action }}</strong></div>
-                <div><span>交易模式</span><strong>{{ item.execution.tradability_mode }}</strong></div>
-                <div><span>可立即执行</span><strong>{{ "是" if item.execution.executable_now else "否" }}</strong></div>
-                <div><span>统一成本</span><strong>{{ "%.1f"|format(item.execution.execution_cost_bps) }} bps</strong></div>
-                <div><span>成本前优势</span><strong>{{ "%.1f"|format(item.execution.expected_edge_before_cost) }} bps</strong></div>
-                <div><span>成本后优势</span><strong>{{ "%.1f"|format(item.execution.expected_edge_after_cost) }} bps</strong></div>
-                <div><span>映射周期</span><strong>{{ item.holding_profile.horizon_profile_label }}</strong></div>
-                <div><span>生命周期</span><strong>{{ item.holding_profile.lifecycle_phase }}</strong></div>
-                <div><span>当前权重</span><strong>{{ "%.1f"|format(item.position_context.current_weight * 100) }}%</strong></div>
-                <div><span>目标权重</span><strong>{{ "%.1f"|format(item.position_context.target_weight * 100) }}%</strong></div>
-                <div><span>权重变化</span><strong>{{ "%.1f"|format(item.position_context.delta_weight * 100) }}%</strong></div>
-                <div><span>当前收益率</span><strong>{{ "%.2f"|format(item.position_context.current_return_pct * 100) }}%</strong></div>
+                <div><span>Action</span><strong>{{ item.action }}</strong></div>
+                <div><span>Intent</span><strong>{{ item.intent }}</strong></div>
+                <div><span>FinalScore</span><strong>{{ "%.1f"|format(item.scores.final_score) }}</strong></div>
+                <div><span>IntraScore</span><strong>{{ "%.1f"|format(item.scores.intra_score) }}</strong></div>
+                <div><span>CategoryScore</span><strong>{{ "%.1f"|format(item.scores.category_score) }}</strong></div>
+                <div><span>Global Rank</span><strong>{{ item.ranks.global_rank }}</strong></div>
+                <div><span>Category Rank</span><strong>{{ item.ranks.category_rank }}</strong></div>
+                <div><span>Current Weight</span><strong>{{ fmt_pct(item.weights.current_weight * 100) }}</strong></div>
+                <div><span>Target Weight</span><strong>{{ fmt_pct(item.weights.target_weight * 100) }}</strong></div>
+                <div><span>Delta Weight</span><strong>{{ fmt_pct(item.weights.delta_weight * 100) }}</strong></div>
+                <div><span>Replacement</span><strong>{{ item.comparison.replacement_symbol or "-" }}</strong></div>
+                <div><span>Score Gap</span><strong>{{ "%.1f"|format(item.comparison.score_gap_vs_holding) }}</strong></div>
+                <div><span>Hold Days</span><strong>{{ item.comparison.hold_days }}</strong></div>
             </div>
-            <ul class="plain-list">
-                {% for reason in item.why_selected %}
-                <li>{{ reason }}</li>
-                {% endfor %}
-            </ul>
-            {% if not item.position_context.entry_eligible %}
-            <p class="muted">这只标的当前不适合继续新增仓位，但因为你已经持有，所以系统仍然会正式评估它的持有、减仓和退出。</p>
-            {% endif %}
-            {% if item.position_context.filter_reasons %}
-            <p class="muted">筛选限制：{{ item.position_context.filter_reasons|join("、") }}</p>
-            {% endif %}
-            <div class="evidence-list">
-                {% for proof in item.proofs %}
-                <div><span>{{ proof.label }}</span><strong>{{ proof.value }}</strong></div>
+            {% if item.feature_snapshot %}
+            <div class="evidence-list" style="margin-top: 12px;">
+                {% for key, value in item.feature_snapshot.items() %}
+                <div><span>{{ key }}</span><strong>{{ value }}</strong></div>
                 {% endfor %}
             </div>
-            {% if item.execution.blocked_reason %}
-            <p class="muted">{{ item.execution.blocked_reason }}</p>
             {% endif %}
-            {% if item.execution.planned_exit_rule_summary %}
-            <p class="muted">{{ item.execution.planned_exit_rule_summary }}</p>
+            {% if item.rank_snapshot %}
+            <div class="evidence-list" style="margin-top: 12px;">
+                {% for key, value in item.rank_snapshot.items() %}
+                <div><span>{{ key }}</span><strong>{{ "%.1f"|format(value) }}</strong></div>
+                {% endfor %}
+            </div>
             {% endif %}
+            <p class="muted">{{ item.execution_note }}</p>
         </article>
         {% endfor %}
     </div>
 </section>
-
-<section class="card wide">
-    <div class="section-head">
-        <div>
-            <div class="eyebrow">三段分拆解</div>
-            <h3>入场分、持有分、退出分为什么是这样</h3>
-        </div>
-    </div>
-    {% for item in explanation["items"] %}
-    <article class="sub-card" style="margin-bottom: 18px;">
-        <h4>{{ item.symbol }} / {{ item.category_label }}</h4>
-        <div class="evidence-list">
-            <div><span>入场分</span><strong>{{ "%.1f"|format(item.score_breakdown.entry_score) }}</strong></div>
-            <div><span>持有分</span><strong>{{ "%.1f"|format(item.score_breakdown.hold_score) }}</strong></div>
-            <div><span>退出分</span><strong>{{ "%.1f"|format(item.score_breakdown.exit_score) }}</strong></div>
-            <div><span>决策分</span><strong>{{ "%.1f"|format(item.score_breakdown.decision_score) }}</strong></div>
-        </div>
-        <table class="data-table">
-            <thead>
-            <tr>
-                <th>分段</th>
-                <th>因子</th>
-                <th>权重</th>
-                <th>原始值</th>
-                <th>分位</th>
-                <th>贡献</th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for detail in item.score_breakdown.entry_details %}
-            <tr>
-                <td>入场</td>
-                <td>{{ detail.feature }}</td>
-                <td>{{ "%.2f"|format(detail.weight) }}</td>
-                <td>{{ detail.raw_value }}</td>
-                <td>{{ "%.1f"|format(detail.percentile) }}</td>
-                <td>{{ "%.1f"|format(detail.contribution) }}</td>
-            </tr>
-            {% endfor %}
-            {% for detail in item.score_breakdown.hold_details %}
-            <tr>
-                <td>持有</td>
-                <td>{{ detail.feature }}</td>
-                <td>{{ "%.2f"|format(detail.weight) }}</td>
-                <td>{{ detail.raw_value }}</td>
-                <td>{{ "%.1f"|format(detail.percentile) }}</td>
-                <td>{{ "%.1f"|format(detail.contribution) }}</td>
-            </tr>
-            {% endfor %}
-            {% for detail in item.score_breakdown.exit_details %}
-            <tr>
-                <td>退出</td>
-                <td>{{ detail.feature }}</td>
-                <td>{{ "%.2f"|format(detail.weight) }}</td>
-                <td>{{ detail.raw_value }}</td>
-                <td>{{ "%.1f"|format(detail.percentile) }}</td>
-                <td>{{ "%.1f"|format(detail.contribution) }}</td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    </article>
-    {% endfor %}
-</section>
 {% endif %}
-
-<section class="card wide">
-    <div class="section-head">
-        <div>
-            <div class="eyebrow">数据来源</div>
-            <h3>这次建议用了什么数据</h3>
-        </div>
-    </div>
-    <div class="evidence-list">
-        {% for item in explanation["overall"]["source_info"] %}
-        <div><span>{{ item.label }}</span><strong>{{ item.value }}</strong></div>
-        {% endfor %}
-    </div>
-    <p class="muted">{{ explanation["overall"]["source_note"] }}</p>
-</section>
 {% endif %}
 {% endblock %}

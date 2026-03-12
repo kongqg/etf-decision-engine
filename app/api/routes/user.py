@@ -22,7 +22,6 @@ def _preferences_payload(preferences) -> dict:
         "allow_bond": preferences.allow_bond,
         "allow_overseas": preferences.allow_overseas,
         "min_trade_amount": preferences.min_trade_amount,
-        "target_holding_days": preferences.target_holding_days,
         "max_total_position_pct": preferences.max_total_position_pct,
         "max_single_position_pct": preferences.max_single_position_pct,
         "cash_reserve_pct": preferences.cash_reserve_pct,
@@ -40,7 +39,6 @@ def init_user(payload: InitUserRequest, db: Session = Depends(get_db)):
         allow_bond=payload.allow_bond,
         allow_overseas=payload.allow_overseas,
         min_trade_amount=payload.min_trade_amount,
-        target_holding_days=payload.target_holding_days,
     )
     user = get_user(db)
     preferences = get_preferences(db)

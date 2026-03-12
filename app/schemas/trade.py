@@ -15,4 +15,8 @@ class RecordTradeRequest(BaseModel):
     quantity: float | None = Field(default=None, gt=0)
     fee: float = Field(default=0.0, ge=0)
     related_advice_id: int | None = None
+    advice_item_id: int | None = None
+    intent: str = ""
+    weight_before: float = Field(default=0.0, ge=0.0)
+    weight_after: float = Field(default=0.0, ge=0.0)
     note: str = ""

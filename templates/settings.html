@@ -4,8 +4,8 @@
 <section class="hero split">
     <div>
         <div class="eyebrow">设置</div>
-        <h2>偏好不是一次性初始化，可以持续调参</h2>
-        <p>这里调整的是后续建议如何筛 ETF、如何控仓，不会重置你的持仓、交易记录和绩效。</p>
+        <h2>调整预算、品类开关和风险偏好</h2>
+        <p>这里的参数会直接影响 ETF 过滤、仓位预算和替换阈值，不再使用旧的目标持有天数和生命周期映射。</p>
     </div>
 </section>
 
@@ -13,8 +13,8 @@
 <section class="card wide">
     <div class="section-head">
         <div>
-            <div class="eyebrow">基础偏好</div>
-            <h3>持续影响筛选和建议节奏</h3>
+            <div class="eyebrow">策略偏好</div>
+            <h3>保持评分逻辑简单，把约束放在预算层</h3>
         </div>
     </div>
     <form action="/actions/update-preferences" method="post" class="form-grid">
@@ -29,36 +29,31 @@
         <label>
             <span>风险模式</span>
             <select name="risk_mode">
-                <option value="conservative" {% if preferences.risk_mode == "conservative" %}selected{% endif %}>稳一点</option>
-                <option value="balanced" {% if preferences.risk_mode == "balanced" %}selected{% endif %}>正常</option>
-                <option value="aggressive" {% if preferences.risk_mode == "aggressive" %}selected{% endif %}>冲一点</option>
+                <option value="conservative" {% if preferences.risk_mode == "conservative" %}selected{% endif %}>conservative</option>
+                <option value="balanced" {% if preferences.risk_mode == "balanced" %}selected{% endif %}>balanced</option>
+                <option value="aggressive" {% if preferences.risk_mode == "aggressive" %}selected{% endif %}>aggressive</option>
             </select>
-            <small class="muted">风险模式会在你当前参数之上做一层保守或进取覆盖，平衡模式保持现状。</small>
+            <small class="muted">风险模式只调整预算和替换阈值，不再改评分公式。</small>
         </label>
         <label>
             <span>最小建议金额</span>
             <input type="number" name="min_trade_amount" min="0.01" step="0.01" value="{{ preferences.min_trade_amount }}" required>
-            <small class="muted">金额越小，系统越容易给出可执行建议，但也更容易碰到手续费占比偏高。</small>
-        </label>
-        <label>
-            <span>目标持有天数</span>
-            <input type="number" name="target_holding_days" min="0" max="40" step="1" value="{{ preferences.target_holding_days }}" required>
-            <small class="muted">0 到 1 天会尝试走 T+0 日内档，2 到 10 天映射到波段，20 到 40 天映射到轮动。</small>
+            <small class="muted">低于这个金额的仓位变化会被视为 no_trade 或 hold。</small>
         </label>
         <label>
             <span>总仓位上限</span>
             <input type="number" name="max_total_position_pct" min="1" max="100" step="1" value="{{ "%.0f"|format(preferences.max_total_position_pct * 100) }}" required>
-            <small class="muted">按总资产计算的最高持仓比例。</small>
+            <small class="muted">最终总仓位会与市场状态预算共同决定。</small>
         </label>
         <label>
-            <span>单笔仓位上限</span>
+            <span>单只仓位上限</span>
             <input type="number" name="max_single_position_pct" min="1" max="100" step="1" value="{{ "%.0f"|format(preferences.max_single_position_pct * 100) }}" required>
-            <small class="muted">任何一笔新增建议都不会超过这个比例。</small>
+            <small class="muted">单只 ETF 的目标权重不会超过这个比例。</small>
         </label>
         <label>
             <span>现金保留比例</span>
             <input type="number" name="cash_reserve_pct" min="0" max="99" step="1" value="{{ "%.0f"|format(preferences.cash_reserve_pct * 100) }}" required>
-            <small class="muted">为后续补仓和风险缓冲保留的现金。</small>
+            <small class="muted">现金缓冲会和市场状态预算一起限制可用仓位。</small>
         </label>
         <div class="stacked-checks">
             <label class="check">
@@ -81,7 +76,7 @@
 </section>
 {% else %}
 <section class="card">
-    <p>还没有用户设置。先回首页完成初始化。</p>
+    <p>还没有用户设置。先回到首页完成初始化。</p>
 </section>
 {% endif %}
 {% endblock %}

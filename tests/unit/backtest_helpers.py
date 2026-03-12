@@ -38,7 +38,6 @@ def seed_user(session):
         allow_bond=True,
         allow_overseas=True,
         min_trade_amount=1000,
-        target_holding_days=5,
     )
 
 
@@ -63,7 +62,7 @@ def build_dataset(
     for etf in universe_rows:
         history_by_symbol[etf.symbol] = {
             "etf": etf,
-            "history": _build_history(etf, dates, variant=variant, cutoff=cutoff),
+            "history": _build_history(etf.symbol, dates, variant=variant, cutoff=cutoff),
             "source": "akshare",
             "request_params": {
                 "symbol": etf.symbol,
@@ -83,7 +82,7 @@ def build_dataset(
     }
 
 
-def _build_history(etf, dates: pd.DatetimeIndex, *, variant: str, cutoff: date | None):
+def _build_history(symbol: str, dates: pd.DatetimeIndex, *, variant: str, cutoff: date | None):
     base_price_map = {
         "510300": 1.0,
         "510500": 0.9,
@@ -94,32 +93,34 @@ def _build_history(etf, dates: pd.DatetimeIndex, *, variant: str, cutoff: date |
         "513100": 1.1,
     }
     slope_map = {
-        "宽基": 0.012,
-        "行业": 0.014,
-        "黄金": 0.007,
-        "债券": 0.020,
-        "货币": 0.005,
-        "跨境": 0.011,
+        "510300": 0.012,
+        "510500": 0.011,
+        "159915": 0.015,
+        "518880": 0.007,
+        "511010": 0.004,
+        "511990": 0.003,
+        "513100": 0.013,
     }
     amplitude_map = {
-        "宽基": 0.03,
-        "行业": 0.04,
-        "黄金": 0.02,
-        "债券": 0.08,
-        "货币": 0.01,
-        "跨境": 0.035,
+        "510300": 0.03,
+        "510500": 0.028,
+        "159915": 0.04,
+        "518880": 0.02,
+        "511010": 0.01,
+        "511990": 0.005,
+        "513100": 0.035,
     }
-    base_price = base_price_map.get(etf.symbol, 1.0)
-    slope = slope_map.get(etf.category, 0.01)
-    amplitude = amplitude_map.get(etf.category, 0.02)
-    seed = int(etf.symbol[-2:])
+    base_price = base_price_map.get(symbol, 1.0)
+    slope = slope_map.get(symbol, 0.01)
+    amplitude = amplitude_map.get(symbol, 0.02)
+    seed = int(symbol[-2:])
     rows = []
     cutoff_index = next((idx for idx, value in enumerate(dates) if value.date() == cutoff), None)
     for idx, current_date in enumerate(dates):
         close = base_price + slope * idx + amplitude * math.sin((idx + seed) / 4)
-        if variant == "future_crash" and cutoff_index is not None and idx > cutoff_index and etf.symbol in {"510300", "510500"}:
+        if variant == "future_crash" and cutoff_index is not None and idx > cutoff_index and symbol in {"510300", "510500"}:
             close -= 0.05 * (idx - cutoff_index)
-        amount = max(float(etf.min_avg_amount) * 1.8, 20_000_000) * (1.0 + 0.05 * math.sin((idx + seed) / 6))
+        amount = 20_000_000 * (1.0 + 0.05 * math.sin((idx + seed) / 6))
         rows.append(
             {
                 "date": current_date,

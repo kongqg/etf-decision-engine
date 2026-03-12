@@ -19,22 +19,23 @@ from app.db.models import (
 
 class UserService:
     def _risk_profile_defaults(self, risk_level: str) -> dict[str, float]:
+        normalized = str(risk_level or "中性").strip()
         return {
             "max_total_position_pct": {
                 "保守": 0.55,
                 "中性": 0.70,
                 "激进": 0.85,
-            }.get(risk_level, 0.70),
+            }.get(normalized, 0.70),
             "max_single_position_pct": {
                 "保守": 0.25,
                 "中性": 0.35,
                 "激进": 0.45,
-            }.get(risk_level, 0.35),
+            }.get(normalized, 0.35),
             "cash_reserve_pct": {
                 "保守": 0.35,
                 "中性": 0.20,
                 "激进": 0.10,
-            }.get(risk_level, 0.20),
+            }.get(normalized, 0.20),
         }
 
     def _validate_preferences(
@@ -44,7 +45,7 @@ class UserService:
         cash_reserve_pct: float,
     ) -> None:
         if max_single_position_pct > max_total_position_pct:
-            raise ValueError("单笔仓位上限不能高于总仓位上限。")
+            raise ValueError("单只仓位上限不能高于总仓位上限。")
         if max_total_position_pct + cash_reserve_pct > 1:
             raise ValueError("总仓位上限加现金保留比例不能超过 100%。")
 
@@ -57,7 +58,6 @@ class UserService:
         allow_bond: bool,
         allow_overseas: bool,
         min_trade_amount: float,
-        target_holding_days: int = 5,
         risk_mode: str = "balanced",
     ) -> UserProfile:
         settings = get_settings()
@@ -91,31 +91,18 @@ class UserService:
 
         preferences = session.query(UserPreferences).filter(UserPreferences.user_id == user.id).one_or_none()
         if preferences is None:
-            preferences = UserPreferences(
-                user_id=user.id,
-                risk_level=risk_level,
-                risk_mode=risk_mode,
-                allow_gold=allow_gold,
-                allow_bond=allow_bond,
-                allow_overseas=allow_overseas,
-                min_trade_amount=min_trade_amount,
-                target_holding_days=target_holding_days,
-                max_total_position_pct=max_total_position_pct,
-                max_single_position_pct=max_single_position_pct,
-                cash_reserve_pct=cash_reserve_pct,
-            )
+            preferences = UserPreferences(user_id=user.id)
             session.add(preferences)
-        else:
-            preferences.risk_level = risk_level
-            preferences.risk_mode = risk_mode
-            preferences.allow_gold = allow_gold
-            preferences.allow_bond = allow_bond
-            preferences.allow_overseas = allow_overseas
-            preferences.min_trade_amount = min_trade_amount
-            preferences.target_holding_days = target_holding_days
-            preferences.max_total_position_pct = max_total_position_pct
-            preferences.max_single_position_pct = max_single_position_pct
-            preferences.cash_reserve_pct = cash_reserve_pct
+
+        preferences.risk_level = risk_level
+        preferences.risk_mode = risk_mode
+        preferences.allow_gold = allow_gold
+        preferences.allow_bond = allow_bond
+        preferences.allow_overseas = allow_overseas
+        preferences.min_trade_amount = min_trade_amount
+        preferences.max_total_position_pct = max_total_position_pct
+        preferences.max_single_position_pct = max_single_position_pct
+        preferences.cash_reserve_pct = cash_reserve_pct
 
         session.commit()
         session.refresh(user)
@@ -129,7 +116,6 @@ class UserService:
         allow_bond: bool,
         allow_overseas: bool,
         min_trade_amount: float,
-        target_holding_days: int,
         max_total_position_pct: float,
         max_single_position_pct: float,
         cash_reserve_pct: float,
@@ -151,7 +137,6 @@ class UserService:
         preferences.allow_bond = allow_bond
         preferences.allow_overseas = allow_overseas
         preferences.min_trade_amount = min_trade_amount
-        preferences.target_holding_days = target_holding_days
         preferences.max_total_position_pct = max_total_position_pct
         preferences.max_single_position_pct = max_single_position_pct
         preferences.cash_reserve_pct = cash_reserve_pct

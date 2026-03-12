@@ -4,15 +4,15 @@
 <section class="hero">
     <div>
         <div class="eyebrow">首次使用</div>
-        <h2>先告诉系统你的资金和偏好</h2>
-        <p>先完成初始设置，之后仍然可以在设置页持续调参数，不会重置你的持仓、交易记录和历史表现。</p>
+        <h2>先设置资金、风险偏好和可投资品类</h2>
+        <p>系统会基于这些偏好做全 ETF 过滤、评分和预算分配，后续仍可在设置页继续调整。</p>
     </div>
 </section>
 
 <section class="card wide">
     <form action="/actions/init-user" method="post" class="form-grid">
         <label>
-            <span>初始总资金</span>
+            <span>初始总资产</span>
             <input type="number" name="initial_capital" min="1000" step="1000" placeholder="例如 100000" required>
         </label>
         <label>
@@ -26,28 +26,16 @@
         <label>
             <span>风险模式</span>
             <select name="risk_mode">
-                <option value="conservative">稳一点</option>
-                <option value="balanced" selected>正常</option>
-                <option value="aggressive">冲一点</option>
+                <option value="conservative">conservative</option>
+                <option value="balanced" selected>balanced</option>
+                <option value="aggressive">aggressive</option>
             </select>
-            <small class="muted">这是在现有偏好之上再加一层节奏控制，不会改掉底层打分公式。</small>
+            <small class="muted">风险模式只影响预算和替换阈值，不包裹旧的多层决策结构。</small>
         </label>
         <label>
             <span>最小建议金额</span>
-            <input
-                type="number"
-                name="min_trade_amount"
-                min="100"
-                step="100"
-                value="{{ default_min_advice_amount }}"
-                required
-            >
-            <small class="muted">这是系统愿不愿意生成建议的门槛，不是交易所的真实下单门槛。场内 ETF 默认按 {{ "%.0f"|format(default_lot_size) }} 份一手计算，系统还会额外检查 1 手门槛和手续费占比。</small>
-        </label>
-        <label>
-            <span>目标持有天数</span>
-            <input type="number" name="target_holding_days" min="0" max="40" step="1" value="5" required>
-            <small class="muted">系统不会为每个精确天数单独建公式，而是映射到 T+0 日内、短线波段或中期轮动档位。</small>
+            <input type="number" name="min_trade_amount" min="100" step="100" value="1000" required>
+            <small class="muted">低于该金额的调仓变化默认不会生成明确交易动作。</small>
         </label>
         <label class="check">
             <input type="checkbox" name="allow_gold" checked>
@@ -62,7 +50,7 @@
             <span>允许跨境 ETF</span>
         </label>
         <div class="form-actions">
-            <button class="primary" type="submit">初始化资金</button>
+            <button class="primary" type="submit">初始化</button>
         </div>
     </form>
 </section>
