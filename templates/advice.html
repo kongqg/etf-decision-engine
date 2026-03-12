@@ -76,11 +76,13 @@
         <tr>
             <td>{{ item.name }}<br><span class="muted">{{ item.symbol }} / {{ item.category }}</span></td>
             <td>{{ item.action }}</td>
-            <td>{{ item.intent }}</td>
+            <td>{{ item.intent }}<br><span class="muted">{{ item.action_code_label }}</span></td>
             <td>{{ fmt_pct(item.current_weight * 100) }}</td>
             <td>{{ fmt_pct(item.target_weight * 100) }}</td>
             <td>{{ fmt_pct(item.delta_weight * 100) }}</td>
             <td>
+                D {{ "%.1f"|format(item.decision_score or item.final_score) }}<br>
+                <span class="muted">E {{ "%.1f"|format(item.entry_score or 0) }} / H {{ "%.1f"|format(item.hold_score or 0) }} / X {{ "%.1f"|format(item.exit_score or 0) }}</span><br>
                 F {{ "%.1f"|format(item.final_score) }}<br>
                 <span class="muted">I {{ "%.1f"|format(item.intra_score) }} / C {{ "%.1f"|format(item.category_score) }}</span>
             </td>
@@ -92,6 +94,11 @@
         <tr>
             <td colspan="8" class="muted">
                 {{ item.reason_short }}
+                {% if item.execution_overlay %}
+                趋势过滤：{{ "通过" if item.execution_overlay.trend_filter_pass else "未通过" }}；
+                入场通道：{{ item.execution_overlay.entry_channel_label }}；
+                仓位状态：{{ item.execution_overlay.position_state_label }}。
+                {% endif %}
                 {% if item.replacement_symbol %}
                 替代标的：{{ item.replacement_symbol }}，分差 {{ "%.1f"|format(item.score_gap_vs_holding) }}，替换阈值 {{ "%.1f"|format(item.replace_threshold_used) }}。
                 {% endif %}

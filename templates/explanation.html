@@ -87,11 +87,16 @@
             <h4>{{ item.title }}</h4>
             <p>{{ item.summary }}</p>
             <div class="evidence-list">
-                <div><span>动作</span><strong>{{ item.action }}</strong></div>
-                <div><span>意图</span><strong>{{ item.intent }}</strong></div>
-                <div><span>最终分</span><strong>{{ "%.1f"|format(item.scores.final_score) }}</strong></div>
-                <div><span>单票分</span><strong>{{ "%.1f"|format(item.scores.intra_score) }}</strong></div>
-                <div><span>类别分</span><strong>{{ "%.1f"|format(item.scores.category_score) }}</strong></div>
+                <div><span>动作</span><strong>{{ item.action or "-" }}</strong></div>
+                <div><span>动作细分</span><strong>{{ item.action_code or "-" }}</strong></div>
+                <div><span>意图</span><strong>{{ item.intent or "-" }}</strong></div>
+                <div><span>执行决策分</span><strong>{{ "%.1f"|format(item.scores.get('decision_score', 0.0)) }}</strong></div>
+                <div><span>入场分</span><strong>{{ "%.1f"|format(item.scores.get('entry_score', 0.0)) }}</strong></div>
+                <div><span>持有分</span><strong>{{ "%.1f"|format(item.scores.get('hold_score', 0.0)) }}</strong></div>
+                <div><span>退出分</span><strong>{{ "%.1f"|format(item.scores.get('exit_score', 0.0)) }}</strong></div>
+                <div><span>最终分</span><strong>{{ "%.1f"|format(item.scores.get('final_score', 0.0)) }}</strong></div>
+                <div><span>单票分</span><strong>{{ "%.1f"|format(item.scores.get('intra_score', 0.0)) }}</strong></div>
+                <div><span>类别分</span><strong>{{ "%.1f"|format(item.scores.get('category_score', 0.0)) }}</strong></div>
                 <div><span>全局排名</span><strong>{{ item.ranks.global_rank }}</strong></div>
                 <div><span>类别排名</span><strong>{{ item.ranks.category_rank }}</strong></div>
                 <div><span>当前权重</span><strong>{{ fmt_pct(item.weights.current_weight * 100) }}</strong></div>
@@ -101,6 +106,16 @@
                 <div><span>分差</span><strong>{{ "%.1f"|format(item.comparison.score_gap_vs_holding) }}</strong></div>
                 <div><span>已持有天数</span><strong>{{ item.comparison.hold_days }}</strong></div>
             </div>
+            {% if item.execution_overlay and item.execution_overlay|length > 0 %}
+            <div class="evidence-list" style="margin-top: 12px;">
+                <div><span>趋势过滤</span><strong>{{ "通过" if item.execution_overlay.get('trend_filter_pass') else "未通过" }}</strong></div>
+                <div><span>回撤区</span><strong>{{ "通过" if item.execution_overlay.get('pullback_zone_pass') else "未通过" }}</strong></div>
+                <div><span>反弹确认</span><strong>{{ "通过" if item.execution_overlay.get('rebound_confirmation_pass') else "未通过" }}</strong></div>
+                <div><span>突破例外</span><strong>{{ "通过" if item.execution_overlay.get('breakout_exception_pass') else "未通过" }}</strong></div>
+                <div><span>入场通道</span><strong>{{ item.execution_overlay.get('entry_channel_used', '-') }}</strong></div>
+                <div><span>仓位状态</span><strong>{{ item.execution_overlay.get('position_state', '-') }}</strong></div>
+            </div>
+            {% endif %}
             {% if item.feature_snapshot %}
             <div class="evidence-list" style="margin-top: 12px;">
                 {% for key, value in item.feature_snapshot.items() %}

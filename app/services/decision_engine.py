@@ -13,6 +13,7 @@ from app.repositories.market_repo import get_features_by_trade_date, get_latest_
 from app.repositories.user_repo import get_preferences, get_user
 from app.services.decision_policy_service import get_decision_policy_service
 from app.services.execution_cost_service import get_execution_cost_service
+from app.services.execution_overlay_service import ExecutionOverlayService
 from app.services.explanation_engine import ExplanationEngine
 from app.services.market_data_service import MarketDataService
 from app.services.portfolio_allocator import PortfolioAllocator
@@ -46,6 +47,7 @@ class DecisionEngine:
         self.allocator = PortfolioAllocator()
         self.policy = get_decision_policy_service()
         self.execution_cost_service = get_execution_cost_service()
+        self.execution_overlay_service = ExecutionOverlayService()
         self.risk_service = RiskService()
         self.explanation_engine = ExplanationEngine()
 
@@ -134,13 +136,14 @@ class DecisionEngine:
             portfolio_summary=portfolio_summary,
             quality_summary=quality_summary,
         )
+        effective_target_weights = allocation.get("effective_target_weights", allocation["target_weights"])
         evidence = {
             "market_snapshot": raw_snapshot,
             "market_regime": market_regime,
             "data_quality_gate": {"summary": quality_summary},
             "target_portfolio": {
-                "symbols": list(allocation["target_weights"].keys()),
-                "weights": allocation["target_weights"],
+                "symbols": list(effective_target_weights.keys()),
+                "weights": effective_target_weights,
             },
             "budget_context": {
                 "total_budget_pct": allocation["total_budget_pct"],
@@ -296,96 +299,19 @@ class DecisionEngine:
         preferences: Any,
     ) -> list[dict[str, Any]]:
         total_asset = float(portfolio_summary.get("total_asset", 0.0))
-        target_weights = allocation["target_weights"]
-        current_by_symbol = {str(row["symbol"]): row for row in current_holdings}
         min_trade_amount = self.execution_cost_service.effective_min_trade_amount(getattr(preferences, "min_trade_amount", 0.0))
-        tolerance = float(self.allocator.constraints.get("selection", {}).get("rebalance_weight_tolerance", 0.015))
-        min_trade_weight_delta = float(self.allocator.constraints.get("budget", {}).get("min_trade_weight_delta", 0.01))
-
-        symbols = set(target_weights.keys()) | set(current_by_symbol.keys())
-        items: list[dict[str, Any]] = []
-        for symbol in symbols:
-            row = scored_df[scored_df["symbol"] == symbol]
-            if row.empty:
-                continue
-            row_dict = row.iloc[0].to_dict()
-            current = current_by_symbol.get(symbol, {})
-            current_weight = float(current.get("current_weight", 0.0))
-            target_weight = float(target_weights.get(symbol, 0.0))
-            delta_weight = target_weight - current_weight
-            current_amount = float(current.get("current_amount", 0.0))
-            target_amount = round_money(total_asset * target_weight)
-            delta_amount = round_money(total_asset * abs(delta_weight))
-            intent, action = self._resolve_intent(
-                current_weight=current_weight,
-                target_weight=target_weight,
-                delta_weight=delta_weight,
-                delta_amount=delta_amount,
-                tolerance=tolerance,
-                min_trade_amount=min_trade_amount,
-                min_trade_weight_delta=min_trade_weight_delta,
-            )
-            replacement_symbol, score_gap_vs_holding = self._replacement_context(
-                symbol=symbol,
-                category=str(row_dict["decision_category"]),
-                current_holdings=current_holdings,
-                scored_df=scored_df,
-            )
-            item = {
-                "symbol": symbol,
-                "name": row_dict["name"],
-                "category": str(row_dict["decision_category"]),
-                "category_label": self.policy.get_category_label(str(row_dict["decision_category"])),
-                "rank": int(row_dict.get("global_rank", 0) or 0),
-                "global_rank": int(row_dict.get("global_rank", 0) or 0),
-                "category_rank": int(row_dict.get("category_rank", 0) or 0),
-                "action": action,
-                "action_code": action,
-                "intent": intent,
-                "current_weight": current_weight,
-                "target_weight": target_weight,
-                "delta_weight": delta_weight,
-                "current_amount": current_amount,
-                "target_amount": target_amount,
-                "suggested_amount": round_money(abs(target_amount - current_amount)) if action in {"buy", "sell"} else 0.0,
-                "suggested_pct": abs(delta_weight),
-                "score": float(row_dict.get("final_score", 0.0)),
-                "score_gap": float(score_gap_vs_holding),
-                "score_gap_vs_holding": float(score_gap_vs_holding),
-                "replace_threshold_used": float(allocation.get("replace_threshold", 0.0)),
-                "replacement_symbol": replacement_symbol,
-                "final_score": float(row_dict.get("final_score", 0.0)),
-                "intra_score": float(row_dict.get("intra_score", 0.0)),
-                "category_score": float(row_dict.get("category_score", 0.0)),
-                "reason_short": self._reason_short(
-                    action=action,
-                    intent=intent,
-                    row=row_dict,
-                    current_weight=current_weight,
-                    target_weight=target_weight,
-                    replacement_symbol=replacement_symbol,
-                    score_gap_vs_holding=score_gap_vs_holding,
-                ),
-                "risk_level": str(row_dict.get("risk_level", "")),
-                "trade_mode": str(row_dict.get("trade_mode", "")),
-                "tradability_mode": str(row_dict.get("tradability_mode", "")),
-                "execution_note": self._execution_note(action=action, intent=intent, tradability_mode=str(row_dict.get("tradability_mode", ""))),
-                "is_new_position": bool(current_weight <= 0 and target_weight > 0),
-                "hold_days": int(current.get("hold_days", 0) or 0),
-                "is_held": bool(current_weight > 0),
-                "latest_price": float(row_dict.get("close_price", 0.0)),
-                "scores": {
-                    "intra_score": float(row_dict.get("intra_score", 0.0)),
-                    "category_score": float(row_dict.get("category_score", 0.0)),
-                    "final_score": float(row_dict.get("final_score", 0.0)),
-                },
-                "score_breakdown": self._parse_json(row_dict.get("score_breakdown_json")),
-            }
-            if action != "no_trade":
-                items.append(item)
-
-        items.sort(key=lambda row: ({"buy": 0, "sell": 1, "hold": 2, "no_trade": 3}.get(row["action"], 9), row["rank"]))
-        return items
+        overlay = self.execution_overlay_service.build_action_items(
+            scored_df=scored_df,
+            current_holdings=current_holdings,
+            allocation=allocation,
+            portfolio_summary=portfolio_summary,
+            preferences=preferences,
+            policy=self.policy,
+            min_trade_amount=min_trade_amount,
+        )
+        allocation["effective_target_weights"] = overlay["effective_target_weights"]
+        allocation["overlay_rows"] = overlay["overlay_rows"]
+        return overlay["items"]
 
     def _resolve_intent(
         self,
@@ -598,7 +524,11 @@ class DecisionEngine:
                     current_amount=float(item["current_amount"]),
                     target_amount=float(item["target_amount"]),
                     rationale_json=json.dumps(
-                        {"execution_note": item["execution_note"], "scores": item["scores"]},
+                        {
+                            "execution_note": item["execution_note"],
+                            "scores": item["scores"],
+                            "execution_overlay": item.get("rationale", {}),
+                        },
                         ensure_ascii=False,
                     ),
                     score_breakdown_json=json.dumps(item["score_breakdown"], ensure_ascii=False),
@@ -680,12 +610,18 @@ class DecisionEngine:
                     "latest_amount": row.latest_amount,
                     "avg_amount_20d": row.avg_amount_20d,
                     "momentum_5d": row.momentum_5d,
+                    "momentum_3d": row.momentum_3d,
                     "momentum_10d": row.momentum_10d,
                     "momentum_20d": row.momentum_20d,
+                    "ma5": row.ma5,
+                    "ma10": row.ma10,
+                    "ma20": row.ma20,
                     "trend_strength": row.trend_strength,
+                    "volatility_10d": row.volatility_10d,
                     "volatility_20d": row.volatility_20d,
                     "drawdown_20d": row.drawdown_20d,
                     "liquidity_score": row.liquidity_score,
+                    "relative_strength_10d": row.relative_strength_10d,
                     "above_ma20_flag": row.above_ma20_flag,
                     "score_breakdown_json": getattr(row, "score_breakdown_json", "{}"),
                 }

@@ -1,0 +1,40 @@
+pullback_low_pct: -6.0
+pullback_high_pct: -2.0
+breakout_entry_threshold: 75.0
+rebalance_band: 0.05
+
+internals:
+  reduced_target_multiplier: 0.5
+  default_target_holding_days: 30
+
+horizon_buckets:
+  short:
+    max_days: 10
+    non_held:
+      entry: 0.75
+      hold: 0.15
+      exit_inverse: 0.10
+    held:
+      entry: 0.40
+      hold: 0.45
+      exit_inverse: 0.15
+  medium:
+    max_days: 30
+    non_held:
+      entry: 0.70
+      hold: 0.20
+      exit_inverse: 0.10
+    held:
+      entry: 0.30
+      hold: 0.45
+      exit_inverse: 0.25
+  long:
+    max_days: 9999
+    non_held:
+      entry: 0.65
+      hold: 0.25
+      exit_inverse: 0.10
+    held:
+      entry: 0.20
+      hold: 0.40
+      exit_inverse: 0.40

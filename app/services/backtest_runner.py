@@ -167,11 +167,13 @@ class BacktestRunner:
         }
 
     def _build_preferences(self, dataset: dict[str, Any], request: BacktestRunConfig) -> Any:
+        overrides = request.config_overrides or {}
         return SimpleNamespace(
             risk_mode=request.risk_mode,
             allow_gold=True,
             allow_bond=True,
             allow_overseas=True,
+            target_holding_days=int(overrides.get("target_holding_days", 30) or 30),
             min_trade_amount=float(self.settings.default_min_advice_amount),
             max_total_position_pct=0.85,
             max_single_position_pct=0.35,
@@ -218,7 +220,13 @@ class BacktestRunner:
                     **features,
                 }
             )
-        return pd.DataFrame(rows)
+        df = pd.DataFrame(rows)
+        if df.empty:
+            return df
+        category_return = df.groupby("decision_category")["momentum_10d"].transform("mean")
+        df["category_return_10d"] = category_return.fillna(0.0)
+        df["relative_strength_10d"] = df["momentum_10d"] - df["category_return_10d"]
+        return df
 
     def _current_holdings(self, positions: dict[str, dict[str, Any]], portfolio_summary: dict[str, Any]) -> list[dict[str, Any]]:
         rows = []

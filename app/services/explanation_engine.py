@@ -39,7 +39,7 @@ class ExplanationEngine:
                 f"（{quality_summary.get('verification_status', '')}）。"
             )
         if items:
-            reasons.append("系统会先算目标仓位，再和当前持仓对比，最后才生成具体动作。")
+            reasons.append("系统会先算类别和ETF分数，再经过趋势过滤、A/B 入场通道和仓位状态机，最后才生成动作。")
         else:
             reasons.append("在分数、预算和替换约束之后，没有 ETF 形成可执行的仓位变化。")
 
@@ -71,8 +71,13 @@ class ExplanationEngine:
                     "title": f"{item['name']} / {item['intent']}",
                     "summary": item["reason_short"],
                     "action": item["action"],
+                    "action_code": item.get("action_code", item["action"]),
                     "intent": item["intent"],
                     "scores": {
+                        "entry_score": float(item.get("entry_score", 0.0)),
+                        "hold_score": float(item.get("hold_score", 0.0)),
+                        "exit_score": float(item.get("exit_score", 0.0)),
+                        "decision_score": float(item.get("decision_score", 0.0)),
                         "intra_score": float(item["intra_score"]),
                         "category_score": float(item["category_score"]),
                         "final_score": float(item["final_score"]),
@@ -92,6 +97,7 @@ class ExplanationEngine:
                         "replace_threshold_used": float(item.get("replace_threshold_used", 0.0)),
                         "hold_days": int(item.get("hold_days", 0) or 0),
                     },
+                    "execution_overlay": dict(item.get("rationale", {})),
                     "feature_snapshot": item.get("score_breakdown", {}).get("features", {}),
                     "rank_snapshot": item.get("score_breakdown", {}).get("ranks", {}),
                     "execution_note": item.get("execution_note", ""),

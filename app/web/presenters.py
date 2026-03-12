@@ -21,6 +21,16 @@ ACTION_LABELS = {
     "no_trade": "暂不交易",
 }
 
+ACTION_CODE_LABELS = {
+    "buy_open": "开仓买入",
+    "buy_add": "继续加仓",
+    "hold": "继续持有",
+    "sell_reduce": "减仓卖出",
+    "sell_exit": "卖出退出",
+    "switch": "同类换仓",
+    "no_trade": "暂不交易",
+}
+
 INTENT_LABELS = {
     "open": "开仓",
     "add": "加仓",
@@ -52,6 +62,19 @@ REASON_CODE_LABELS = {
     "data_quality_not_ready": "数据未就绪",
 }
 
+POSITION_STATE_LABELS = {
+    "HOLD": "继续持有",
+    "REDUCE": "减仓观察",
+    "EXIT": "退出",
+    "NONE": "未持有",
+}
+
+ENTRY_CHANNEL_LABELS = {
+    "none": "无",
+    "A": "通道A：回撤后反弹",
+    "B": "通道B：强趋势突破",
+}
+
 
 def serialize_advice_record(advice) -> dict[str, Any] | None:
     if advice is None:
@@ -63,14 +86,19 @@ def serialize_advice_record(advice) -> dict[str, Any] | None:
     items = []
     for item in sorted(advice.items, key=lambda row: (row.rank, row.symbol)):
         raw_action = str(item.action)
+        raw_action_code = str(getattr(item, "action_code", raw_action))
         raw_intent = str(getattr(item, "intent", ""))
+        rationale = _parse_json(getattr(item, "rationale_json", "{}"))
+        overlay = rationale.get("execution_overlay", {}) if isinstance(rationale, dict) else {}
         items.append(
             {
                 "symbol": item.symbol,
                 "name": item.name,
                 "rank": item.rank,
                 "action": ACTION_LABELS.get(raw_action, raw_action),
-                "action_code": raw_action,
+                "action_bucket": raw_action,
+                "action_code": raw_action_code,
+                "action_code_label": ACTION_CODE_LABELS.get(raw_action_code, raw_action_code),
                 "intent": INTENT_LABELS.get(raw_intent, raw_intent),
                 "intent_code": raw_intent,
                 "category": CATEGORY_LABELS.get(str(getattr(item, "category", "")), getattr(item, "category", "")),
@@ -93,12 +121,17 @@ def serialize_advice_record(advice) -> dict[str, Any] | None:
                 "reason_short": item.reason_short,
                 "risk_level": item.risk_level,
                 "score_breakdown": _parse_json(getattr(item, "score_breakdown_json", "{}")),
-                "rationale": _parse_json(getattr(item, "rationale_json", "{}")),
+                "rationale": rationale,
+                "execution_overlay": {
+                    **overlay,
+                    "position_state_label": POSITION_STATE_LABELS.get(str(overlay.get("position_state", "")), overlay.get("position_state", "")),
+                    "entry_channel_label": ENTRY_CHANNEL_LABELS.get(str(overlay.get("entry_channel_used", "none")), overlay.get("entry_channel_used", "none")),
+                },
             }
         )
 
     action_counts = {
-        action: sum(1 for item in items if item["action_code"] == action)
+        action: sum(1 for item in items if item["action_bucket"] == action)
         for action in ["buy", "sell", "hold", "no_trade"]
     }
     intent_counts = {
@@ -181,14 +214,40 @@ def serialize_explanations(records) -> dict[str, Any]:
             overall = payload
         else:
             action = str(payload.get("action", ""))
+            action_code = str(payload.get("action_code", ""))
             intent = str(payload.get("intent", ""))
             if action:
                 payload["action"] = ACTION_LABELS.get(action, action)
+            if action_code:
+                payload["action_code"] = ACTION_CODE_LABELS.get(action_code, action_code)
             if intent:
                 payload["intent"] = INTENT_LABELS.get(intent, intent)
             category = str(payload.get("category", ""))
             if category:
                 payload["category"] = CATEGORY_LABELS.get(category, category)
+            scores = payload.get("scores", {})
+            if not isinstance(scores, dict):
+                scores = {}
+            payload["scores"] = {
+                "entry_score": float(scores.get("entry_score", 0.0) or 0.0),
+                "hold_score": float(scores.get("hold_score", 0.0) or 0.0),
+                "exit_score": float(scores.get("exit_score", 0.0) or 0.0),
+                "decision_score": float(scores.get("decision_score", scores.get("final_score", 0.0)) or 0.0),
+                "intra_score": float(scores.get("intra_score", 0.0) or 0.0),
+                "category_score": float(scores.get("category_score", 0.0) or 0.0),
+                "final_score": float(scores.get("final_score", 0.0) or 0.0),
+            }
+            overlay = payload.get("execution_overlay", {})
+            if isinstance(overlay, dict):
+                state = str(overlay.get("position_state", ""))
+                channel = str(overlay.get("entry_channel_used", "none"))
+                if state:
+                    overlay["position_state"] = POSITION_STATE_LABELS.get(state, state)
+                if channel:
+                    overlay["entry_channel_used"] = ENTRY_CHANNEL_LABELS.get(channel, channel)
+                payload["execution_overlay"] = overlay
+            else:
+                payload["execution_overlay"] = {}
             items.append(payload)
     return {"overall": overall, "items": items}
 
