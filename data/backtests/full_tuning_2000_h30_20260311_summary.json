@@ -1,0 +1,203 @@
+{
+  "started_at": "2026-03-11T17:08:54",
+  "request": {
+    "start_date": "2025-01-01",
+    "end_date": "2026-03-11",
+    "initial_capital": 2000.0,
+    "train_days": 90,
+    "validation_days": 30,
+    "step_days": 30,
+    "target_holding_days_candidates": [
+      30
+    ],
+    "search_space": {
+      "fallback.offensive_threshold": [
+        -6.0,
+        -3.0,
+        0.0
+      ],
+      "decision_thresholds.open_threshold": [
+        -6.0,
+        -3.0,
+        0.0
+      ],
+      "decision_thresholds.add_threshold": [
+        -4.0,
+        -2.0,
+        0.0
+      ],
+      "decision_thresholds.reduce_threshold": [
+        -4.0,
+        0.0,
+        4.0
+      ],
+      "decision_thresholds.full_exit_threshold": [
+        -6.0,
+        -3.0,
+        0.0
+      ]
+    },
+    "modes": [
+      "balanced",
+      "aggressive"
+    ],
+    "run_label": "full_tuning_2000_h30_20260311",
+    "slippage_bps": 3.0,
+    "execution_cost_bps": 5.0,
+    "strict_data_quality": true
+  },
+  "jobs": [
+    {
+      "mode": "balanced",
+      "run_id": "rolling_validation_20260312_004934_06913e5d",
+      "recommended_candidate": {
+        "candidate_id": "holding_days=30__fallback_offensive_threshold=+0__decision_thresholds_open_threshold=+0__decision_thresholds_add_threshold=-4__decision_thresholds_reduce_threshold=-4__decision_thresholds_full_exit_threshold=-6",
+        "target_holding_days": 30,
+        "threshold_deltas": {
+          "fallback.offensive_threshold": 0.0,
+          "decision_thresholds.open_threshold": 0.0,
+          "decision_thresholds.add_threshold": -4.0,
+          "decision_thresholds.reduce_threshold": -4.0,
+          "decision_thresholds.full_exit_threshold": -6.0
+        },
+        "threshold_overrides": {
+          "fallback": {
+            "offensive_threshold": 55.0
+          },
+          "decision_thresholds": {
+            "open_threshold": 58.0,
+            "add_threshold": 60.0,
+            "reduce_threshold": 54.0,
+            "full_exit_threshold": 66.0
+          }
+        },
+        "metrics": {
+          "total_return_pct": 0.71,
+          "annualized_return_pct": 2.0,
+          "max_drawdown_pct": -0.37,
+          "win_rate_pct": 57.14,
+          "trade_count": 13,
+          "total_execution_cost": 2.45,
+          "turnover_ratio": 2.43,
+          "stability_score": 4.44,
+          "positive_day_ratio_pct": 4.44,
+          "final_asset": 2014.18
+        },
+        "overview": {
+          "overall_performance": "一般",
+          "risk_level": "中",
+          "one_line_conclusion": "这段历史里总收益 0.71%，最大回撤 0.37%，整体属于“一般”，风险级别偏中。"
+        },
+        "quality_overview": {
+          "quality_status_counts": {
+            "ok": 60,
+            "weak": 30,
+            "blocked": 0
+          },
+          "formal_ready_ratio": 1.0,
+          "source_distribution": {
+            "akshare": 17
+          },
+          "label": "正式数据",
+          "note": "大部分交易日都有可用于正式决策的数据。"
+        },
+        "composite_score": 0.694
+      },
+      "aggregate_validation": {
+        "window_count": 6,
+        "avg_validation_calibrated_score": 0.745,
+        "avg_validation_default_score": 0.823,
+        "avg_validation_calibrated_return_pct": 0.2,
+        "avg_validation_default_return_pct": 0.25,
+        "avg_validation_calibrated_drawdown_pct": 0.17,
+        "avg_validation_default_drawdown_pct": 0.13,
+        "calibrated_beats_default_windows": 0
+      },
+      "output_files": {
+        "summary_json": "/home/kqg/etf-decision-engine/data/backtests/rolling_validation_20260312_004934_06913e5d/summary.json",
+        "window_results_csv": "/home/kqg/etf-decision-engine/data/backtests/rolling_validation_20260312_004934_06913e5d/window_results.csv",
+        "recommended_action_thresholds_yaml": "/home/kqg/etf-decision-engine/data/backtests/rolling_validation_20260312_004934_06913e5d/recommended_action_thresholds.yaml"
+      }
+    },
+    {
+      "mode": "aggressive",
+      "run_id": "rolling_validation_20260312_080521_bbf1e183",
+      "recommended_candidate": {
+        "candidate_id": "holding_days=30__fallback_offensive_threshold=+0__decision_thresholds_open_threshold=+0__decision_thresholds_add_threshold=-4__decision_thresholds_reduce_threshold=-4__decision_thresholds_full_exit_threshold=-6",
+        "target_holding_days": 30,
+        "threshold_deltas": {
+          "fallback.offensive_threshold": 0.0,
+          "decision_thresholds.open_threshold": 0.0,
+          "decision_thresholds.add_threshold": -4.0,
+          "decision_thresholds.reduce_threshold": -4.0,
+          "decision_thresholds.full_exit_threshold": -6.0
+        },
+        "threshold_overrides": {
+          "fallback": {
+            "offensive_threshold": 55.0
+          },
+          "decision_thresholds": {
+            "open_threshold": 58.0,
+            "add_threshold": 60.0,
+            "reduce_threshold": 54.0,
+            "full_exit_threshold": 66.0
+          }
+        },
+        "metrics": {
+          "total_return_pct": 0.32,
+          "annualized_return_pct": 0.91,
+          "max_drawdown_pct": -0.49,
+          "win_rate_pct": 40.0,
+          "trade_count": 20,
+          "total_execution_cost": 3.77,
+          "turnover_ratio": 3.75,
+          "stability_score": 5.56,
+          "positive_day_ratio_pct": 5.56,
+          "final_asset": 2006.46
+        },
+        "overview": {
+          "overall_performance": "一般",
+          "risk_level": "高",
+          "one_line_conclusion": "这段历史里总收益 0.32%，最大回撤 0.49%，整体属于“一般”，风险级别偏高。"
+        },
+        "quality_overview": {
+          "quality_status_counts": {
+            "ok": 60,
+            "weak": 30,
+            "blocked": 0
+          },
+          "formal_ready_ratio": 1.0,
+          "source_distribution": {
+            "akshare": 17
+          },
+          "label": "正式数据",
+          "note": "大部分交易日都有可用于正式决策的数据。"
+        },
+        "composite_score": -1.536
+      },
+      "aggregate_validation": {
+        "window_count": 6,
+        "avg_validation_calibrated_score": 1.674,
+        "avg_validation_default_score": 2.0552,
+        "avg_validation_calibrated_return_pct": 0.55,
+        "avg_validation_default_return_pct": 0.71,
+        "avg_validation_calibrated_drawdown_pct": 0.19,
+        "avg_validation_default_drawdown_pct": 0.23,
+        "calibrated_beats_default_windows": 1
+      },
+      "output_files": {
+        "summary_json": "/home/kqg/etf-decision-engine/data/backtests/rolling_validation_20260312_080521_bbf1e183/summary.json",
+        "window_results_csv": "/home/kqg/etf-decision-engine/data/backtests/rolling_validation_20260312_080521_bbf1e183/window_results.csv",
+        "recommended_action_thresholds_yaml": "/home/kqg/etf-decision-engine/data/backtests/rolling_validation_20260312_080521_bbf1e183/recommended_action_thresholds.yaml"
+      }
+    }
+  ],
+  "status": "completed",
+  "dataset": {
+    "trading_days": 285,
+    "first_trade_date": "2025-01-02",
+    "last_trade_date": "2026-03-11",
+    "window_count": 6
+  },
+  "finished_at": "2026-03-12T08:05:21"
+}
