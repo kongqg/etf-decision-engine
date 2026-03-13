@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.explanation_trace_service import ExplanationTraceService
+
 MARKET_REGIME_LABELS = {
     "risk_on": "偏进攻",
     "neutral": "中性",
@@ -16,6 +18,9 @@ QUALITY_STATUS_LABELS = {
 
 
 class ExplanationEngine:
+    def __init__(self) -> None:
+        self.trace_service = ExplanationTraceService()
+
     def build(
         self,
         *,
@@ -25,6 +30,8 @@ class ExplanationEngine:
         candidate_summary: list[dict[str, Any]],
         portfolio_summary: dict[str, Any],
         quality_summary: dict[str, Any],
+        current_holdings: list[dict[str, Any]] | None = None,
+        preferences: Any | None = None,
     ) -> dict[str, Any]:
         market_regime_label = self._market_regime_label(market_regime.get("market_regime", "neutral"))
         reasons = [
@@ -39,9 +46,9 @@ class ExplanationEngine:
                 f"（{quality_summary.get('verification_status', '')}）。"
             )
         if items:
-            reasons.append("系统会先算类别和ETF分数，再经过趋势过滤、A/B 入场通道和仓位状态机，最后才生成动作。")
+            reasons.append("系统会先算类别和 ETF 分数，再经过仓位分配、趋势过滤、A/B 入场通道和状态机，最后才生成动作。")
         else:
-            reasons.append("在分数、预算和替换约束之后，没有 ETF 形成可执行的仓位变化。")
+            reasons.append("在分数、预算和执行约束之后，没有 ETF 形成正式执行动作。")
 
         overall = {
             "headline": self._headline(items),
@@ -63,47 +70,14 @@ class ExplanationEngine:
             "candidate_summary": candidate_summary,
         }
 
-        item_details = []
-        for item in items:
-            item_details.append(
-                {
-                    "symbol": item["symbol"],
-                    "title": f"{item['name']} / {item['intent']}",
-                    "summary": item["reason_short"],
-                    "action": item["action"],
-                    "action_code": item.get("action_code", item["action"]),
-                    "intent": item["intent"],
-                    "scores": {
-                        "entry_score": float(item.get("entry_score", 0.0)),
-                        "hold_score": float(item.get("hold_score", 0.0)),
-                        "exit_score": float(item.get("exit_score", 0.0)),
-                        "decision_score": float(item.get("decision_score", 0.0)),
-                        "intra_score": float(item["intra_score"]),
-                        "category_score": float(item["category_score"]),
-                        "final_score": float(item["final_score"]),
-                    },
-                    "ranks": {
-                        "global_rank": int(item["global_rank"]),
-                        "category_rank": int(item["category_rank"]),
-                    },
-                    "weights": {
-                        "current_weight": float(item["current_weight"]),
-                        "target_weight": float(item["target_weight"]),
-                        "delta_weight": float(item["delta_weight"]),
-                    },
-                    "comparison": {
-                        "replacement_symbol": item.get("replacement_symbol", ""),
-                        "score_gap_vs_holding": float(item.get("score_gap_vs_holding", 0.0)),
-                        "replace_threshold_used": float(item.get("replace_threshold_used", 0.0)),
-                        "hold_days": int(item.get("hold_days", 0) or 0),
-                    },
-                    "execution_overlay": dict(item.get("rationale", {})),
-                    "feature_snapshot": item.get("score_breakdown", {}).get("features", {}),
-                    "rank_snapshot": item.get("score_breakdown", {}).get("ranks", {}),
-                    "execution_note": item.get("execution_note", ""),
-                }
-            )
-
+        item_details = self.trace_service.build_item_payloads(
+            market_regime=market_regime,
+            allocation=allocation,
+            items=items,
+            candidate_summary=candidate_summary,
+            current_holdings=current_holdings or [],
+            preferences=preferences,
+        )
         return {"overall": overall, "items": item_details}
 
     def _headline(self, items: list[dict[str, Any]]) -> str:

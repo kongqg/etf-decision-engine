@@ -135,6 +135,8 @@ class DecisionEngine:
             candidate_summary=allocation["candidate_summary"],
             portfolio_summary=portfolio_summary,
             quality_summary=quality_summary,
+            current_holdings=current_holdings,
+            preferences=preferences,
         )
         effective_target_weights = allocation.get("effective_target_weights", allocation["target_weights"])
         evidence = {
@@ -200,12 +202,19 @@ class DecisionEngine:
                 "single_weight_cap": 0.0,
                 "category_budget_caps": {},
                 "replace_threshold": 0.0,
+                "selection_trace": {},
+                "replacement_trace": {},
+                "allocation_trace": {},
+                "overlay_rows": {},
+                "overlay_traces": {},
                 "candidate_summary": [],
             },
             items=[],
             candidate_summary=[],
             portfolio_summary=portfolio_summary,
             quality_summary=quality_summary,
+            current_holdings=[],
+            preferences=None,
         )
         evidence = {
             "market_snapshot": raw_snapshot,
@@ -271,8 +280,12 @@ class DecisionEngine:
             score_row = scored_df[scored_df["symbol"] == symbol]
             category = str(score_row.iloc[0]["decision_category"]) if not score_row.empty else ""
             hold_days = 0
+            hold_days_known = False
+            acquired_at = None
             if symbol in last_buy_by_symbol:
                 hold_days = max((now.date() - last_buy_by_symbol[symbol].date()).days, 0)
+                hold_days_known = True
+                acquired_at = last_buy_by_symbol[symbol].isoformat()
             current_holdings.append(
                 {
                     "symbol": symbol,
@@ -281,6 +294,8 @@ class DecisionEngine:
                     "current_weight": float(row.get("weight_pct", 0.0)),
                     "current_amount": float(row.get("market_value", 0.0)),
                     "hold_days": hold_days,
+                    "hold_days_known": hold_days_known,
+                    "acquired_at": acquired_at,
                     "quantity": float(row.get("quantity", 0.0)),
                     "avg_cost": float(row.get("avg_cost", 0.0)),
                     "last_price": float(row.get("last_price", 0.0)),
@@ -311,6 +326,7 @@ class DecisionEngine:
         )
         allocation["effective_target_weights"] = overlay["effective_target_weights"]
         allocation["overlay_rows"] = overlay["overlay_rows"]
+        allocation["overlay_traces"] = overlay.get("overlay_traces", {})
         return overlay["items"]
 
     def _resolve_intent(
@@ -528,6 +544,7 @@ class DecisionEngine:
                             "execution_note": item["execution_note"],
                             "scores": item["scores"],
                             "execution_overlay": item.get("rationale", {}),
+                            "execution_trace": item.get("execution_trace", {}),
                         },
                         ensure_ascii=False,
                     ),

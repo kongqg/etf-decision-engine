@@ -1,0 +1,443 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero split">
+    <div>
+        <div class="eyebrow">规则页</div>
+        <h2>当前打分、仓位和执行规则</h2>
+        <p>这页直接读取当前配置文件和用户设置生成。你改了配置或持有周期，这里的公式、参数和权重会一起更新。系统级参数在本页修改，个人偏好仍在设置页修改。</p>
+    </div>
+    {% if rulebook %}
+    <div class="action-cluster">
+        <a class="primary-link" href="/advice">回到今日建议</a>
+        <a class="text-link" href="/settings">个人偏好</a>
+    </div>
+    {% endif %}
+</section>
+
+{% if rulebook %}
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">当前生效配置</div>
+            <h3>{{ rulebook.current_profile.active_bucket_label }}</h3>
+        </div>
+    </div>
+    <div class="evidence-list">
+        <div><span>当前持有周期</span><strong>{{ rulebook.current_profile.target_holding_days }} 天</strong></div>
+        <div><span>命中的周期桶</span><strong>{{ rulebook.current_profile.active_bucket_label }}</strong></div>
+        <div><span>非持仓权重</span><strong>E {{ "%.2f"|format(rulebook.current_profile.non_held_weights.entry) }} / H {{ "%.2f"|format(rulebook.current_profile.non_held_weights.hold) }} / X {{ "%.2f"|format(rulebook.current_profile.non_held_weights.exit_inverse) }}</strong></div>
+        <div><span>已持仓权重</span><strong>E {{ "%.2f"|format(rulebook.current_profile.held_weights.entry) }} / H {{ "%.2f"|format(rulebook.current_profile.held_weights.hold) }} / X {{ "%.2f"|format(rulebook.current_profile.held_weights.exit_inverse) }}</strong></div>
+    </div>
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">快速理解</div>
+            <h3>先看这 4 个分数</h3>
+        </div>
+    </div>
+    <div class="card-grid two">
+        {% for row in rulebook.quick_guide %}
+        <article class="sub-card">
+            <h4>{{ row.title }}</h4>
+            <p class="muted">{{ row.formula }}</p>
+            <p>{{ row.meaning }}</p>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">基础特征</div>
+            <h3>原始变量怎么计算</h3>
+        </div>
+    </div>
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>变量</th>
+            <th>公式</th>
+            <th>物理意义</th>
+            <th>主要用在</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in rulebook.feature_rules %}
+        <tr>
+            <td><strong>{{ row.label }}</strong><br><span class="muted">{{ row.key }}</span></td>
+            <td>{{ row.formula }}</td>
+            <td>{{ row.meaning }}</td>
+            <td>{{ row.used_in }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">标准化与派生变量</div>
+            <h3>为什么很多分数都在 0 到 100 之间</h3>
+        </div>
+    </div>
+    <p class="muted">{{ rulebook.normalization_rules.formula_note }}</p>
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>变量</th>
+            <th>方向</th>
+            <th>分位公式</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in rulebook.normalization_rules.features %}
+        <tr>
+            <td>{{ row.label }}<br><span class="muted">{{ row.key }}</span></td>
+            <td>{{ row.direction }}</td>
+            <td>{{ row.formula }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <div class="section-head" style="margin-top: 18px;">
+        <div>
+            <div class="eyebrow">执行层派生变量</div>
+            <h3>entry / hold / exit 用到的中间量</h3>
+        </div>
+    </div>
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>变量</th>
+            <th>公式</th>
+            <th>含义</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in rulebook.normalization_rules.derived_variables %}
+        <tr>
+            <td>{{ row.key }}</td>
+            <td>{{ row.formula }}</td>
+            <td>{{ row.meaning }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">评分规则</div>
+            <h3>从单票分到执行决策分</h3>
+        </div>
+    </div>
+    <div class="card-grid two">
+        <article class="sub-card">
+            <h4>单票分 intra_score</h4>
+            <p class="muted">{{ rulebook.score_rules.intra_score.display_formula }}</p>
+            <table class="data-table">
+                <thead><tr><th>分项</th><th>权重</th><th>变量名</th></tr></thead>
+                <tbody>
+                {% for row in rulebook.score_rules.intra_score.components %}
+                <tr>
+                    <td>{{ row.label }}</td>
+                    <td>{{ "%.3f"|format(row.weight) }}</td>
+                    <td>{{ row.key }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </article>
+
+        <article class="sub-card">
+            <h4>类别分 category_score</h4>
+            <p class="muted">{{ rulebook.score_rules.category_score.display_formula }}</p>
+            <div class="evidence-list">
+                <div><span>头部取前 N 只</span><strong>{{ rulebook.score_rules.category_score.top_n }}</strong></div>
+                <div><span>动量为正阈值</span><strong>{{ "%.1f"|format(rulebook.score_rules.category_score.breadth_thresholds.momentum_20d_min) }}</strong></div>
+                <div><span>趋势为正阈值</span><strong>{{ "%.1f"|format(rulebook.score_rules.category_score.breadth_thresholds.trend_strength_min) }}</strong></div>
+            </div>
+            <table class="data-table">
+                <thead><tr><th>分项</th><th>权重</th></tr></thead>
+                <tbody>
+                {% for row in rulebook.score_rules.category_score.components %}
+                <tr>
+                    <td>{{ row.key }}</td>
+                    <td>{{ "%.2f"|format(row.weight) }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </article>
+
+        <article class="sub-card">
+            <h4>最终分 final_score</h4>
+            <p class="muted">{{ rulebook.score_rules.final_score.display_formula }}</p>
+            <div class="evidence-list">
+                <div><span>最低候选阈值</span><strong>{{ "%.1f"|format(rulebook.score_rules.final_score.min_final_score_for_target) }}</strong></div>
+                <div><span>候选展示数量</span><strong>{{ rulebook.score_rules.final_score.candidate_watchlist_size }}</strong></div>
+            </div>
+            <table class="data-table">
+                <thead><tr><th>分项</th><th>权重</th></tr></thead>
+                <tbody>
+                {% for row in rulebook.score_rules.final_score.components %}
+                <tr>
+                    <td>{{ row.key }}</td>
+                    <td>{{ "%.2f"|format(row.weight) }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </article>
+
+        <article class="sub-card">
+            <h4>执行决策分 decision_score</h4>
+            <p class="muted">{{ rulebook.score_rules.decision_score.display_formula }}</p>
+            <p>{{ rulebook.score_rules.decision_score.meaning }}</p>
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>周期桶</th>
+                    <th>最大持有天数</th>
+                    <th>未持仓权重</th>
+                    <th>已持仓权重</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for row in rulebook.score_rules.decision_score.buckets %}
+                <tr>
+                    <td>{{ row.label }}</td>
+                    <td>{{ row.max_days }}</td>
+                    <td>E {{ "%.2f"|format(row.non_held.entry) }} / H {{ "%.2f"|format(row.non_held.hold) }} / X {{ "%.2f"|format(row.non_held.exit_inverse) }}</td>
+                    <td>E {{ "%.2f"|format(row.held.entry) }} / H {{ "%.2f"|format(row.held.hold) }} / X {{ "%.2f"|format(row.held.exit_inverse) }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </article>
+    </div>
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">类别 head</div>
+            <h3>entry / hold / exit 各类别公式</h3>
+        </div>
+    </div>
+    {% for category, payload in rulebook.category_heads.items() %}
+    <article class="sub-card" style="margin-bottom: 18px;">
+        <div class="eyebrow">{{ payload.label }}</div>
+        <h4>{{ payload.label }}</h4>
+        <div class="card-grid three">
+            {% for head_name, head in payload.heads.items() %}
+            <div>
+                <h5>{{ head_name }}_score</h5>
+                <p class="muted">{{ head.formula }}</p>
+                <p>{{ head.meaning }}</p>
+                <table class="data-table">
+                    <thead><tr><th>变量</th><th>原始权重</th><th>有效权重</th></tr></thead>
+                    <tbody>
+                    {% for row in head.components %}
+                    <tr>
+                        <td>{{ row.label }}<br><span class="muted">{{ row.key }}</span></td>
+                        <td>{{ "%.2f"|format(row.raw_weight) }}</td>
+                        <td>{{ "%.2f"|format(row.effective_weight) }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                <p class="muted">{{ head.note }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </article>
+    {% endfor %}
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">执行层规则</div>
+            <h3>什么时候能买、什么时候减、什么时候退出</h3>
+        </div>
+    </div>
+    <div class="card-grid two">
+        <article class="sub-card">
+            <h4>共同趋势过滤</h4>
+            <p class="muted">{{ rulebook.execution_rules.trend_filter.formula }}</p>
+            <p>{{ rulebook.execution_rules.trend_filter.meaning }}</p>
+        </article>
+        <article class="sub-card">
+            <h4>通道 A：回撤后反弹</h4>
+            <p class="muted">{{ rulebook.execution_rules.channel_a.formula }}</p>
+            <div class="evidence-list">
+                <div><span>pullback_low_pct</span><strong>{{ "%.1f"|format(rulebook.execution_rules.channel_a.params.pullback_low_pct) }}</strong></div>
+                <div><span>pullback_high_pct</span><strong>{{ "%.1f"|format(rulebook.execution_rules.channel_a.params.pullback_high_pct) }}</strong></div>
+            </div>
+            <p>{{ rulebook.execution_rules.channel_a.meaning }}</p>
+        </article>
+        <article class="sub-card">
+            <h4>通道 B：强趋势突破</h4>
+            <p class="muted">{{ rulebook.execution_rules.channel_b.formula }}</p>
+            <div class="evidence-list">
+                <div><span>pullback_high_pct</span><strong>{{ "%.1f"|format(rulebook.execution_rules.channel_b.params.pullback_high_pct) }}</strong></div>
+                <div><span>breakout_entry_threshold</span><strong>{{ "%.1f"|format(rulebook.execution_rules.channel_b.params.breakout_entry_threshold) }}</strong></div>
+            </div>
+            <p>{{ rulebook.execution_rules.channel_b.meaning }}</p>
+        </article>
+        <article class="sub-card">
+            <h4>持仓状态</h4>
+            <table class="data-table">
+                <thead><tr><th>状态</th><th>条件</th><th>含义</th></tr></thead>
+                <tbody>
+                {% for row in rulebook.execution_rules.position_state %}
+                <tr>
+                    <td>{{ row.state }}</td>
+                    <td>{{ row.formula }}</td>
+                    <td>{{ row.meaning }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <div class="evidence-list" style="margin-top: 12px;">
+                <div><span>rebalance_band</span><strong>{{ fmt_pct(rulebook.execution_rules.rebalance_band * 100) }}</strong></div>
+                <div><span>reduced_target_multiplier</span><strong>{{ "%.2f"|format(rulebook.execution_rules.reduced_target_multiplier) }}</strong></div>
+            </div>
+        </article>
+    </div>
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">仓位与替换参数</div>
+            <h3>组合怎么分仓、什么时候保护旧仓</h3>
+        </div>
+    </div>
+    <div class="card-grid two">
+        <article class="sub-card">
+            <h4>选择层参数</h4>
+            <table class="data-table">
+                <thead><tr><th>配置路径</th><th>当前值</th><th>意义</th></tr></thead>
+                <tbody>
+                {% for row in rulebook.allocation_rules.selection %}
+                <tr>
+                    <td>{{ row.path }}</td>
+                    <td>{{ row.value }}</td>
+                    <td>{{ row.meaning }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </article>
+        <article class="sub-card">
+            <h4>预算层参数</h4>
+            <table class="data-table">
+                <thead><tr><th>配置路径</th><th>当前值</th><th>意义</th></tr></thead>
+                <tbody>
+                {% for row in rulebook.allocation_rules.budget %}
+                <tr>
+                    <td>{{ row.path }}</td>
+                    <td>{{ row.value }}</td>
+                    <td>{{ row.meaning }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <h5 style="margin-top: 12px;">类别上限</h5>
+            <table class="data-table">
+                <thead><tr><th>类别</th><th>配置路径</th><th>当前值</th></tr></thead>
+                <tbody>
+                {% for row in rulebook.allocation_rules.category_caps %}
+                <tr>
+                    <td>{{ row.label }}</td>
+                    <td>{{ row.path }}</td>
+                    <td>{{ row.value }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </article>
+    </div>
+</section>
+
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">交易摩擦</div>
+            <h3>统一执行成本与最小交易金额</h3>
+        </div>
+    </div>
+    <div class="evidence-list">
+        <div><span>execution_cost_bps</span><strong>{{ "%.1f"|format(rulebook.execution_cost_rules.execution_cost_bps) }}</strong></div>
+        <div><span>min_trade_amount</span><strong>{{ fmt_money(rulebook.execution_cost_rules.min_trade_amount) }}</strong></div>
+    </div>
+</section>
+
+{% if config_sections %}
+<section class="card wide">
+    <div class="section-head">
+        <div>
+            <div class="eyebrow">配置页</div>
+            <h3>直接修改系统参数</h3>
+        </div>
+    </div>
+    <p class="muted">下面这些输入框会直接写回对应 YAML 配置文件。数值类参数建议逐项小步调整；保存后，规则页会按最新配置重读，本地开发服务也会自动重载。</p>
+    {% for section in config_sections %}
+    <article class="sub-card" style="margin-bottom: 18px;">
+        <div class="section-head">
+            <div>
+                <div class="eyebrow">{{ section.file_name }}</div>
+                <h4>{{ section.file_label }}</h4>
+            </div>
+        </div>
+        <form action="/actions/update-rule-config" method="post">
+            <input type="hidden" name="file_name" value="{{ section.file_name }}">
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>参数路径</th>
+                    <th>当前值</th>
+                    <th>修改</th>
+                    <th>说明</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for field in section.fields %}
+                <tr>
+                    <td><strong>{{ field.path }}</strong></td>
+                    <td>{{ field.display_value }}</td>
+                    <td>
+                        {% if field.input_type == "number" %}
+                        <input type="number" name="{{ field.form_key }}" value="{{ field.display_value }}" step="{{ field.step }}" style="width: 160px;">
+                        {% elif field.input_type == "select" %}
+                        <select name="{{ field.form_key }}">
+                            <option value="true" {% if field.display_value == "true" %}selected{% endif %}>true</option>
+                            <option value="false" {% if field.display_value == "false" %}selected{% endif %}>false</option>
+                        </select>
+                        {% else %}
+                        <input type="text" name="{{ field.form_key }}" value="{{ field.display_value }}" style="width: 240px;">
+                        {% endif %}
+                    </td>
+                    <td>{{ field.help_text or "参数名已与规则页公式保持一致；改这里会直接影响对应规则。" }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <div class="form-actions" style="margin-top: 12px;">
+                <button class="primary" type="submit">保存 {{ section.file_label }}</button>
+            </div>
+        </form>
+    </article>
+    {% endfor %}
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

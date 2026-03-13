@@ -117,6 +117,27 @@ def test_existing_holding_can_buy_add_when_hold_state_and_entry_allowed_again():
     assert result["items"][0]["rationale"]["position_state"] == "HOLD"
 
 
+def test_existing_holding_with_unknown_hold_days_is_still_treated_as_held():
+    frame = pd.DataFrame([_base_row()])
+    current_holdings = [
+        {
+            "symbol": "AAA",
+            "name": "ETF-AAA",
+            "category": "stock_etf",
+            "current_weight": 0.08,
+            "current_amount": 8000.0,
+            "hold_days": 0,
+            "hold_days_known": False,
+        }
+    ]
+
+    result = _build_items(frame, current_holdings=current_holdings, target_weights={"AAA": 0.08})
+
+    assert result["items"][0]["action_code"] == "hold"
+    assert result["items"][0]["rationale"]["position_state"] == "HOLD"
+    assert result["items"][0]["execution_trace"]["position_state"]["hold_days_known"] is False
+
+
 def test_pullback_but_still_falling_does_not_open():
     frame = pd.DataFrame([_base_row(drawdown_20d=-4.0, close_price=101.0, ma5=103.0, momentum_3d=-0.5)])
 

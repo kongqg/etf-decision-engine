@@ -68,7 +68,12 @@ class ExecutionOverlayService:
         min_trade_amount: float,
     ) -> dict[str, Any]:
         if scored_df.empty:
-            return {"items": [], "effective_target_weights": {}, "overlay_rows": {}}
+            return {
+                "items": [],
+                "effective_target_weights": {},
+                "overlay_rows": {},
+                "overlay_traces": {},
+            }
 
         current_by_symbol = {str(row["symbol"]): dict(row) for row in current_holdings}
         total_asset = float(portfolio_summary.get("total_asset", 0.0))
@@ -82,15 +87,17 @@ class ExecutionOverlayService:
 
         items: list[dict[str, Any]] = []
         effective_target_weights: dict[str, float] = {}
-        overlay_rows: dict[str, dict[str, Any]] = {}
-        symbols = set(target_weights.keys()) | set(current_by_symbol.keys())
+        overlay_rows: dict[str, dict[str, Any]] = {
+            str(row["symbol"]): row.to_dict()
+            for _, row in prepared.iterrows()
+        }
+        overlay_traces: dict[str, dict[str, Any]] = {}
+        symbols = list(prepared.sort_values(["global_rank", "symbol"], ascending=[True, True])["symbol"].astype(str))
 
         for symbol in symbols:
-            row_frame = prepared[prepared["symbol"] == symbol]
-            if row_frame.empty:
+            row = dict(overlay_rows.get(symbol, {}))
+            if not row:
                 continue
-            row = row_frame.iloc[0].to_dict()
-            overlay_rows[symbol] = row
             current = current_by_symbol.get(symbol, {})
             current_weight = float(current.get("current_weight", 0.0))
             normal_target_weight = float(target_weights.get(symbol, 0.0))
@@ -188,8 +195,10 @@ class ExecutionOverlayService:
             current_amount = float(current.get("current_amount", 0.0))
             delta_weight = effective_target_weight - current_weight
             delta_amount = round(float(total_asset) * abs(delta_weight), 2)
+            min_trade_blocked = False
 
             if action in {"buy", "sell"} and action_code != "sell_exit" and delta_amount < min_trade_amount:
+                min_trade_blocked = True
                 if is_held:
                     action = "hold"
                     action_code = "hold"
@@ -213,6 +222,62 @@ class ExecutionOverlayService:
                 suggested_amount = round(abs(target_amount - current_amount), 2) if action in {"buy", "sell"} else 0.0
                 suggested_pct = abs(delta_weight)
                 effective_target_weights[symbol] = max(effective_target_weight, 0.0)
+
+            rationale = {
+                "trend_filter_pass": bool(row.get("trend_filter_pass", False)),
+                "pullback_zone_pass": bool(row.get("pullback_zone_pass", False)),
+                "rebound_confirmation_pass": bool(row.get("rebound_confirmation_pass", False)),
+                "breakout_exception_pass": bool(row.get("breakout_exception_pass", False)),
+                "entry_allowed": bool(row.get("entry_allowed", False)),
+                "entry_channel_used": str(row.get("entry_channel_used", "none")),
+                "entry_channel_label": self._entry_channel_label(str(row.get("entry_channel_used", "none"))),
+                "position_state": base_state,
+                "position_state_label": POSITION_STATE_LABELS.get(base_state, base_state),
+                "action_reason": action_reason,
+                "switch_blocked": switch_blocked,
+                "switch_partner": switch_partner,
+                "normal_target_weight": normal_target_weight,
+                "reduced_target_weight": reduced_target_weight,
+                "rebalance_band": self.config.rebalance_band,
+                "pullback_low_pct": self.config.pullback_low_pct,
+                "pullback_high_pct": self.config.pullback_high_pct,
+                "breakout_entry_threshold": self.config.breakout_entry_threshold,
+                "trend_snapshot": {
+                    "momentum_3d": float(row.get("momentum_3d", 0.0)),
+                    "momentum_5d": float(row.get("momentum_5d", 0.0)),
+                    "momentum_20d": float(row.get("momentum_20d", 0.0)),
+                    "close_price": float(row.get("close_price", 0.0)),
+                    "ma5": float(row.get("ma5", 0.0)),
+                    "ma20": float(row.get("ma20", 0.0)),
+                    "drawdown_20d": float(row.get("drawdown_20d", 0.0)),
+                    "volatility_20d": float(row.get("volatility_20d", 0.0)),
+                    "category_median_volatility_20d": float(row.get("category_median_volatility_20d", 0.0)),
+                },
+            }
+            execution_trace = self._build_execution_trace(
+                row=row,
+                current=current,
+                category_context=category_context,
+                base_state=base_state,
+                normal_target_weight=normal_target_weight,
+                reduced_target_weight=reduced_target_weight,
+                effective_target_weight=max(effective_target_weight, 0.0),
+                current_weight=current_weight,
+                current_amount=current_amount,
+                target_amount=target_amount,
+                delta_weight=delta_weight,
+                delta_amount=delta_amount,
+                total_asset=total_asset,
+                min_trade_amount=min_trade_amount,
+                action=action,
+                action_code=action_code,
+                switch_in=switch_in,
+                switch_out=switch_out,
+                switch_blocked=switch_blocked,
+                switch_partner=switch_partner,
+                action_reason=action_reason,
+                min_trade_blocked=min_trade_blocked,
+            )
 
             item = {
                 "symbol": symbol,
@@ -253,6 +318,7 @@ class ExecutionOverlayService:
                 "execution_note": self._execution_note(action_code=action_code, tradability_mode=str(row.get("tradability_mode", ""))),
                 "is_new_position": bool(not is_held and effective_target_weight > 0),
                 "hold_days": int(current.get("hold_days", 0) or 0),
+                "hold_days_known": bool(current.get("hold_days_known", False)),
                 "is_held": is_held,
                 "latest_price": float(row.get("close_price", 0.0)),
                 "scores": {
@@ -265,37 +331,33 @@ class ExecutionOverlayService:
                     "final_score": float(row.get("final_score", 0.0)),
                 },
                 "score_breakdown": self._parse_json(row.get("score_breakdown_json", {})),
-                "rationale": {
-                    "trend_filter_pass": bool(row.get("trend_filter_pass", False)),
-                    "pullback_zone_pass": bool(row.get("pullback_zone_pass", False)),
-                    "rebound_confirmation_pass": bool(row.get("rebound_confirmation_pass", False)),
-                    "breakout_exception_pass": bool(row.get("breakout_exception_pass", False)),
-                    "entry_allowed": bool(row.get("entry_allowed", False)),
-                    "entry_channel_used": str(row.get("entry_channel_used", "none")),
-                    "entry_channel_label": self._entry_channel_label(str(row.get("entry_channel_used", "none"))),
-                    "position_state": base_state,
-                    "position_state_label": POSITION_STATE_LABELS.get(base_state, base_state),
-                    "action_reason": action_reason,
-                    "switch_blocked": switch_blocked,
-                    "switch_partner": switch_partner,
-                    "normal_target_weight": normal_target_weight,
-                    "reduced_target_weight": reduced_target_weight,
-                    "rebalance_band": self.config.rebalance_band,
-                    "pullback_low_pct": self.config.pullback_low_pct,
-                    "pullback_high_pct": self.config.pullback_high_pct,
-                    "breakout_entry_threshold": self.config.breakout_entry_threshold,
-                    "trend_snapshot": {
-                        "momentum_3d": float(row.get("momentum_3d", 0.0)),
-                        "momentum_5d": float(row.get("momentum_5d", 0.0)),
-                        "momentum_20d": float(row.get("momentum_20d", 0.0)),
-                        "close_price": float(row.get("close_price", 0.0)),
-                        "ma5": float(row.get("ma5", 0.0)),
-                        "ma20": float(row.get("ma20", 0.0)),
-                        "drawdown_20d": float(row.get("drawdown_20d", 0.0)),
-                        "volatility_20d": float(row.get("volatility_20d", 0.0)),
-                        "category_median_volatility_20d": float(row.get("category_median_volatility_20d", 0.0)),
-                    },
-                },
+                "feature_snapshot": self._feature_snapshot(row),
+                "rationale": rationale,
+                "execution_trace": execution_trace,
+            }
+            overlay_traces[symbol] = {
+                "symbol": symbol,
+                "action": action,
+                "action_code": action_code,
+                "intent": intent,
+                "current_weight": current_weight,
+                "normal_target_weight": normal_target_weight,
+                "effective_target_weight": max(effective_target_weight, 0.0),
+                "reduced_target_weight": reduced_target_weight,
+                "delta_weight": delta_weight,
+                "current_amount": current_amount,
+                "target_amount": target_amount,
+                "delta_amount": delta_amount,
+                "suggested_amount": suggested_amount,
+                "suggested_pct": suggested_pct,
+                "reason_short": action_reason,
+                "scores": item["scores"],
+                "rationale": rationale,
+                "execution_trace": execution_trace,
+                "feature_snapshot": item["feature_snapshot"],
+                "score_breakdown": item["score_breakdown"],
+                "is_held": is_held,
+                "latest_price": float(row.get("close_price", 0.0)),
             }
             if action != "no_trade":
                 items.append(item)
@@ -311,6 +373,7 @@ class ExecutionOverlayService:
             "items": items,
             "effective_target_weights": effective_target_weights,
             "overlay_rows": overlay_rows,
+            "overlay_traces": overlay_traces,
         }
 
     def _prepare_overlay_frame(
@@ -341,7 +404,14 @@ class ExecutionOverlayService:
             if column not in df.columns:
                 df[column] = default
         current_by_symbol = {str(row["symbol"]): dict(row) for row in current_holdings}
+        df["current_weight"] = df["symbol"].map(
+            lambda symbol: float(current_by_symbol.get(str(symbol), {}).get("current_weight", 0.0) or 0.0)
+        )
         df["hold_days"] = df["symbol"].map(lambda symbol: int(current_by_symbol.get(str(symbol), {}).get("hold_days", 0) or 0))
+        df["hold_days_known"] = df["symbol"].map(
+            lambda symbol: bool(current_by_symbol.get(str(symbol), {}).get("hold_days_known", False))
+        )
+        df["is_held"] = df["current_weight"] > 0
         df["abs_drawdown_20d"] = pd.to_numeric(df["drawdown_20d"], errors="coerce").fillna(0.0).abs()
         df["category_symbol_count"] = df.groupby("decision_category")["symbol"].transform("count")
         df["category_median_volatility_20d"] = df.groupby("decision_category")["volatility_20d"].transform("median").fillna(0.0)
@@ -373,10 +443,17 @@ class ExecutionOverlayService:
 
         for _, row in df.iterrows():
             category = str(row.get("decision_category", ""))
+            is_held = bool(row.get("is_held", False))
             entry_score = self._head_score(category, "entry", row)
             hold_score = self._head_score(category, "hold", row)
             exit_score = self._head_score(category, "exit", row)
-            decision_score = self._decision_score(entry_score, hold_score, exit_score, is_held=bool(row.get("hold_days", 0) > 0), preferences=preferences)
+            decision_score = self._decision_score(
+                entry_score,
+                hold_score,
+                exit_score,
+                is_held=is_held,
+                preferences=preferences,
+            )
 
             trend_filter_pass = bool(float(row.get("momentum_20d", 0.0)) > 0 and float(row.get("close_price", 0.0)) > float(row.get("ma20", 0.0)))
             pullback_zone_pass = bool(self.config.pullback_low_pct <= float(row.get("drawdown_20d", 0.0)) <= self.config.pullback_high_pct)
@@ -400,7 +477,7 @@ class ExecutionOverlayService:
                 momentum_20d=float(row.get("momentum_20d", 0.0)),
                 close_price=float(row.get("close_price", 0.0)),
                 ma20=float(row.get("ma20", 0.0)),
-                is_held=bool(row.get("hold_days", 0) > 0),
+                is_held=is_held,
             )
 
             entry_scores.append(entry_score)
@@ -474,6 +551,11 @@ class ExecutionOverlayService:
                 "blocked_new_symbol": "" if switch_allowed else new_symbol,
                 "blocked_old_symbol": "" if switch_allowed else old_symbol,
                 "score_gap": score_gap,
+                "old_state": old_state,
+                "new_entry_allowed": bool(new_row.get("entry_allowed", False)),
+                "new_target_weight": new_target_weight,
+                "rebalance_band": self.config.rebalance_band,
+                "switch_allowed": switch_allowed,
             }
         return context
 
@@ -557,6 +639,145 @@ class ExecutionOverlayService:
         if action_code == "switch":
             return f"{mode_note} 本次是同类别换仓，先确认旧仓减弱，再切到新龙头。"
         return mode_note
+
+    def _feature_snapshot(self, row: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "close_price": float(row.get("close_price", 0.0)),
+            "momentum_3d": float(row.get("momentum_3d", 0.0)),
+            "momentum_5d": float(row.get("momentum_5d", 0.0)),
+            "momentum_10d": float(row.get("momentum_10d", 0.0)),
+            "momentum_20d": float(row.get("momentum_20d", 0.0)),
+            "ma5": float(row.get("ma5", 0.0)),
+            "ma10": float(row.get("ma10", 0.0)),
+            "ma20": float(row.get("ma20", 0.0)),
+            "trend_strength": float(row.get("trend_strength", 0.0)),
+            "drawdown_20d": float(row.get("drawdown_20d", 0.0)),
+            "volatility_20d": float(row.get("volatility_20d", 0.0)),
+            "liquidity_score": float(row.get("liquidity_score", 0.0)),
+            "decision_category": str(row.get("decision_category", "")),
+            "tradability_mode": str(row.get("tradability_mode", "")),
+        }
+
+    def _build_execution_trace(
+        self,
+        *,
+        row: dict[str, Any],
+        current: dict[str, Any],
+        category_context: dict[str, Any],
+        base_state: str,
+        normal_target_weight: float,
+        reduced_target_weight: float,
+        effective_target_weight: float,
+        current_weight: float,
+        current_amount: float,
+        target_amount: float,
+        delta_weight: float,
+        delta_amount: float,
+        total_asset: float,
+        min_trade_amount: float,
+        action: str,
+        action_code: str,
+        switch_in: bool,
+        switch_out: bool,
+        switch_blocked: bool,
+        switch_partner: str,
+        action_reason: str,
+        min_trade_blocked: bool,
+    ) -> dict[str, Any]:
+        trend_filter_pass = bool(row.get("trend_filter_pass", False))
+        pullback_zone_pass = bool(row.get("pullback_zone_pass", False))
+        rebound_confirmation_pass = bool(row.get("rebound_confirmation_pass", False))
+        breakout_exception_pass = bool(row.get("breakout_exception_pass", False))
+        entry_allowed = bool(row.get("entry_allowed", False))
+        entry_channel = str(row.get("entry_channel_used", "none"))
+        current_weight_safe = float(current_weight)
+        target_branch = "entry_not_allowed_zero"
+        if switch_out or base_state == "EXIT":
+            target_branch = "switch_out_or_exit"
+        elif base_state == "REDUCE":
+            target_branch = "reduce_to_half"
+        elif action_code in {"buy_open", "buy_add", "switch"}:
+            target_branch = "open_or_add_to_normal"
+        elif base_state == "HOLD":
+            target_branch = "hold_without_add"
+
+        if base_state == "HOLD":
+            position_state_reason = "20日动量仍为正且价格站在20日均线之上，趋势保持健康。"
+        elif base_state == "REDUCE":
+            position_state_reason = "20日动量仍为正，但价格已回到20日均线下方，趋势转弱。"
+        elif base_state == "EXIT":
+            position_state_reason = "20日动量已不再为正，且价格跌破20日均线，趋势破坏。"
+        else:
+            position_state_reason = "当前没有持仓，因此只进行入场可行性判断。"
+
+        return {
+            "entry_checks": {
+                "trend_filter_pass": trend_filter_pass,
+                "channel_a": {
+                    "trend_filter_pass": trend_filter_pass,
+                    "pullback_zone_pass": pullback_zone_pass,
+                    "rebound_confirmation_pass": rebound_confirmation_pass,
+                    "channel_a_pass": bool(trend_filter_pass and pullback_zone_pass and rebound_confirmation_pass),
+                },
+                "channel_b": {
+                    "trend_filter_pass": trend_filter_pass,
+                    "drawdown_near_high_pass": bool(float(row.get("drawdown_20d", 0.0)) > self.config.pullback_high_pct),
+                    "entry_score_pass": bool(float(row.get("entry_score", 0.0)) >= self.config.breakout_entry_threshold),
+                    "momentum_5d_pass": bool(float(row.get("momentum_5d", 0.0)) > 0),
+                    "close_above_ma5_pass": bool(float(row.get("close_price", 0.0)) > float(row.get("ma5", 0.0))),
+                    "volatility_guard_pass": bool(float(row.get("volatility_20d", 0.0)) <= float(row.get("category_median_volatility_20d", 0.0))),
+                    "channel_b_pass": breakout_exception_pass,
+                },
+                "entry_channel": entry_channel,
+                "entry_allowed": entry_allowed,
+                "breakout_entry_threshold": self.config.breakout_entry_threshold,
+                "pullback_low_pct": self.config.pullback_low_pct,
+                "pullback_high_pct": self.config.pullback_high_pct,
+            },
+            "position_state": {
+                "current_weight": current_weight_safe,
+                "position_state": base_state,
+                "position_state_label": POSITION_STATE_LABELS.get(base_state, base_state),
+                "reason": position_state_reason,
+                "hold_days": int(current.get("hold_days", 0) or 0),
+                "hold_days_known": bool(current.get("hold_days_known", False)),
+                "reduced_target_weight": reduced_target_weight if base_state == "REDUCE" else 0.0,
+            },
+            "switch_checks": {
+                "old_state": str(category_context.get("old_state", "NONE")),
+                "new_entry_allowed": bool(category_context.get("new_entry_allowed", False)),
+                "new_target_weight": float(category_context.get("new_target_weight", 0.0)),
+                "rebalance_band": float(category_context.get("rebalance_band", self.config.rebalance_band)),
+                "switch_allowed": bool(category_context.get("switch_allowed", False)),
+                "switch_in": switch_in,
+                "switch_out": switch_out,
+                "switch_blocked": switch_blocked,
+                "switch_partner": switch_partner,
+                "score_gap": float(category_context.get("score_gap", 0.0)),
+            },
+            "target_weight_adjustment": {
+                "normal_target_weight": normal_target_weight,
+                "current_weight": current_weight_safe,
+                "reduced_target_weight": reduced_target_weight,
+                "effective_target_weight": effective_target_weight,
+                "branch": target_branch,
+            },
+            "final_action_calc": {
+                "current_weight": current_weight_safe,
+                "effective_target_weight": effective_target_weight,
+                "delta_weight": delta_weight,
+                "total_asset": float(total_asset),
+                "current_amount": current_amount,
+                "target_amount": target_amount,
+                "delta_amount": delta_amount,
+                "min_trade_amount": min_trade_amount,
+                "rebalance_band": self.config.rebalance_band,
+                "min_trade_blocked": min_trade_blocked,
+                "action": action,
+                "action_code": action_code,
+                "action_reason": action_reason,
+            },
+        }
 
     def _entry_channel_label(self, value: str) -> str:
         return ENTRY_CHANNEL_LABELS.get(value, value)

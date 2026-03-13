@@ -16,11 +16,13 @@ from app.repositories.portfolio_repo import trade_stats_by_advice
 from app.repositories.user_repo import get_preferences, get_user
 from app.services.backtest_service import BacktestRequest, BacktestService
 from app.services.capital_flow_service import CapitalFlowService
+from app.services.config_editor_service import ConfigEditorService
 from app.services.data_evidence_service import DataEvidenceService
 from app.services.decision_engine import DecisionEngine
 from app.services.market_data_service import MarketDataService
 from app.services.performance_service import PerformanceService
 from app.services.portfolio_service import PortfolioService
+from app.services.rulebook_service import RulebookService
 from app.services.trade_service import TradeService
 from app.services.user_service import UserService
 from app.utils.dates import detect_session_mode, get_now
@@ -47,6 +49,8 @@ trade_service = TradeService()
 capital_flow_service = CapitalFlowService()
 performance_service = PerformanceService()
 backtest_service = BacktestService()
+rulebook_service = RulebookService()
+config_editor_service = ConfigEditorService()
 
 
 def _data_status_context(db: Session, advice=None) -> dict | None:
@@ -109,7 +113,19 @@ def explanation_page(advice_id: int, request: Request, db: Session = Depends(get
     context["data_status"] = _data_status_context(db, advice)
     context["advice"] = serialize_advice_record(advice) if advice else None
     context["explanation"] = serialize_explanations(get_explanations_by_advice(db, advice_id)) if advice else None
+    context["rulebook"] = rulebook_service.build(get_preferences(db))
     return templates.TemplateResponse(request=request, name="explanation.html", context=context)
+
+
+@router.get("/rules")
+def rules_page(request: Request, status: str | None = Query(default=None), db: Session = Depends(get_db)):
+    session_mode = detect_session_mode()
+    context = page_context("规则页", session_mode, status)
+    context["data_status"] = _data_status_context(db)
+    context["preferences"] = get_preferences(db)
+    context["rulebook"] = rulebook_service.build(context["preferences"])
+    context["config_sections"] = config_editor_service.build_sections()
+    return templates.TemplateResponse(request=request, name="rules.html", context=context)
 
 
 @router.get("/evidence")
@@ -314,6 +330,17 @@ def update_preferences_action(
 def refresh_data_action(db: Session = Depends(get_db)):
     result = market_data_service.refresh_data(db)
     return RedirectResponse(url=f"/?status=数据已刷新（{result['data_source']}）", status_code=303)
+
+
+@router.post("/actions/update-rule-config")
+async def update_rule_config_action(request: Request):
+    form = await request.form()
+    file_name = str(form.get("file_name", "")).strip()
+    try:
+        config_editor_service.update_file(file_name, form)
+        return RedirectResponse(url="/rules?status=规则参数已更新，页面会按最新配置重读。", status_code=303)
+    except ValueError as exc:
+        return RedirectResponse(url=f"/rules?status={exc}", status_code=303)
 
 
 @router.post("/actions/decide-now")

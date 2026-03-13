@@ -213,42 +213,7 @@ def serialize_explanations(records) -> dict[str, Any]:
             payload["candidate_summary"] = _serialize_candidate_summary(payload.get("candidate_summary", []))
             overall = payload
         else:
-            action = str(payload.get("action", ""))
-            action_code = str(payload.get("action_code", ""))
-            intent = str(payload.get("intent", ""))
-            if action:
-                payload["action"] = ACTION_LABELS.get(action, action)
-            if action_code:
-                payload["action_code"] = ACTION_CODE_LABELS.get(action_code, action_code)
-            if intent:
-                payload["intent"] = INTENT_LABELS.get(intent, intent)
-            category = str(payload.get("category", ""))
-            if category:
-                payload["category"] = CATEGORY_LABELS.get(category, category)
-            scores = payload.get("scores", {})
-            if not isinstance(scores, dict):
-                scores = {}
-            payload["scores"] = {
-                "entry_score": float(scores.get("entry_score", 0.0) or 0.0),
-                "hold_score": float(scores.get("hold_score", 0.0) or 0.0),
-                "exit_score": float(scores.get("exit_score", 0.0) or 0.0),
-                "decision_score": float(scores.get("decision_score", scores.get("final_score", 0.0)) or 0.0),
-                "intra_score": float(scores.get("intra_score", 0.0) or 0.0),
-                "category_score": float(scores.get("category_score", 0.0) or 0.0),
-                "final_score": float(scores.get("final_score", 0.0) or 0.0),
-            }
-            overlay = payload.get("execution_overlay", {})
-            if isinstance(overlay, dict):
-                state = str(overlay.get("position_state", ""))
-                channel = str(overlay.get("entry_channel_used", "none"))
-                if state:
-                    overlay["position_state"] = POSITION_STATE_LABELS.get(state, state)
-                if channel:
-                    overlay["entry_channel_used"] = ENTRY_CHANNEL_LABELS.get(channel, channel)
-                payload["execution_overlay"] = overlay
-            else:
-                payload["execution_overlay"] = {}
-            items.append(payload)
+            items.append(_normalize_explanation_item(payload, overall))
     return {"overall": overall, "items": items}
 
 
@@ -335,3 +300,159 @@ def _serialize_candidate_summary(rows: Any) -> list[dict[str, Any]]:
             item["category"] = CATEGORY_LABELS.get(category, category)
         payload.append(item)
     return payload
+
+
+def _normalize_explanation_item(payload: dict[str, Any], overall: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(payload)
+    action_raw = str(payload.get("action", ""))
+    action_code_raw = str(payload.get("action_code", action_raw or "no_trade"))
+    intent_raw = str(payload.get("intent", ""))
+    category_raw = str(payload.get("category", payload.get("summary_card", {}).get("decision_category", "")))
+
+    scores = payload.get("scores", {})
+    if not isinstance(scores, dict):
+        scores = {}
+    normalized_scores = {
+        "entry_score": float(scores.get("entry_score", 0.0) or 0.0),
+        "hold_score": float(scores.get("hold_score", 0.0) or 0.0),
+        "exit_score": float(scores.get("exit_score", 0.0) or 0.0),
+        "decision_score": float(scores.get("decision_score", scores.get("final_score", 0.0)) or 0.0),
+        "intra_score": float(scores.get("intra_score", 0.0) or 0.0),
+        "category_score": float(scores.get("category_score", 0.0) or 0.0),
+        "final_score": float(scores.get("final_score", 0.0) or 0.0),
+        "global_rank": int(scores.get("global_rank", payload.get("ranks", {}).get("global_rank", 0)) or 0),
+        "category_rank": int(scores.get("category_rank", payload.get("ranks", {}).get("category_rank", 0)) or 0),
+    }
+
+    overlay = payload.get("execution_overlay", {})
+    if not isinstance(overlay, dict):
+        overlay = {}
+    overlay = dict(overlay)
+    state_raw = str(overlay.get("position_state", ""))
+    channel_raw = str(overlay.get("entry_channel_used", "none"))
+    overlay["position_state_label"] = POSITION_STATE_LABELS.get(state_raw, state_raw or "-")
+    overlay["entry_channel_label"] = ENTRY_CHANNEL_LABELS.get(channel_raw, channel_raw or "-")
+
+    summary_card = payload.get("summary_card", {})
+    if not isinstance(summary_card, dict):
+        summary_card = {}
+    summary_card = dict(summary_card)
+    summary_card.setdefault("symbol", str(payload.get("symbol", "")))
+    summary_card.setdefault("name", str(payload.get("name", payload.get("symbol", ""))))
+    summary_card.setdefault("decision_category", category_raw)
+    summary_card.setdefault("final_action", action_code_raw)
+    summary_card.setdefault("effective_target_weight", float(payload.get("weights", {}).get("target_weight", 0.0) or 0.0))
+    summary_card.setdefault("decision_score", normalized_scores["decision_score"])
+    summary_card.setdefault("final_score", normalized_scores["final_score"])
+    summary_card.setdefault("entry_channel", channel_raw)
+    summary_card.setdefault("market_regime", str(overall.get("market_regime", "")))
+    summary_card["decision_category_label"] = CATEGORY_LABELS.get(str(summary_card.get("decision_category", "")), str(summary_card.get("decision_category", "")))
+    summary_card["final_action_label"] = ACTION_CODE_LABELS.get(str(summary_card.get("final_action", "")), str(summary_card.get("final_action", "")))
+    summary_card["entry_channel_label"] = ENTRY_CHANNEL_LABELS.get(str(summary_card.get("entry_channel", "none")), str(summary_card.get("entry_channel", "none")))
+
+    feature_snapshot = payload.get("feature_snapshot", {})
+    if not isinstance(feature_snapshot, dict):
+        feature_snapshot = {}
+    feature_snapshot = {
+        "close_price": float(feature_snapshot.get("close_price", feature_snapshot.get("close", 0.0)) or 0.0),
+        "momentum_3d": float(feature_snapshot.get("momentum_3d", 0.0) or 0.0),
+        "momentum_5d": float(feature_snapshot.get("momentum_5d", 0.0) or 0.0),
+        "momentum_10d": float(feature_snapshot.get("momentum_10d", 0.0) or 0.0),
+        "momentum_20d": float(feature_snapshot.get("momentum_20d", 0.0) or 0.0),
+        "ma5": float(feature_snapshot.get("ma5", 0.0) or 0.0),
+        "ma10": float(feature_snapshot.get("ma10", 0.0) or 0.0),
+        "ma20": float(feature_snapshot.get("ma20", 0.0) or 0.0),
+        "trend_strength": float(feature_snapshot.get("trend_strength", 0.0) or 0.0),
+        "drawdown_20d": float(feature_snapshot.get("drawdown_20d", 0.0) or 0.0),
+        "volatility_20d": float(feature_snapshot.get("volatility_20d", 0.0) or 0.0),
+        "liquidity_score": float(feature_snapshot.get("liquidity_score", 0.0) or 0.0),
+        "decision_category": str(feature_snapshot.get("decision_category", category_raw)),
+        "tradability_mode": str(feature_snapshot.get("tradability_mode", "")),
+    }
+
+    ranks = payload.get("rank_snapshot", {})
+    if not isinstance(ranks, dict):
+        ranks = {}
+    intra_score_breakdown = payload.get("intra_score_breakdown", {})
+    if not isinstance(intra_score_breakdown, dict):
+        intra_score_breakdown = {}
+    intra_score_breakdown.setdefault("intra_score", normalized_scores["intra_score"])
+    intra_score_breakdown.setdefault("formula", "单票分 = 0.30×20日动量分位 + 0.20×10日动量分位 + 0.10×5日动量分位 + 0.15×趋势分位 + 0.10×流动性分位 + 0.075×波动友好度分位 + 0.075×回撤友好度分位")
+    intra_score_breakdown.setdefault("components", [])
+    intra_score_breakdown.setdefault("available", bool(intra_score_breakdown.get("components")))
+
+    category_score_breakdown = payload.get("category_score_breakdown", {})
+    if not isinstance(category_score_breakdown, dict):
+        category_score_breakdown = {}
+    category_score_breakdown.setdefault("category_score", normalized_scores["category_score"])
+    category_score_breakdown.setdefault("formula", "类别分 = 0.50×头部平均单票分 + 0.30×类别广度分 + 0.20×类别动量分")
+    category_score_breakdown.setdefault("components", [])
+    category_score_breakdown.setdefault("available", bool(category_score_breakdown.get("components")))
+
+    final_score_breakdown = payload.get("final_score_breakdown", {})
+    if not isinstance(final_score_breakdown, dict):
+        final_score_breakdown = {}
+    final_score_breakdown.setdefault("final_score", normalized_scores["final_score"])
+    final_score_breakdown.setdefault("decision_score", normalized_scores["decision_score"])
+    final_score_breakdown.setdefault("global_rank", normalized_scores["global_rank"])
+    final_score_breakdown.setdefault("category_rank", normalized_scores["category_rank"])
+    final_score_breakdown.setdefault("minimum_candidate_threshold", 55.0)
+    final_score_breakdown.setdefault("meets_minimum_candidate_threshold", normalized_scores["final_score"] >= float(final_score_breakdown.get("minimum_candidate_threshold", 55.0)))
+    final_score_breakdown.setdefault("entered_candidate_pool", bool(payload.get("weights", {}).get("target_weight", 0.0)))
+    final_score_breakdown.setdefault("eliminated_stage", "")
+    final_score_breakdown.setdefault("eliminated_reason", "")
+    final_score_breakdown.setdefault("components", [])
+    final_score_breakdown.setdefault("available", True)
+
+    allocation_trace = payload.get("allocation_trace", {})
+    if not isinstance(allocation_trace, dict):
+        allocation_trace = {}
+    allocation_trace.setdefault("total_budget_pct", 0.0)
+    allocation_trace.setdefault("single_weight_cap", 0.0)
+    allocation_trace.setdefault("category_cap", 0.0)
+    allocation_trace.setdefault("provisional_weight", 0.0)
+    allocation_trace.setdefault("normal_target_weight", float(payload.get("weights", {}).get("normal_target_weight", payload.get("weights", {}).get("target_weight", 0.0)) or 0.0))
+    allocation_trace.setdefault("cap_applied", False)
+    allocation_trace.setdefault("cap_reasons", [])
+    allocation_trace.setdefault("selected_for_allocation", False)
+    allocation_trace.setdefault("protected", False)
+    allocation_trace.setdefault("protected_reasons", [])
+    allocation_trace.setdefault("selected_reason", "")
+    allocation_trace.setdefault("blocked_reason", "")
+    allocation_trace.setdefault("replacement_trace", {})
+
+    execution_trace = payload.get("execution_trace", {})
+    if not isinstance(execution_trace, dict):
+        execution_trace = {}
+    execution_trace.setdefault("entry_checks", {})
+    execution_trace.setdefault("position_state", {})
+    execution_trace.setdefault("switch_checks", {})
+    execution_trace.setdefault("target_weight_adjustment", {})
+    execution_trace.setdefault("final_action_calc", {})
+
+    natural_language_summary = str(payload.get("natural_language_summary", "") or payload.get("summary", ""))
+
+    normalized.update(
+        {
+            "action": ACTION_LABELS.get(action_raw, action_raw),
+            "action_raw": action_raw,
+            "action_code": ACTION_CODE_LABELS.get(action_code_raw, action_code_raw),
+            "action_code_raw": action_code_raw,
+            "intent": INTENT_LABELS.get(intent_raw, intent_raw),
+            "intent_raw": intent_raw,
+            "category": CATEGORY_LABELS.get(category_raw, category_raw),
+            "category_raw": category_raw,
+            "scores": normalized_scores,
+            "execution_overlay": overlay,
+            "summary_card": summary_card,
+            "feature_snapshot": feature_snapshot,
+            "rank_snapshot": ranks,
+            "intra_score_breakdown": intra_score_breakdown,
+            "category_score_breakdown": category_score_breakdown,
+            "final_score_breakdown": final_score_breakdown,
+            "allocation_trace": allocation_trace,
+            "execution_trace": execution_trace,
+            "natural_language_summary": natural_language_summary,
+        }
+    )
+    return normalized
