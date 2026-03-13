@@ -22,20 +22,20 @@ class UserService:
         normalized = str(risk_level or "中性").strip()
         return {
             "max_total_position_pct": {
-                "保守": 0.55,
-                "中性": 0.70,
-                "激进": 0.85,
-            }.get(normalized, 0.70),
+                "保守": 0.85,
+                "中性": 1.00,
+                "激进": 1.00,
+            }.get(normalized, 1.00),
             "max_single_position_pct": {
-                "保守": 0.25,
-                "中性": 0.35,
-                "激进": 0.45,
-            }.get(normalized, 0.35),
-            "cash_reserve_pct": {
                 "保守": 0.35,
-                "中性": 0.20,
-                "激进": 0.10,
-            }.get(normalized, 0.20),
+                "中性": 0.50,
+                "激进": 0.60,
+            }.get(normalized, 0.50),
+            "cash_reserve_pct": {
+                "保守": 0.05,
+                "中性": 0.00,
+                "激进": 0.00,
+            }.get(normalized, 0.00),
         }
 
     def _validate_preferences(

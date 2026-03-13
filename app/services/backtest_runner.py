@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, time
 from pathlib import Path
 from types import SimpleNamespace
@@ -13,6 +13,7 @@ import pandas as pd
 
 from app.core.config import get_settings, load_yaml_config
 from app.services.decision_engine import DecisionEngine
+from app.services.data_quality_service import DataQualityService
 from app.services.decision_policy_service import get_decision_policy_service
 from app.services.execution_cost_service import ExecutionCostService
 from app.services.feature_engine import FeatureEngine
@@ -42,17 +43,23 @@ class BacktestRunner:
         self.backtest_config = load_yaml_config(settings.config_dir / "backtest.yaml")
         self.policy = get_decision_policy_service()
         self.feature_engine = FeatureEngine()
-        self.market_regime_service = MarketRegimeService()
-        self.filter_service = UniverseFilterService()
-        self.decision_engine = DecisionEngine()
 
-    def run(self, dataset: dict[str, Any], request: BacktestRunConfig) -> dict[str, Any]:
+    def run(self, dataset: dict[str, Any], request: BacktestRunConfig, *, base_preferences: Any | None = None) -> dict[str, Any]:
+        market_regime_service = MarketRegimeService()
+        filter_service = UniverseFilterService()
+        decision_engine = DecisionEngine()
+        data_quality_service = DataQualityService()
         scoring_engine = ScoringEngine()
         allocator = PortfolioAllocator()
         execution_cost_service = ExecutionCostService()
-        self._apply_overrides(scoring_engine=scoring_engine, allocator=allocator, overrides=request.config_overrides or {})
-        self.decision_engine.allocator = allocator
-        self.decision_engine.execution_cost_service = execution_cost_service
+        self._apply_overrides(
+            scoring_engine=scoring_engine,
+            allocator=allocator,
+            decision_engine=decision_engine,
+            overrides=request.config_overrides or {},
+        )
+        decision_engine.allocator = allocator
+        decision_engine.execution_cost_service = execution_cost_service
 
         slippage_bps = float(
             request.slippage_bps
@@ -61,7 +68,11 @@ class BacktestRunner:
         )
         annualization_days = int(self.backtest_config.get("execution", {}).get("annualization_days", 252))
 
-        preferences = self._build_preferences(dataset, request)
+        preferences = self._build_preferences(
+            request=request,
+            base_preferences=base_preferences,
+            default_target_holding_days=decision_engine.execution_overlay_service.config.default_target_holding_days,
+        )
         cash_balance = float(request.initial_capital)
         positions: dict[str, dict[str, Any]] = {}
         trades: list[dict[str, Any]] = []
@@ -74,16 +85,50 @@ class BacktestRunner:
             if trade_date < request.start_date or trade_date > request.end_date:
                 continue
 
-            features_df = self._build_daily_features(dataset=dataset, trade_date=trade_date)
+            features_df, quality_summary = self._build_daily_features(
+                dataset=dataset,
+                trade_date=trade_date,
+                data_quality_service=data_quality_service,
+            )
             if features_df.empty:
                 continue
 
-            filtered_df = self.filter_service.apply(features_df, preferences)
+            formal_scope = features_df[features_df["formal_eligible"]].copy()
+            regime_input = formal_scope if not formal_scope.empty else features_df
+            market_regime = market_regime_service.evaluate(regime_input)
+            portfolio_summary = self._portfolio_summary(positions=positions, cash_balance=cash_balance, scored_df=features_df)
+            current_holdings = self._current_holdings(positions, portfolio_summary)
+
+            if request.strict_data_quality and not bool(quality_summary.get("formal_decision_ready", True)):
+                self._mark_positions(positions=positions, scored_df=features_df)
+                portfolio_summary = self._portfolio_summary(positions=positions, cash_balance=cash_balance, scored_df=features_df)
+                daily_curve.append(
+                    {
+                        "date": trade_date.isoformat(),
+                        "total_asset": round_money(portfolio_summary["total_asset"]),
+                        "cash_balance": round_money(cash_balance),
+                        "market_value": round_money(portfolio_summary["market_value"]),
+                    }
+                )
+                daily_decisions.append(
+                    {
+                        "date": trade_date.isoformat(),
+                        "market_regime": market_regime["market_regime"],
+                        "items": [],
+                        "candidate_summary": [],
+                        "target_weights": {},
+                        "quality_summary": quality_summary,
+                        "blocked_reason": "data_quality_not_ready",
+                    }
+                )
+                for position in positions.values():
+                    if position["quantity"] > 0:
+                        position["hold_days"] += 1
+                continue
+
+            filtered_df = filter_service.apply(features_df, preferences)
             scoring_result = scoring_engine.score(filtered_df)
             scored_df = scoring_result["scored_df"]
-            market_regime = self.market_regime_service.evaluate(scored_df)
-            portfolio_summary = self._portfolio_summary(positions=positions, cash_balance=cash_balance, scored_df=scored_df)
-            current_holdings = self._current_holdings(positions, portfolio_summary)
             allocation = allocator.build_target_portfolio(
                 scored_df,
                 current_holdings=current_holdings,
@@ -91,7 +136,7 @@ class BacktestRunner:
                 market_regime=market_regime,
                 risk_mode=request.risk_mode,
             )
-            items = self.decision_engine._build_action_items(
+            items = decision_engine._build_action_items(
                 scored_df=scored_df,
                 current_holdings=current_holdings,
                 allocation=allocation,
@@ -129,6 +174,7 @@ class BacktestRunner:
                     "items": items,
                     "candidate_summary": allocation["candidate_summary"],
                     "target_weights": allocation["target_weights"],
+                    "quality_summary": quality_summary,
                 }
             )
             for position in positions.values():
@@ -159,6 +205,17 @@ class BacktestRunner:
                 "risk_mode": request.risk_mode,
                 "config_overrides": request.config_overrides or {},
             },
+            "effective_preferences": {
+                "risk_mode": getattr(preferences, "risk_mode", "balanced"),
+                "allow_gold": bool(getattr(preferences, "allow_gold", True)),
+                "allow_bond": bool(getattr(preferences, "allow_bond", True)),
+                "allow_overseas": bool(getattr(preferences, "allow_overseas", True)),
+                "target_holding_days": int(getattr(preferences, "target_holding_days", 30) or 30),
+                "min_trade_amount": float(getattr(preferences, "min_trade_amount", self.settings.default_min_advice_amount)),
+                "max_total_position_pct": float(getattr(preferences, "max_total_position_pct", 0.85)),
+                "max_single_position_pct": float(getattr(preferences, "max_single_position_pct", 0.35)),
+                "cash_reserve_pct": float(getattr(preferences, "cash_reserve_pct", 0.0)),
+            },
             "metrics": metrics,
             "overview": overview,
             "daily_curve": daily_curve,
@@ -166,29 +223,65 @@ class BacktestRunner:
             "trades": trades,
         }
 
-    def _build_preferences(self, dataset: dict[str, Any], request: BacktestRunConfig) -> Any:
+    def _build_preferences(
+        self,
+        *,
+        request: BacktestRunConfig,
+        base_preferences: Any | None,
+        default_target_holding_days: int,
+    ) -> Any:
         overrides = request.config_overrides or {}
+        target_holding_days = int(
+            overrides.get(
+                "target_holding_days",
+                overrides.get(
+                    "preferences.target_holding_days",
+                    getattr(base_preferences, "target_holding_days", default_target_holding_days),
+                ),
+            )
+            or default_target_holding_days
+        )
         return SimpleNamespace(
-            risk_mode=request.risk_mode,
-            allow_gold=True,
-            allow_bond=True,
-            allow_overseas=True,
-            target_holding_days=int(overrides.get("target_holding_days", 30) or 30),
-            min_trade_amount=float(self.settings.default_min_advice_amount),
-            max_total_position_pct=0.85,
-            max_single_position_pct=0.35,
-            cash_reserve_pct=0.0,
+            risk_level=str(getattr(base_preferences, "risk_level", "中性")),
+            risk_mode=str(request.risk_mode or getattr(base_preferences, "risk_mode", "balanced")),
+            allow_gold=bool(getattr(base_preferences, "allow_gold", True)),
+            allow_bond=bool(getattr(base_preferences, "allow_bond", True)),
+            allow_overseas=bool(getattr(base_preferences, "allow_overseas", True)),
+            target_holding_days=max(1, target_holding_days),
+            min_trade_amount=float(getattr(base_preferences, "min_trade_amount", self.settings.default_min_advice_amount)),
+            max_total_position_pct=float(getattr(base_preferences, "max_total_position_pct", 0.85)),
+            max_single_position_pct=float(getattr(base_preferences, "max_single_position_pct", 0.35)),
+            cash_reserve_pct=float(getattr(base_preferences, "cash_reserve_pct", 0.0)),
         )
 
-    def _build_daily_features(self, *, dataset: dict[str, Any], trade_date: date) -> pd.DataFrame:
+    def _build_daily_features(
+        self,
+        *,
+        dataset: dict[str, Any],
+        trade_date: date,
+        data_quality_service: DataQualityService,
+    ) -> tuple[pd.DataFrame, dict[str, Any]]:
         rows = []
+        quality_reports: list[dict[str, Any]] = []
+        risk_rules = load_yaml_config(self.settings.config_dir / "risk_rules.yaml")
+        anomaly_threshold = float(risk_rules.get("anomaly_pct_change_threshold", 9.0))
         for symbol, payload in dataset["history_by_symbol"].items():
             history = payload["history"]
             truncated = history[pd.to_datetime(history["date"]).dt.date <= trade_date].copy()
-            if len(truncated) < 21:
-                continue
-            features = self.feature_engine.calculate(truncated)
             etf = payload["etf"]
+            quality_report = data_quality_service.assess_history(
+                symbol=str(etf.symbol),
+                name=str(etf.name),
+                source=str(payload.get("source", "akshare")),
+                history=truncated,
+                requested_trade_date=trade_date,
+                min_avg_amount=float(etf.min_avg_amount),
+                anomaly_pct_change_threshold=anomaly_threshold,
+            )
+            quality_reports.append(quality_report.payload)
+            if len(quality_report.clean_history) < 21:
+                continue
+            features = self.feature_engine.calculate(quality_report.clean_history)
             decision_meta = self.policy.classify(
                 symbol=str(etf.symbol),
                 universe_category=str(etf.category),
@@ -211,22 +304,33 @@ class BacktestRunner:
                     "fee_rate": etf.fee_rate,
                     "min_fee": etf.min_fee,
                     "tradability_mode": decision_meta["tradability_mode"],
-                    "formal_eligible": True,
-                    "source_code": payload.get("source", "akshare"),
-                    "stale_data_flag": False,
-                    "latest_row_date": trade_date,
+                    "formal_eligible": bool(quality_report.payload.get("formal_eligible", False)),
+                    "source_code": str(payload.get("source", "akshare")),
+                    "stale_data_flag": bool(quality_report.payload.get("stale_data_flag", False)),
+                    "latest_row_date": (
+                        date.fromisoformat(quality_report.payload["latest_row_date"])
+                        if quality_report.payload.get("latest_row_date")
+                        else trade_date
+                    ),
+                    "quality_status": self._quality_status_label(str(quality_report.payload.get("status", ""))),
                     "anomaly_flag": False,
                     "min_avg_amount": etf.min_avg_amount,
                     **features,
                 }
             )
         df = pd.DataFrame(rows)
+        quality_summary = data_quality_service.build_summary(
+            quality_reports=quality_reports,
+            expected_trade_date=trade_date,
+            current_time=datetime.combine(trade_date, time(15, 0)),
+            session_mode="backtest",
+        )
         if df.empty:
-            return df
+            return df, quality_summary
         category_return = df.groupby("decision_category")["momentum_10d"].transform("mean")
         df["category_return_10d"] = category_return.fillna(0.0)
         df["relative_strength_10d"] = df["momentum_10d"] - df["category_return_10d"]
-        return df
+        return df, quality_summary
 
     def _current_holdings(self, positions: dict[str, dict[str, Any]], portfolio_summary: dict[str, Any]) -> list[dict[str, Any]]:
         rows = []
@@ -240,6 +344,8 @@ class BacktestRunner:
                     "current_weight": float(holding["weight_pct"]),
                     "current_amount": float(holding["market_value"]),
                     "hold_days": int(position["hold_days"]),
+                    "hold_days_known": True,
+                    "acquired_at": position.get("acquired_at"),
                     "quantity": float(position["quantity"]),
                     "avg_cost": float(position["avg_cost"]),
                     "last_price": float(position["last_price"]),
@@ -318,6 +424,7 @@ class BacktestRunner:
                     "avg_cost": 0.0,
                     "last_price": price,
                     "hold_days": 0,
+                    "acquired_at": None,
                     "category": item["category"],
                 },
             )
@@ -375,6 +482,9 @@ class BacktestRunner:
                 cash_balance -= amount + fee
                 position["quantity"] = new_quantity
                 position["avg_cost"] = total_cost / new_quantity if new_quantity else 0.0
+                if current_quantity <= 0 and new_quantity > 0:
+                    position["hold_days"] = 0
+                    position["acquired_at"] = trade_date.isoformat()
                 trades.append(
                     self._trade_row(
                         item=item,
@@ -524,6 +634,7 @@ class BacktestRunner:
         *,
         scoring_engine: ScoringEngine,
         allocator: PortfolioAllocator,
+        decision_engine: DecisionEngine,
         overrides: dict[str, Any],
     ) -> None:
         if not overrides:
@@ -538,7 +649,51 @@ class BacktestRunner:
                 scorer["intra_score_weights"][path.split(".", 1)[1]] = float(value)
             elif path.startswith("final_score_weights."):
                 scorer["final_score_weights"][path.split(".", 1)[1]] = float(value)
+            elif path == "selection.min_final_score_for_target":
+                allocator.scoring_config.setdefault("selection", {})["min_final_score_for_target"] = float(value)
             elif path.startswith("selection."):
                 allocator.constraints.setdefault("selection", {})[path.split(".", 1)[1]] = value
             elif path.startswith("budget."):
                 allocator.constraints.setdefault("budget", {})[path.split(".", 1)[1]] = value
+            elif path.startswith("execution_overlay."):
+                self._apply_execution_overlay_override(decision_engine, path.split(".", 1)[1], value)
+            elif path.startswith("category_heads."):
+                self._apply_category_head_override(decision_engine, path.split(".", 1)[1], value)
+
+    def _apply_execution_overlay_override(self, decision_engine: DecisionEngine, path: str, value: Any) -> None:
+        overlay_service = decision_engine.execution_overlay_service
+        config = overlay_service.config
+        if path.startswith("internals."):
+            path = path.split(".", 1)[1]
+        if path in {"pullback_low_pct", "pullback_high_pct", "breakout_entry_threshold", "rebalance_band", "reduced_target_multiplier", "default_target_holding_days"}:
+            replacement_kwargs = {}
+            if path == "reduced_target_multiplier":
+                replacement_kwargs["reduced_target_multiplier"] = float(value)
+            elif path == "default_target_holding_days":
+                replacement_kwargs["default_target_holding_days"] = max(1, int(value))
+            else:
+                replacement_kwargs[path] = float(value)
+            overlay_service.config = replace(config, **replacement_kwargs)
+            return
+        if path.startswith("horizon_buckets."):
+            parts = path.split(".")
+            if len(parts) == 4:
+                bucket_name, blend_key, weight_name = parts[1], parts[2], parts[3]
+                overlay_service.config.horizon_buckets.setdefault(bucket_name, {}).setdefault(blend_key, {})[weight_name] = float(value)
+            elif len(parts) == 3 and parts[2] == "max_days":
+                bucket_name = parts[1]
+                overlay_service.config.horizon_buckets.setdefault(bucket_name, {})["max_days"] = int(value)
+
+    def _apply_category_head_override(self, decision_engine: DecisionEngine, path: str, value: Any) -> None:
+        parts = path.split(".")
+        if len(parts) != 3:
+            return
+        category, head_name, factor = parts
+        decision_engine.execution_overlay_service.category_heads.setdefault(category, {}).setdefault(head_name, {})[factor] = float(value)
+
+    def _quality_status_label(self, status: str) -> str:
+        if status == "pass":
+            return "ok"
+        if status == "partial":
+            return "weak"
+        return "blocked"

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings, load_yaml_config
 from app.repositories.market_repo import list_universe
+from app.repositories.user_repo import get_preferences
 from app.services.backtest_runner import BacktestRunConfig, BacktestRunner
 from app.services.execution_cost_service import get_execution_cost_service
 from app.services.market_data_service import MarketDataService
@@ -36,7 +37,6 @@ class BacktestService:
         self.config = load_yaml_config(self.settings.config_dir / "backtest.yaml")
         self.market_data_service = MarketDataService()
         self.execution_cost_service = get_execution_cost_service()
-        self.runner = BacktestRunner()
         self.results_dir = Path(self.settings.base_dir) / "data" / "backtests"
         self.results_dir.mkdir(parents=True, exist_ok=True)
 
@@ -83,7 +83,8 @@ class BacktestService:
         persist_output: bool = True,
     ) -> dict[str, Any]:
         prepared = dataset or self.prepare_dataset(session, start_date=request.start_date, end_date=request.end_date)
-        result = self.runner.run(
+        runner = BacktestRunner()
+        result = runner.run(
             prepared,
             BacktestRunConfig(
                 start_date=request.start_date,
@@ -95,6 +96,7 @@ class BacktestService:
                 strict_data_quality=request.strict_data_quality,
                 config_overrides=request.config_overrides,
             ),
+            base_preferences=get_preferences(session),
         )
         if persist_output:
             result["output_files"] = self._persist_run(result)
@@ -148,4 +150,3 @@ class BacktestService:
             "daily_decisions": str(decisions_path),
             "params": str(params_path),
         }
-

@@ -1,6 +1,6 @@
 selection:
-  max_selected_total: 3
-  max_selected_per_category: 2
+  max_selected_total: 4
+  max_selected_per_category: 3
   hold_guard_global_rank: 5
   hold_guard_category_rank: 2
   replace_threshold: 8.0
@@ -8,14 +8,14 @@ selection:
   rebalance_weight_tolerance: 0.015
 
 budget:
-  max_total_weight: 0.80
-  max_single_weight: 0.35
-  min_position_weight: 0.08
+  max_total_weight: 1.00
+  max_single_weight: 0.50
+  min_position_weight: 0.03
   min_trade_weight_delta: 0.01
 
 category_caps:
-  stock_etf: 0.60
-  bond_etf: 0.40
-  gold_etf: 0.25
-  cross_border_etf: 0.30
-  money_etf: 0.20
+  stock_etf: 1.00
+  bond_etf: 1.00
+  gold_etf: 1.00
+  cross_border_etf: 1.00
+  money_etf: 1.00

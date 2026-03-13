@@ -4,26 +4,26 @@ thresholds:
 
 budgets:
   risk_on:
-    total_budget_pct: 0.80
+    total_budget_pct: 1.00
     category_caps:
-      stock_etf: 0.60
-      bond_etf: 0.35
-      gold_etf: 0.20
-      cross_border_etf: 0.25
-      money_etf: 0.15
+      stock_etf: 1.00
+      bond_etf: 1.00
+      gold_etf: 1.00
+      cross_border_etf: 1.00
+      money_etf: 1.00
   neutral:
-    total_budget_pct: 0.55
+    total_budget_pct: 1.00
     category_caps:
-      stock_etf: 0.40
-      bond_etf: 0.30
-      gold_etf: 0.20
-      cross_border_etf: 0.20
-      money_etf: 0.15
+      stock_etf: 1.00
+      bond_etf: 1.00
+      gold_etf: 1.00
+      cross_border_etf: 1.00
+      money_etf: 1.00
   risk_off:
-    total_budget_pct: 0.25
+    total_budget_pct: 1.00
     category_caps:
-      stock_etf: 0.15
-      bond_etf: 0.20
-      gold_etf: 0.15
-      cross_border_etf: 0.10
-      money_etf: 0.10
+      stock_etf: 1.00
+      bond_etf: 1.00
+      gold_etf: 1.00
+      cross_border_etf: 1.00
+      money_etf: 1.00
