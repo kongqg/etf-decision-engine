@@ -429,6 +429,21 @@ def _normalize_explanation_item(payload: dict[str, Any], overall: dict[str, Any]
     execution_trace.setdefault("switch_checks", {})
     execution_trace.setdefault("target_weight_adjustment", {})
     execution_trace.setdefault("final_action_calc", {})
+    if not isinstance(execution_trace.get("entry_checks"), dict):
+        execution_trace["entry_checks"] = {}
+    if not isinstance(execution_trace.get("position_state"), dict):
+        execution_trace["position_state"] = {}
+    if not isinstance(execution_trace.get("switch_checks"), dict):
+        execution_trace["switch_checks"] = {}
+    if not isinstance(execution_trace.get("target_weight_adjustment"), dict):
+        execution_trace["target_weight_adjustment"] = {}
+    if not isinstance(execution_trace.get("final_action_calc"), dict):
+        execution_trace["final_action_calc"] = {}
+    execution_trace["entry_checks"].setdefault("reason_steps", [])
+    execution_trace["position_state"].setdefault("reason_steps", [])
+    execution_trace["switch_checks"].setdefault("reason_steps", [])
+    execution_trace["target_weight_adjustment"].setdefault("reason_steps", [])
+    execution_trace["final_action_calc"].setdefault("reason_steps", [])
 
     natural_language_summary = str(payload.get("natural_language_summary", "") or payload.get("summary", ""))
 

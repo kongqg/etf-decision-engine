@@ -112,19 +112,12 @@ class DecisionEngine:
         portfolio_summary = self.portfolio_service.get_portfolio_summary(session)
         current_holdings = self._build_current_holdings(session, scored_df, portfolio_summary, now)
         market_regime = self._resolve_market_regime(scored_df, raw_snapshot)
-        allocation = self.allocator.build_target_portfolio(
-            scored_df,
-            current_holdings=current_holdings,
-            preferences=preferences,
-            market_regime=market_regime,
-            risk_mode=getattr(preferences, "risk_mode", "balanced"),
-        )
-        items = self._build_action_items(
+        allocation, items = self._build_allocation_and_items(
             scored_df=scored_df,
             current_holdings=current_holdings,
-            allocation=allocation,
             portfolio_summary=portfolio_summary,
             preferences=preferences,
+            market_regime=market_regime,
         )
         summary_action = self._summary_action(items)
         reason_code = self._reason_code(items)
@@ -328,6 +321,70 @@ class DecisionEngine:
         allocation["overlay_rows"] = overlay["overlay_rows"]
         allocation["overlay_traces"] = overlay.get("overlay_traces", {})
         return overlay["items"]
+
+    def _build_allocation_and_items(
+        self,
+        *,
+        scored_df: pd.DataFrame,
+        current_holdings: list[dict[str, Any]],
+        portfolio_summary: dict[str, Any],
+        preferences: Any,
+        market_regime: dict[str, Any],
+    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        blocked_candidate_reasons: dict[str, str] = {}
+        max_rounds = max(1, len(scored_df.index) + 1)
+        allocation: dict[str, Any] = {}
+        items: list[dict[str, Any]] = []
+        prepared_overlay = self.execution_overlay_service.prepare_overlay_frame(
+            scored_df=scored_df,
+            current_holdings=current_holdings,
+            preferences=preferences,
+        )
+        overlay_hints = {
+            str(row["symbol"]): row.to_dict()
+            for _, row in prepared_overlay.iterrows()
+        }
+
+        for _ in range(max_rounds):
+            allocation = self.allocator.build_target_portfolio(
+                scored_df,
+                current_holdings=current_holdings,
+                preferences=preferences,
+                market_regime=market_regime,
+                risk_mode=getattr(preferences, "risk_mode", "balanced"),
+                blocked_candidate_reasons=blocked_candidate_reasons,
+                overlay_hints=overlay_hints,
+            )
+            items = self._build_action_items(
+                scored_df=scored_df,
+                current_holdings=current_holdings,
+                allocation=allocation,
+                portfolio_summary=portfolio_summary,
+                preferences=preferences,
+            )
+            newly_blocked = self._non_executable_selected_candidate_reasons(allocation)
+            delta = {symbol: reason for symbol, reason in newly_blocked.items() if symbol not in blocked_candidate_reasons}
+            if not delta:
+                break
+            blocked_candidate_reasons.update(delta)
+
+        return allocation, items
+
+    def _non_executable_selected_candidate_reasons(self, allocation: dict[str, Any]) -> dict[str, str]:
+        blocked: dict[str, str] = {}
+        for symbol, trace in allocation.get("overlay_traces", {}).items():
+            if bool(trace.get("is_held", False)):
+                continue
+            if float(trace.get("normal_target_weight", 0.0)) <= 0:
+                continue
+            action_code = str(trace.get("action_code", ""))
+            if action_code != "no_trade":
+                continue
+            reason = str(trace.get("reason_short") or "").strip()
+            if not reason:
+                reason = "执行层未形成可执行开仓，因此不占用正式名额。"
+            blocked[str(symbol)] = reason
+        return blocked
 
     def _resolve_intent(
         self,

@@ -30,3 +30,15 @@ def test_rulebook_service_builds_decision_score_breakdown():
     assert breakdown["stay_score"] == 70.0
     assert breakdown["decision_score"] == 77.0
 
+
+def test_rulebook_service_exposes_money_etf_exit_as_opportunity_and_risk_switch():
+    service = RulebookService()
+
+    payload = service.build(SimpleNamespace(target_holding_days=30))
+    money_exit = payload["category_heads"]["money_etf"]["heads"]["exit"]["components"]
+    component_keys = [component["key"] for component in money_exit]
+
+    assert "opportunity_cost" in component_keys
+    assert "risk_switch" in component_keys
+    assert "time_decay" not in component_keys
+    assert "不代表持满天数就自动卖出" in payload["score_rules"]["decision_score"]["meaning"]

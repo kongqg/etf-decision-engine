@@ -1,5 +1,27 @@
 {% extends "base.html" %}
 
+{% macro render_reason_steps(steps, empty_text="旧记录未保存这一层的判决步骤。") %}
+{% if steps %}
+<ol class="plain-list" style="margin-top: 12px;">
+    {% for step in steps %}
+    <li>
+        <strong>{{ loop.index }}. {{ step.condition }}</strong>
+        {% if step.conclusion %}
+        <span class="pill" style="margin-left: 8px;">结论</span>
+        {% else %}
+        <span class="muted">（{{ step.passed_label or ("满足" if step.passed else "不满足") }}）</span>
+        {% endif %}
+        {% if step.meaning %}
+        <div class="muted" style="margin-top: 4px;">{{ step.meaning }}</div>
+        {% endif %}
+    </li>
+    {% endfor %}
+</ol>
+{% else %}
+<p class="muted">{{ empty_text }}</p>
+{% endif %}
+{% endmacro %}
+
 {% block content %}
 <section class="hero split">
     <div>
@@ -283,7 +305,7 @@
             {% if item.decision_score_breakdown is defined and item.decision_score_breakdown.available %}
             <p class="muted">{{ item.decision_score_breakdown.formula }}</p>
             <div class="evidence-list">
-                <div><span>当前持有周期</span><strong>{{ item.decision_score_breakdown.target_holding_days }} 天</strong></div>
+                <div><span>当前执行周期偏好</span><strong>{{ item.decision_score_breakdown.target_holding_days }} 天</strong></div>
                 <div><span>当前周期桶</span><strong>{{ item.decision_score_breakdown.bucket_label }}</strong></div>
                 <div><span>当前状态</span><strong>{{ "已持有" if item.decision_score_breakdown.is_held else "未持有" }}</strong></div>
                 <div><span>stay_score</span><strong>{{ "%.2f"|format(item.decision_score_breakdown.stay_score) }}</strong></div>
@@ -444,6 +466,7 @@
                 </tr>
                 </tbody>
             </table>
+            {{ render_reason_steps(item.execution_trace.get('entry_checks', {}).get('reason_steps', []), "旧记录未保存这一层的入场判决步骤。") }}
         </article>
 
             <article class="sub-card">
@@ -455,6 +478,7 @@
                 <div><span>reduced_target_weight</span><strong>{{ fmt_pct((item.execution_trace.get('position_state', {}).get('reduced_target_weight', 0) or 0) * 100) }}</strong></div>
                 </div>
             <p>{{ item.execution_trace.get('position_state', {}).get('reason', '旧记录未保存这一层说明。') or "旧记录未保存这一层说明。" }}</p>
+            {{ render_reason_steps(item.execution_trace.get('position_state', {}).get('reason_steps', []), "旧记录未保存这一层的持仓状态判决步骤。") }}
             </article>
         </div>
 
@@ -470,6 +494,7 @@
                 <div><span>score_gap</span><strong>{{ "%.2f"|format(item.execution_trace.get('switch_checks', {}).get('score_gap', 0) or 0) }}</strong></div>
                 <div><span>switch_allowed</span><strong>{{ "是" if item.execution_trace.get('switch_checks', {}).get('switch_allowed') else "否" }}</strong></div>
                 </div>
+                {{ render_reason_steps(item.execution_trace.get('switch_checks', {}).get('reason_steps', []), "本次没有进入明确的换仓判决步骤。") }}
             </article>
 
             <article class="sub-card">
@@ -482,6 +507,7 @@
                 <div><span>effective_target_weight</span><strong>{{ fmt_pct((item.execution_trace.get('target_weight_adjustment', {}).get('effective_target_weight', 0) or 0) * 100) }}</strong></div>
                 <div><span>采用分支</span><strong>{{ item.execution_trace.get('target_weight_adjustment', {}).get('branch', '-') or "-" }}</strong></div>
                 </div>
+                {{ render_reason_steps(item.execution_trace.get('target_weight_adjustment', {}).get('reason_steps', []), "旧记录未保存这一层的仓位改写步骤。") }}
             </article>
         </div>
 
@@ -503,6 +529,7 @@
         <p class="muted">本次原始信号存在，但因为目标调整金额低于最小交易金额，所以最终被压成 hold 或 no_trade。</p>
         {% endif %}
         <p>{{ item.execution_trace.get('final_action_calc', {}).get('action_reason', item.summary) or item.summary }}</p>
+        {{ render_reason_steps(item.execution_trace.get('final_action_calc', {}).get('reason_steps', []), "旧记录未保存这一层的最终动作判决步骤。") }}
     </article>
 
     <article class="sub-card" style="margin-top: 18px;">

@@ -129,19 +129,12 @@ class BacktestRunner:
             filtered_df = filter_service.apply(features_df, preferences)
             scoring_result = scoring_engine.score(filtered_df)
             scored_df = scoring_result["scored_df"]
-            allocation = allocator.build_target_portfolio(
-                scored_df,
-                current_holdings=current_holdings,
-                preferences=preferences,
-                market_regime=market_regime,
-                risk_mode=request.risk_mode,
-            )
-            items = decision_engine._build_action_items(
+            allocation, items = decision_engine._build_allocation_and_items(
                 scored_df=scored_df,
                 current_holdings=current_holdings,
-                allocation=allocation,
                 portfolio_summary=portfolio_summary,
                 preferences=preferences,
+                market_regime=market_regime,
             )
 
             replacement_days += 1 if any(item.get("replacement_symbol") for item in items if item["intent"] == "open") else 0

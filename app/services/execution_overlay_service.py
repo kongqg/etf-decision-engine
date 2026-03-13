@@ -30,6 +30,7 @@ class ExecutionOverlayConfig:
     rebalance_band: float
     reduced_target_multiplier: float
     default_target_holding_days: int
+    switch_out_mode: str
     horizon_buckets: dict[str, dict[str, Any]]
 
 
@@ -38,6 +39,12 @@ class ExecutionOverlayService:
         settings = get_settings()
         overlay_cfg = load_yaml_config(settings.config_dir / "execution_overlay.yaml")
         self.category_profiles = load_yaml_config(settings.config_dir / "category_profiles.yaml")
+        selection_cfg = self.category_profiles.get("selection", {})
+        self.offensive_categories = {
+            str(category)
+            for category in selection_cfg.get("offensive_categories", [])
+            if str(category)
+        }
         internals = overlay_cfg.get("internals", {})
         self.config = ExecutionOverlayConfig(
             pullback_low_pct=float(overlay_cfg.get("pullback_low_pct", -6.0)),
@@ -46,6 +53,7 @@ class ExecutionOverlayService:
             rebalance_band=float(overlay_cfg.get("rebalance_band", 0.05)),
             reduced_target_multiplier=float(internals.get("reduced_target_multiplier", 0.5)),
             default_target_holding_days=max(1, int(internals.get("default_target_holding_days", 30))),
+            switch_out_mode=str(internals.get("switch_out_mode", "reduce_or_exit")),
             horizon_buckets={
                 str(name): dict(payload)
                 for name, payload in overlay_cfg.get("horizon_buckets", {}).items()
@@ -189,7 +197,9 @@ class ExecutionOverlayService:
                     )
                 else:
                     effective_target_weight = 0.0
-                    action_reason = self._blocked_entry_reason(row=row, normal_target_weight=normal_target_weight)
+                    allocation_trace = allocation.get("allocation_trace", {}).get(symbol, {})
+                    allocation_blocked_reason = str(allocation_trace.get("blocked_reason", "")).strip()
+                    action_reason = allocation_blocked_reason or self._blocked_entry_reason(row=row, normal_target_weight=normal_target_weight)
 
             target_amount = round(float(total_asset) * effective_target_weight, 2)
             current_amount = float(current.get("current_amount", 0.0))
@@ -376,6 +386,19 @@ class ExecutionOverlayService:
             "overlay_traces": overlay_traces,
         }
 
+    def prepare_overlay_frame(
+        self,
+        *,
+        scored_df: pd.DataFrame,
+        current_holdings: list[dict[str, Any]],
+        preferences: Any,
+    ) -> pd.DataFrame:
+        return self._prepare_overlay_frame(
+            scored_df=scored_df,
+            current_holdings=current_holdings,
+            preferences=preferences,
+        )
+
     def _prepare_overlay_frame(
         self,
         *,
@@ -428,6 +451,20 @@ class ExecutionOverlayService:
         df["drawdown_severity"] = self._category_relative_percentile(df, "abs_drawdown_20d", higher_is_better=True)
         df["rank_drop_score"] = self._rank_drop_score(df)
         df["time_decay_score"] = self._time_decay_score(df, preferences)
+        preliminary_entry_scores = []
+        for _, row in df.iterrows():
+            preliminary_entry_scores.append(self._head_score(str(row.get("decision_category", "")), "entry", row))
+        df["preliminary_entry_score"] = preliminary_entry_scores
+        offensive_leader_scores = (
+            df[df["decision_category"].isin(self.offensive_categories)]
+            .groupby("decision_category")["preliminary_entry_score"]
+            .max()
+            .tolist()
+        )
+        opportunity_cost_score = max(offensive_leader_scores) if offensive_leader_scores else 0.0
+        risk_switch_score = sum(offensive_leader_scores) / len(offensive_leader_scores) if offensive_leader_scores else 0.0
+        df["opportunity_cost_score"] = opportunity_cost_score
+        df["risk_switch_score"] = risk_switch_score
 
         entry_scores: list[float] = []
         hold_scores: list[float] = []
@@ -540,22 +577,41 @@ class ExecutionOverlayService:
             old_state = str(old_row.get("position_state", "NONE"))
             new_target_weight = float(target_weights.get(new_symbol, 0.0))
             score_gap = float(new_row.get("decision_score", 0.0)) - float(old_row.get("decision_score", 0.0))
-            switch_allowed = bool(
-                old_state in {"REDUCE", "EXIT"}
-                and bool(new_row.get("entry_allowed", False))
-                and new_target_weight > self.config.rebalance_band
-            )
+            if self.config.switch_out_mode == "exit_only":
+                switch_allowed = bool(
+                    old_state == "EXIT"
+                    and bool(new_row.get("entry_allowed", False))
+                    and new_target_weight > self.config.rebalance_band
+                )
+                switch_blocked = bool(
+                    old_state == "HOLD"
+                    and bool(new_row.get("entry_allowed", False))
+                    and new_target_weight > self.config.rebalance_band
+                )
+            else:
+                switch_allowed = bool(
+                    old_state in {"REDUCE", "EXIT"}
+                    and bool(new_row.get("entry_allowed", False))
+                    and new_target_weight > self.config.rebalance_band
+                )
+                switch_blocked = bool(
+                    not switch_allowed
+                    and old_state == "HOLD"
+                    and bool(new_row.get("entry_allowed", False))
+                    and new_target_weight > self.config.rebalance_band
+                )
             context[str(category)] = {
                 "switch_in_symbol": new_symbol if switch_allowed else "",
                 "switch_out_symbol": old_symbol if switch_allowed else "",
-                "blocked_new_symbol": "" if switch_allowed else new_symbol,
-                "blocked_old_symbol": "" if switch_allowed else old_symbol,
+                "blocked_new_symbol": new_symbol if switch_blocked else "",
+                "blocked_old_symbol": old_symbol if switch_blocked else "",
                 "score_gap": score_gap,
                 "old_state": old_state,
                 "new_entry_allowed": bool(new_row.get("entry_allowed", False)),
                 "new_target_weight": new_target_weight,
                 "rebalance_band": self.config.rebalance_band,
                 "switch_allowed": switch_allowed,
+                "switch_out_mode": self.config.switch_out_mode,
             }
         return context
 
@@ -576,6 +632,8 @@ class ExecutionOverlayService:
             "volatility_spike": float(row.get("volatility_20d_spike", 0.0)),
             "rank_drop": float(row.get("rank_drop_score", 0.0)),
             "time_decay": float(row.get("time_decay_score", 0.0)),
+            "opportunity_cost": float(row.get("opportunity_cost_score", 0.0)),
+            "risk_switch": float(row.get("risk_switch_score", 0.0)),
         }
         total_weight = sum(abs(float(weight)) for weight in head_config.values())
         if total_weight <= 0:
@@ -710,6 +768,147 @@ class ExecutionOverlayService:
         else:
             position_state_reason = "当前没有持仓，因此只进行入场可行性判断。"
 
+        channel_a_pass = bool(trend_filter_pass and pullback_zone_pass and rebound_confirmation_pass)
+        channel_b_drawdown_pass = bool(float(row.get("drawdown_20d", 0.0)) > self.config.pullback_high_pct)
+        channel_b_entry_score_pass = bool(float(row.get("entry_score", 0.0)) >= self.config.breakout_entry_threshold)
+        channel_b_momentum_pass = bool(float(row.get("momentum_5d", 0.0)) > 0)
+        channel_b_ma5_pass = bool(float(row.get("close_price", 0.0)) > float(row.get("ma5", 0.0)))
+        channel_b_volatility_pass = bool(
+            float(row.get("volatility_20d", 0.0)) <= float(row.get("category_median_volatility_20d", 0.0))
+        )
+        target_gap = effective_target_weight - current_weight_safe
+        reduce_gap = current_weight_safe - reduced_target_weight
+        switch_score_gap = float(category_context.get("score_gap", 0.0))
+
+        entry_reason_steps = [
+            self._reason_step(
+                condition=(
+                    "趋势过滤：momentum_20d > 0 且 close_price > ma20 "
+                    f"（当前 {float(row.get('momentum_20d', 0.0)):.2f}，"
+                    f"{float(row.get('close_price', 0.0)):.3f} vs {float(row.get('ma20', 0.0)):.3f}）"
+                ),
+                passed=trend_filter_pass,
+                meaning="只有中期动量仍为正，且价格站在20日均线上方，才允许新的多头买入。",
+            ),
+            self._reason_step(
+                condition=(
+                    f"通道A回撤区间：{self.config.pullback_low_pct:.1f} <= drawdown_20d <= {self.config.pullback_high_pct:.1f} "
+                    f"（当前 {float(row.get('drawdown_20d', 0.0)):.2f}）"
+                ),
+                passed=pullback_zone_pass,
+                meaning="说明走势仍在回撤可承受区间内，既不是太浅，也不是已经明显走坏。",
+            ),
+            self._reason_step(
+                condition=(
+                    "通道A反弹确认：close_price > ma5 且 momentum_3d > 0 "
+                    f"（当前 {float(row.get('close_price', 0.0)):.3f} vs {float(row.get('ma5', 0.0)):.3f}，"
+                    f"{float(row.get('momentum_3d', 0.0)):.2f}）"
+                ),
+                passed=rebound_confirmation_pass,
+                meaning="说明回撤后已经开始重新转强，不是还在继续下跌。",
+            ),
+            self._reason_step(
+                condition="通道A命中",
+                passed=channel_a_pass,
+                meaning="满足趋势过滤 + 回撤区间 + 反弹确认时，允许按回撤后反弹逻辑入场。",
+                conclusion=channel_a_pass,
+            ),
+            self._reason_step(
+                condition=(
+                    f"通道B近高位判断：drawdown_20d > {self.config.pullback_high_pct:.1f} "
+                    f"（当前 {float(row.get('drawdown_20d', 0.0)):.2f}）"
+                ),
+                passed=channel_b_drawdown_pass,
+                meaning="说明这只 ETF 还贴近高位，没有跌到通道A的回撤区间。",
+            ),
+            self._reason_step(
+                condition=(
+                    f"通道B强度阈值：entry_score >= {self.config.breakout_entry_threshold:.1f} "
+                    f"（当前 {float(row.get('entry_score', 0.0)):.2f}）"
+                ),
+                passed=channel_b_entry_score_pass,
+                meaning="只有足够强的标的，才允许走强趋势突破的例外通道。",
+            ),
+            self._reason_step(
+                condition=(
+                    "通道B短线延续：momentum_5d > 0 且 close_price > ma5 "
+                    f"（当前 {float(row.get('momentum_5d', 0.0)):.2f}，"
+                    f"{float(row.get('close_price', 0.0)):.3f} vs {float(row.get('ma5', 0.0)):.3f}）"
+                ),
+                passed=bool(channel_b_momentum_pass and channel_b_ma5_pass),
+                meaning="说明不是高位走弱，而是仍然保持短线推进。",
+            ),
+            self._reason_step(
+                condition=(
+                    "通道B波动保护：volatility_20d <= category_median_volatility_20d "
+                    f"（当前 {float(row.get('volatility_20d', 0.0)):.2f} vs "
+                    f"{float(row.get('category_median_volatility_20d', 0.0)):.2f}）"
+                ),
+                passed=channel_b_volatility_pass,
+                meaning="避免追进一只虽然强，但波动已经明显高于同类中位数的ETF。",
+            ),
+            self._reason_step(
+                condition="通道B命中",
+                passed=breakout_exception_pass,
+                meaning="满足趋势过滤 + 近高位 + 强度阈值 + 延续确认 + 波动保护时，允许按强趋势突破逻辑入场。",
+                conclusion=breakout_exception_pass,
+            ),
+            self._reason_step(
+                condition=f"最终入场结论：entry_channel = {entry_channel}，entry_allowed = {entry_allowed}",
+                passed=entry_allowed,
+                meaning="最终只要通道A或通道B任意一个通过，就允许新开仓或加仓。",
+                conclusion=True,
+            ),
+        ]
+
+        position_reason_steps = self._build_position_state_steps(
+            base_state=base_state,
+            momentum_20d=float(row.get("momentum_20d", 0.0)),
+            close_price=float(row.get("close_price", 0.0)),
+            ma20=float(row.get("ma20", 0.0)),
+            normal_target_weight=normal_target_weight,
+            reduced_target_weight=reduced_target_weight,
+        )
+        switch_reason_steps = self._build_switch_steps(
+            old_state=str(category_context.get("old_state", "NONE")),
+            new_entry_allowed=bool(category_context.get("new_entry_allowed", False)),
+            new_target_weight=float(category_context.get("new_target_weight", 0.0)),
+            score_gap=switch_score_gap,
+            switch_allowed=bool(category_context.get("switch_allowed", False)),
+            switch_blocked=switch_blocked,
+            switch_out_mode=str(category_context.get("switch_out_mode", self.config.switch_out_mode)),
+            switch_partner=switch_partner,
+        )
+        target_adjustment_steps = self._build_target_adjustment_steps(
+            branch=target_branch,
+            normal_target_weight=normal_target_weight,
+            current_weight=current_weight_safe,
+            reduced_target_weight=reduced_target_weight,
+            effective_target_weight=effective_target_weight,
+            action_code=action_code,
+            entry_allowed=entry_allowed,
+            switch_partner=switch_partner,
+        )
+        final_action_steps = self._build_final_action_steps(
+            action_code=action_code,
+            base_state=base_state,
+            current_weight=current_weight_safe,
+            normal_target_weight=normal_target_weight,
+            reduced_target_weight=reduced_target_weight,
+            effective_target_weight=effective_target_weight,
+            delta_weight=delta_weight,
+            delta_amount=delta_amount,
+            rebalance_band=self.config.rebalance_band,
+            min_trade_amount=min_trade_amount,
+            min_trade_blocked=min_trade_blocked,
+            entry_allowed=entry_allowed,
+            switch_in=switch_in,
+            switch_out=switch_out,
+            switch_partner=switch_partner,
+            target_gap=target_gap,
+            reduce_gap=reduce_gap,
+        )
+
         return {
             "entry_checks": {
                 "trend_filter_pass": trend_filter_pass,
@@ -717,15 +916,15 @@ class ExecutionOverlayService:
                     "trend_filter_pass": trend_filter_pass,
                     "pullback_zone_pass": pullback_zone_pass,
                     "rebound_confirmation_pass": rebound_confirmation_pass,
-                    "channel_a_pass": bool(trend_filter_pass and pullback_zone_pass and rebound_confirmation_pass),
+                    "channel_a_pass": channel_a_pass,
                 },
                 "channel_b": {
                     "trend_filter_pass": trend_filter_pass,
-                    "drawdown_near_high_pass": bool(float(row.get("drawdown_20d", 0.0)) > self.config.pullback_high_pct),
-                    "entry_score_pass": bool(float(row.get("entry_score", 0.0)) >= self.config.breakout_entry_threshold),
-                    "momentum_5d_pass": bool(float(row.get("momentum_5d", 0.0)) > 0),
-                    "close_above_ma5_pass": bool(float(row.get("close_price", 0.0)) > float(row.get("ma5", 0.0))),
-                    "volatility_guard_pass": bool(float(row.get("volatility_20d", 0.0)) <= float(row.get("category_median_volatility_20d", 0.0))),
+                    "drawdown_near_high_pass": channel_b_drawdown_pass,
+                    "entry_score_pass": channel_b_entry_score_pass,
+                    "momentum_5d_pass": channel_b_momentum_pass,
+                    "close_above_ma5_pass": channel_b_ma5_pass,
+                    "volatility_guard_pass": channel_b_volatility_pass,
                     "channel_b_pass": breakout_exception_pass,
                 },
                 "entry_channel": entry_channel,
@@ -733,6 +932,7 @@ class ExecutionOverlayService:
                 "breakout_entry_threshold": self.config.breakout_entry_threshold,
                 "pullback_low_pct": self.config.pullback_low_pct,
                 "pullback_high_pct": self.config.pullback_high_pct,
+                "reason_steps": entry_reason_steps,
             },
             "position_state": {
                 "current_weight": current_weight_safe,
@@ -742,6 +942,7 @@ class ExecutionOverlayService:
                 "hold_days": int(current.get("hold_days", 0) or 0),
                 "hold_days_known": bool(current.get("hold_days_known", False)),
                 "reduced_target_weight": reduced_target_weight if base_state == "REDUCE" else 0.0,
+                "reason_steps": position_reason_steps,
             },
             "switch_checks": {
                 "old_state": str(category_context.get("old_state", "NONE")),
@@ -754,6 +955,8 @@ class ExecutionOverlayService:
                 "switch_blocked": switch_blocked,
                 "switch_partner": switch_partner,
                 "score_gap": float(category_context.get("score_gap", 0.0)),
+                "switch_out_mode": str(category_context.get("switch_out_mode", self.config.switch_out_mode)),
+                "reason_steps": switch_reason_steps,
             },
             "target_weight_adjustment": {
                 "normal_target_weight": normal_target_weight,
@@ -761,6 +964,7 @@ class ExecutionOverlayService:
                 "reduced_target_weight": reduced_target_weight,
                 "effective_target_weight": effective_target_weight,
                 "branch": target_branch,
+                "reason_steps": target_adjustment_steps,
             },
             "final_action_calc": {
                 "current_weight": current_weight_safe,
@@ -776,7 +980,317 @@ class ExecutionOverlayService:
                 "action": action,
                 "action_code": action_code,
                 "action_reason": action_reason,
+                "reason_steps": final_action_steps,
             },
+        }
+
+    def _build_position_state_steps(
+        self,
+        *,
+        base_state: str,
+        momentum_20d: float,
+        close_price: float,
+        ma20: float,
+        normal_target_weight: float,
+        reduced_target_weight: float,
+    ) -> list[dict[str, Any]]:
+        if base_state == "NONE":
+            return [
+                self._reason_step(
+                    condition="当前仓位 = 0",
+                    passed=True,
+                    meaning="当前没有持仓，因此这一层只做状态说明，不进入持仓管理动作。",
+                    conclusion=True,
+                )
+            ]
+
+        steps = [
+            self._reason_step(
+                condition=f"momentum_20d > 0（当前 {momentum_20d:.2f}）",
+                passed=momentum_20d > 0,
+                meaning="说明中期动量是否仍然向上。",
+            ),
+            self._reason_step(
+                condition=f"close_price > ma20（当前 {close_price:.3f} vs {ma20:.3f}）",
+                passed=close_price > ma20,
+                meaning="说明价格是否仍站在20日均线之上。",
+            ),
+        ]
+        if base_state == "HOLD":
+            steps.append(
+                self._reason_step(
+                    condition="因此 position_state = HOLD",
+                    passed=True,
+                    meaning="中期趋势健康，默认继续持有。",
+                    conclusion=True,
+                )
+            )
+            return steps
+        if base_state == "REDUCE":
+            steps.append(
+                self._reason_step(
+                    condition=(
+                        "reduced_target_weight = normal_target_weight × reduced_target_multiplier "
+                        f"= {normal_target_weight * 100:.2f}% × {self.config.reduced_target_multiplier:.2f} "
+                        f"= {reduced_target_weight * 100:.2f}%"
+                    ),
+                    passed=True,
+                    meaning="趋势走弱但未完全破坏时，先把理论目标仓位压到正常目标的一半。",
+                )
+            )
+            steps.append(
+                self._reason_step(
+                    condition="因此 position_state = REDUCE",
+                    passed=True,
+                    meaning="20日动量还没转负，但价格已经回到20日均线下方，属于减仓观察状态。",
+                    conclusion=True,
+                )
+            )
+            return steps
+        steps.append(
+            self._reason_step(
+                condition="因此 position_state = EXIT",
+                passed=True,
+                meaning="20日动量转弱且价格跌破20日均线，趋势已破坏，应该退出。",
+                conclusion=True,
+            )
+        )
+        return steps
+
+    def _build_switch_steps(
+        self,
+        *,
+        old_state: str,
+        new_entry_allowed: bool,
+        new_target_weight: float,
+        score_gap: float,
+        switch_allowed: bool,
+        switch_blocked: bool,
+        switch_out_mode: str,
+        switch_partner: str,
+    ) -> list[dict[str, Any]]:
+        if not switch_partner and old_state == "NONE" and new_target_weight <= 0:
+            return [
+                self._reason_step(
+                    condition="本次没有进入同类别换仓判断",
+                    passed=True,
+                    meaning="没有同类别旧持仓与新龙头形成直接替换关系。",
+                    conclusion=True,
+                )
+            ]
+        mode_text = "只有旧仓 EXIT 才允许全切换" if switch_out_mode == "exit_only" else "旧仓 REDUCE / EXIT 都允许全切换"
+        conclusion = "允许换仓" if switch_allowed else "本次不触发同类别全切换"
+        if switch_blocked:
+            conclusion = "旧仓仍健康，先不因为新龙头轻微领先而直接换仓"
+        return [
+            self._reason_step(
+                condition=f"旧仓状态 = {old_state}",
+                passed=old_state in {"REDUCE", "EXIT"},
+                meaning="只有旧仓已经转弱或破坏，才有资格让位给新龙头。",
+            ),
+            self._reason_step(
+                condition=f"新龙头 entry_allowed = {new_entry_allowed}",
+                passed=new_entry_allowed,
+                meaning="新候选必须先通过执行层入场判断，才有资格接管同类别仓位。",
+            ),
+            self._reason_step(
+                condition=(
+                    f"新龙头目标仓位 > rebalance_band（当前 {new_target_weight * 100:.2f}% "
+                    f"vs {self.config.rebalance_band * 100:.2f}%）"
+                ),
+                passed=new_target_weight > self.config.rebalance_band,
+                meaning="目标仓位太小就不值得发起同类别切换。",
+            ),
+            self._reason_step(
+                condition=f"switch_out_mode = {switch_out_mode}",
+                passed=True,
+                meaning=mode_text,
+            ),
+            self._reason_step(
+                condition=f"辅助参考：score_gap = {score_gap:.2f}",
+                passed=True,
+                meaning="当前分差只作为次级参考，不再作为状态型换仓的唯一触发条件。",
+            ),
+            self._reason_step(
+                condition=conclusion,
+                passed=switch_allowed,
+                meaning="这一步只是判断是否允许“全切旧仓、同类切到新龙头”，不等于普通减仓或新开仓也会被禁止。",
+                conclusion=True,
+            ),
+        ]
+
+    def _build_target_adjustment_steps(
+        self,
+        *,
+        branch: str,
+        normal_target_weight: float,
+        current_weight: float,
+        reduced_target_weight: float,
+        effective_target_weight: float,
+        action_code: str,
+        entry_allowed: bool,
+        switch_partner: str,
+    ) -> list[dict[str, Any]]:
+        if branch == "switch_out_or_exit":
+            reason = f"因为同类别切换到 {switch_partner}，旧仓直接让位为 0%。" if switch_partner else "因为持仓状态已经 EXIT，执行仓位直接归零。"
+        elif branch == "reduce_to_half":
+            reason = (
+                f"先按减仓规则把 normal_target_weight {normal_target_weight * 100:.2f}% "
+                f"压到 reduced_target_weight {reduced_target_weight * 100:.2f}%。"
+            )
+        elif branch == "open_or_add_to_normal":
+            reason = "入场条件成立，因此执行仓位直接采用 normal_target_weight。"
+        elif branch == "hold_without_add":
+            reason = "持仓仍健康，但这次不需要额外加仓，因此执行仓位保持在当前仓位与理论目标仓位中较高者。"
+        else:
+            reason = "虽然评分层给了理论仓位，但执行层未允许开仓，因此有效仓位被压到 0%。"
+        return [
+            self._reason_step(
+                condition=f"normal_target_weight = {normal_target_weight * 100:.2f}%",
+                passed=True,
+                meaning="这是组合层根据排名、预算和上限分出来的理论目标仓位。",
+            ),
+            self._reason_step(
+                condition=f"current_weight = {current_weight * 100:.2f}%",
+                passed=True,
+                meaning="这是当前真实持仓占总资产的比例。",
+            ),
+            self._reason_step(
+                condition=f"采用分支 = {branch}",
+                passed=True,
+                meaning=reason,
+            ),
+            self._reason_step(
+                condition=(
+                    f"最终 effective_target_weight = {effective_target_weight * 100:.2f}% "
+                    f"（entry_allowed = {entry_allowed}，action_code = {action_code}）"
+                ),
+                passed=True,
+                meaning="执行层会根据持仓状态、入场通道和换仓判断，对理论仓位做最后一次改写。",
+                conclusion=True,
+            ),
+        ]
+
+    def _build_final_action_steps(
+        self,
+        *,
+        action_code: str,
+        base_state: str,
+        current_weight: float,
+        normal_target_weight: float,
+        reduced_target_weight: float,
+        effective_target_weight: float,
+        delta_weight: float,
+        delta_amount: float,
+        rebalance_band: float,
+        min_trade_amount: float,
+        min_trade_blocked: bool,
+        entry_allowed: bool,
+        switch_in: bool,
+        switch_out: bool,
+        switch_partner: str,
+        target_gap: float,
+        reduce_gap: float,
+    ) -> list[dict[str, Any]]:
+        steps = [
+            self._reason_step(
+                condition=(
+                    f"current_weight = {current_weight * 100:.2f}%，"
+                    f"effective_target_weight = {effective_target_weight * 100:.2f}%，"
+                    f"Δw = {delta_weight * 100:.2f}%"
+                ),
+                passed=True,
+                meaning="最终动作先看当前仓位与执行仓位之间的差。",
+            )
+        ]
+        if switch_out:
+            steps.append(
+                self._reason_step(
+                    condition=f"switch_out = true，旧仓让位给 {switch_partner or '同类别新龙头'}",
+                    passed=True,
+                    meaning="这说明当前动作不是普通减仓，而是同类别切换中的旧仓让位。",
+                )
+            )
+        elif switch_in:
+            steps.append(
+                self._reason_step(
+                    condition=f"switch_in = true，新仓来自同类别切换（旧仓 {switch_partner or '-'}）",
+                    passed=True,
+                    meaning="这说明当前动作不是普通新开仓，而是同类别龙头接管。",
+                )
+            )
+        if base_state == "REDUCE":
+            steps.append(
+                self._reason_step(
+                    condition=(
+                        f"current_weight - reduced_target_weight = {reduce_gap * 100:.2f}% "
+                        f"> rebalance_band {rebalance_band * 100:.2f}%"
+                    ),
+                    passed=reduce_gap > rebalance_band,
+                    meaning="只有当前仓位高于减仓后目标足够多时，才真正执行减仓。",
+                )
+            )
+        elif action_code in {"buy_open", "buy_add"}:
+            steps.append(
+                self._reason_step(
+                    condition=(
+                        f"entry_allowed = {entry_allowed}，"
+                        f"target_gap = {target_gap * 100:.2f}% > rebalance_band {rebalance_band * 100:.2f}%"
+                    ),
+                    passed=entry_allowed and target_gap > rebalance_band,
+                    meaning="只有允许入场，而且目标仓位明显高于当前仓位，才值得真正开仓或加仓。",
+                )
+            )
+        elif action_code == "hold":
+            steps.append(
+                self._reason_step(
+                    condition=f"仓位差没有大到超过 rebalance_band {rebalance_band * 100:.2f}%",
+                    passed=True,
+                    meaning="即使评分或状态略有变化，只要调整幅度不大，就继续持有，避免无意义调仓。",
+                )
+            )
+        elif action_code == "no_trade":
+            steps.append(
+                self._reason_step(
+                    condition=f"entry_allowed = {entry_allowed}，normal_target_weight = {normal_target_weight * 100:.2f}%",
+                    passed=False,
+                    meaning="这次没有形成正式可执行动作，因此最终保持不交易。",
+                )
+            )
+        if action_code != "sell_exit":
+            steps.append(
+                self._reason_step(
+                    condition=(
+                        f"Δa = {delta_amount:.2f} 元，最小交易金额 = {min_trade_amount:.2f} 元"
+                    ),
+                    passed=delta_amount >= min_trade_amount or not min_trade_blocked,
+                    meaning="就算方向正确，如果调整金额太小，也会被压成 hold 或 no_trade。",
+                )
+            )
+        steps.append(
+            self._reason_step(
+                condition=f"因此最终动作 = {action_code}",
+                passed=True,
+                meaning="前面的仓位状态、目标仓位和交易门槛一起决定了最终动作。",
+                conclusion=True,
+            )
+        )
+        return steps
+
+    def _reason_step(
+        self,
+        *,
+        condition: str,
+        passed: bool,
+        meaning: str,
+        conclusion: bool = False,
+    ) -> dict[str, Any]:
+        return {
+            "condition": condition,
+            "passed": bool(passed),
+            "passed_label": "满足" if passed else "不满足",
+            "meaning": meaning,
+            "conclusion": bool(conclusion),
         }
 
     def _entry_channel_label(self, value: str) -> str:

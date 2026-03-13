@@ -31,6 +31,8 @@ FEATURE_LABELS = {
     "abs_drawdown_20d": "20日绝对回撤",
     "rank_drop": "类别排名回落分",
     "time_decay": "持有时间衰减分",
+    "opportunity_cost": "外部机会成本分",
+    "risk_switch": "防守转进攻切换分",
 }
 
 FEATURE_MEANINGS = {
@@ -50,7 +52,9 @@ FEATURE_MEANINGS = {
     "volatility_10d": "最近 10 个交易日日收益率的标准差。",
     "abs_drawdown_20d": "20 日回撤取绝对值后用于执行 head。",
     "rank_drop": "类别内排名是否从前排滑落到后排。",
-    "time_decay": "已经持有多久，相对目标持有周期的衰减程度。",
+    "time_decay": "已经持有多久，相对执行周期偏好的辅助衰减程度，不代表到期自动卖出。",
+    "opportunity_cost": "如果外面已经有明显更强的新进攻候选，继续停在货币 ETF 的代价就会升高。",
+    "risk_switch": "当进攻类别整体 entry_score 抬升时，说明市场更适合从防守转向进攻。",
 }
 
 HEAD_COMPONENT_NOTES = {
@@ -64,7 +68,9 @@ HEAD_COMPONENT_NOTES = {
     "abs_drawdown_20d": "原始回撤越小越好，进入 entry/hold 前会先转成友好度分位；进入 exit 时则用回撤恶化侧。",
     "volatility_spike": "越高代表近期波动异常放大，偏退出信号。",
     "rank_drop": "越高代表在类别中的相对位置变差，偏退出信号。",
-    "time_decay": "越高代表已持有更久，越接近计划退出时点。",
+    "time_decay": "越高代表已持有更久，但这里只是辅助退出压力，不代表时间一到就强制卖出。",
+    "opportunity_cost": "越高代表外部已有更强的进攻标的，继续停在防守仓的机会成本更大。",
+    "risk_switch": "越高代表市场整体更偏进攻，货币 ETF 更应让出仓位。",
 }
 
 
@@ -346,7 +352,17 @@ class RulebookService:
                 {
                     "key": "time_decay_score",
                     "formula": "time_decay_score = min(hold_days / target_holding_days, 1.0) × 100",
-                    "meaning": "持有越久，越接近计划退出时点。",
+                    "meaning": "持有越久，辅助退出压力越高；它不是到期强平开关。",
+                },
+                {
+                    "key": "opportunity_cost_score",
+                    "formula": "opportunity_cost_score = max(各进攻类别龙头 ETF 的 entry_score)",
+                    "meaning": "外面最强进攻候选越强，继续停在货币 ETF 的机会成本越高。",
+                },
+                {
+                    "key": "risk_switch_score",
+                    "formula": "risk_switch_score = avg(各进攻类别龙头 ETF 的 entry_score)",
+                    "meaning": "进攻类别整体抬升时，说明市场更适合从防守切回进攻。",
                 },
             ],
         }
@@ -428,7 +444,7 @@ class RulebookService:
         return {
             "formula": "decision_score = entry_score × w_entry + hold_score × w_hold + (100 - exit_score) × w_exit_inverse",
             "display_formula": "执行决策分 = entry_score × w_entry + hold_score × w_hold + (100 - exit_score) × w_exit_inverse",
-            "meaning": "entry_score 看新开仓吸引力，hold_score 看继续持有舒适度，exit_score 看退出压力，公式里用 100-exit_score 把退出压力翻成“还能继续待”的分。",
+            "meaning": "entry_score 看新开仓吸引力，hold_score 看继续持有舒适度，exit_score 看退出压力，公式里用 100-exit_score 把退出压力翻成“还能继续待”的分。这里的 target_holding_days 只用于映射权重桶，不代表持满天数就自动卖出。",
             "active_bucket_name": bucket_name,
             "active_bucket_label": self._bucket_label(bucket_name),
             "active_target_holding_days": target_holding_days,
@@ -494,6 +510,12 @@ class RulebookService:
             ],
             "rebalance_band": float(self.execution_overlay.get("rebalance_band", 0.05)),
             "reduced_target_multiplier": float(self.execution_overlay.get("internals", {}).get("reduced_target_multiplier", 0.5)),
+            "switch_out_mode": str(self.execution_overlay.get("internals", {}).get("switch_out_mode", "reduce_or_exit")),
+            "switch_out_mode_meaning": (
+                "只有旧仓进入 EXIT 才允许同类全切换；如果旧仓只是 REDUCE，则新龙头可以并存开仓，旧仓只按减仓规则处理。"
+                if str(self.execution_overlay.get("internals", {}).get("switch_out_mode", "reduce_or_exit")) == "exit_only"
+                else "旧仓进入 REDUCE 或 EXIT 时，都允许同类新龙头直接接管。"
+            ),
         }
 
     def _allocation_rules(self) -> dict[str, Any]:
@@ -547,7 +569,7 @@ class RulebookService:
             {
                 "title": "执行决策分 decision_score",
                 "formula": decision_rule["display_formula"],
-                "meaning": f"回答“当前是不是一个舒服的执行时点”。当前持有周期 {target_holding_days} 天，命中 {decision_rule['active_bucket_label']} 权重桶。",
+                "meaning": f"回答“当前是不是一个舒服的执行时点”。当前执行周期偏好 {target_holding_days} 天，命中 {decision_rule['active_bucket_label']} 权重桶；这不是到期自动卖出的倒计时。",
             },
         ]
 

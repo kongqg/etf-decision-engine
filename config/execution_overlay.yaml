@@ -6,6 +6,7 @@ rebalance_band: 0.05
 internals:
   reduced_target_multiplier: 0.5
   default_target_holding_days: 30
+  switch_out_mode: exit_only
 
 horizon_buckets:
   short:

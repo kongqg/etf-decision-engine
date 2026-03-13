@@ -5,7 +5,7 @@
     <div>
         <div class="eyebrow">规则页</div>
         <h2>当前打分、仓位和执行规则</h2>
-        <p>这页直接读取当前配置文件和用户设置生成。你改了配置或持有周期，这里的公式、参数和权重会一起更新。系统级参数在本页修改，个人偏好仍在设置页修改。</p>
+        <p>这页直接读取当前配置文件和用户设置生成。你改了配置或执行周期偏好，这里的公式、参数和权重会一起更新。系统级参数在本页修改，个人偏好仍在设置页修改。</p>
     </div>
     {% if rulebook %}
     <div class="action-cluster">
@@ -24,7 +24,7 @@
         </div>
     </div>
     <div class="evidence-list">
-        <div><span>当前持有周期</span><strong>{{ rulebook.current_profile.target_holding_days }} 天</strong></div>
+        <div><span>当前执行周期偏好</span><strong>{{ rulebook.current_profile.target_holding_days }} 天</strong></div>
         <div><span>命中的周期桶</span><strong>{{ rulebook.current_profile.active_bucket_label }}</strong></div>
         <div><span>非持仓权重</span><strong>E {{ "%.2f"|format(rulebook.current_profile.non_held_weights.entry) }} / H {{ "%.2f"|format(rulebook.current_profile.non_held_weights.hold) }} / X {{ "%.2f"|format(rulebook.current_profile.non_held_weights.exit_inverse) }}</strong></div>
         <div><span>已持仓权重</span><strong>E {{ "%.2f"|format(rulebook.current_profile.held_weights.entry) }} / H {{ "%.2f"|format(rulebook.current_profile.held_weights.hold) }} / X {{ "%.2f"|format(rulebook.current_profile.held_weights.exit_inverse) }}</strong></div>
@@ -309,7 +309,9 @@
             <div class="evidence-list" style="margin-top: 12px;">
                 <div><span>rebalance_band</span><strong>{{ fmt_pct(rulebook.execution_rules.rebalance_band * 100) }}</strong></div>
                 <div><span>reduced_target_multiplier</span><strong>{{ "%.2f"|format(rulebook.execution_rules.reduced_target_multiplier) }}</strong></div>
+                <div><span>switch_out_mode</span><strong>{{ rulebook.execution_rules.switch_out_mode }}</strong></div>
             </div>
+            <p class="muted">{{ rulebook.execution_rules.switch_out_mode_meaning }}</p>
         </article>
     </div>
 </section>

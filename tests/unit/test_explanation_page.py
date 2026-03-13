@@ -116,11 +116,15 @@ def test_explanation_page_renders_key_sections():
                         "entry_allowed": True,
                         "channel_a": {"trend_filter_pass": True, "pullback_zone_pass": True, "rebound_confirmation_pass": True, "channel_a_pass": True},
                         "channel_b": {"trend_filter_pass": True, "drawdown_near_high_pass": False, "momentum_5d_pass": True, "close_above_ma5_pass": True, "entry_score_pass": True, "volatility_guard_pass": True, "channel_b_pass": False},
+                        "reason_steps": [
+                            {"condition": "趋势过滤：momentum_20d > 0 且 close_price > ma20（当前 8.90，4.213 vs 3.921）", "passed": True, "passed_label": "满足", "meaning": "只有中期动量仍为正，且价格站在20日均线上方，才允许新的多头买入。", "conclusion": False},
+                            {"condition": "最终入场结论：entry_channel = A，entry_allowed = True", "passed": True, "passed_label": "满足", "meaning": "最终只要通道A或通道B任意一个通过，就允许新开仓或加仓。", "conclusion": True},
+                        ],
                     },
-                    "position_state": {"current_weight": 0.0, "position_state_label": "未持有", "reduced_target_weight": 0.0, "reason": "当前没有持仓，因此只进行入场可行性判断。"},
-                    "switch_checks": {"old_state": "NONE", "new_entry_allowed": True, "new_target_weight": 0.2, "rebalance_band": 0.05, "score_gap": 0.0, "switch_allowed": False},
-                    "target_weight_adjustment": {"normal_target_weight": 0.2, "current_weight": 0.0, "reduced_target_weight": 0.0, "effective_target_weight": 0.2, "branch": "open_or_add_to_normal"},
-                    "final_action_calc": {"current_weight": 0.0, "effective_target_weight": 0.2, "delta_weight": 0.2, "total_asset": 100000.0, "target_amount": 20000.0, "delta_amount": 20000.0, "min_trade_amount": 1000.0, "rebalance_band": 0.05, "min_trade_blocked": False, "action_reason": "满足通道A，允许新开仓。"},
+                    "position_state": {"current_weight": 0.0, "position_state_label": "未持有", "reduced_target_weight": 0.0, "reason": "当前没有持仓，因此只进行入场可行性判断。", "reason_steps": [{"condition": "当前仓位 = 0", "passed": True, "passed_label": "满足", "meaning": "当前没有持仓，因此这一层只做状态说明，不进入持仓管理动作。", "conclusion": True}]},
+                    "switch_checks": {"old_state": "NONE", "new_entry_allowed": True, "new_target_weight": 0.2, "rebalance_band": 0.05, "score_gap": 0.0, "switch_allowed": False, "reason_steps": [{"condition": "本次没有进入同类别换仓判断", "passed": True, "passed_label": "满足", "meaning": "没有同类别旧持仓与新龙头形成直接替换关系。", "conclusion": True}]},
+                    "target_weight_adjustment": {"normal_target_weight": 0.2, "current_weight": 0.0, "reduced_target_weight": 0.0, "effective_target_weight": 0.2, "branch": "open_or_add_to_normal", "reason_steps": [{"condition": "采用分支 = open_or_add_to_normal", "passed": True, "passed_label": "满足", "meaning": "入场条件成立，因此执行仓位直接采用 normal_target_weight。", "conclusion": False}]},
+                    "final_action_calc": {"current_weight": 0.0, "effective_target_weight": 0.2, "delta_weight": 0.2, "total_asset": 100000.0, "target_amount": 20000.0, "delta_amount": 20000.0, "min_trade_amount": 1000.0, "rebalance_band": 0.05, "min_trade_blocked": False, "action_reason": "满足通道A，允许新开仓。", "reason_steps": [{"condition": "entry_allowed = True，target_gap = 20.00% > rebalance_band 5.00%", "passed": True, "passed_label": "满足", "meaning": "只有允许入场，而且目标仓位明显高于当前仓位，才值得真正开仓或加仓。", "conclusion": False}, {"condition": "因此最终动作 = buy_open", "passed": True, "passed_label": "满足", "meaning": "前面的仓位状态、目标仓位和交易门槛一起决定了最终动作。", "conclusion": True}]},
                 },
                 "natural_language_summary": "该 ETF 最终被选中，是因为最终分和执行决策分都靠前。",
                 "weights": {"current_weight": 0.0, "normal_target_weight": 0.2, "effective_target_weight": 0.2},
@@ -135,6 +139,8 @@ def test_explanation_page_renders_key_sections():
     assert "仓位分配卡" in html
     assert "最终动作卡" in html
     assert "510300" in html
+    assert "momentum_20d &gt; 0" in html
+    assert "因此最终动作 = buy_open" in html
 
 
 def test_explanation_page_gracefully_degrades_for_legacy_payload():

@@ -29,10 +29,13 @@ PATH_HELP = {
     "pullback_high_pct": "通道 A 回撤区间上沿，同时也是通道 B 的近高点判定线。",
     "breakout_entry_threshold": "通道 B 所需的 entry_score 最低阈值。",
     "rebalance_band": "权重差异低于这个值时，不做调仓。",
-    "internals.default_target_holding_days": "当前用户没有单独持有周期时，执行层默认使用的天数。",
+    "internals.default_target_holding_days": "当前用户没有单独执行周期偏好时，执行层默认使用的天数；它只决定权重桶，不代表到期自动卖出。",
+    "internals.switch_out_mode": "同类换仓模式。exit_only 表示旧仓必须进入 EXIT 才全切换；reduce_or_exit 表示 REDUCE/EXIT 都允许直接切换。",
     "execution_cost_bps": "统一交易成本，单位 bps。",
     "min_trade_amount": "金额低于这个值时，不建议执行。",
     "selection.min_final_score_for_target": "最终分低于这个值时，不进入正式目标组合。",
+    "category_heads.money_etf.exit.opportunity_cost": "货币 ETF 退出时，外部最强进攻候选带来的机会成本权重。",
+    "category_heads.money_etf.exit.risk_switch": "货币 ETF 退出时，市场从防守切向进攻的整体切换权重。",
 }
 
 

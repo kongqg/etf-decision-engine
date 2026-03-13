@@ -166,6 +166,11 @@ def test_reduce_when_trend_weakens_but_not_fully_broken():
 
     assert result["items"][0]["action_code"] == "sell_reduce"
     assert result["items"][0]["rationale"]["position_state"] == "REDUCE"
+    steps = result["items"][0]["execution_trace"]["position_state"]["reason_steps"]
+    assert any("momentum_20d > 0" in step["condition"] for step in steps)
+    assert any("reduced_target_weight = normal_target_weight × reduced_target_multiplier" in step["condition"] for step in steps)
+    final_steps = result["items"][0]["execution_trace"]["final_action_calc"]["reason_steps"]
+    assert any("因此最终动作 = sell_reduce" in step["condition"] for step in final_steps)
 
 
 def test_exit_when_trend_is_broken():
@@ -187,7 +192,7 @@ def test_exit_when_trend_is_broken():
     assert result["items"][0]["rationale"]["position_state"] == "EXIT"
 
 
-def test_switch_requires_old_position_to_be_weak_and_new_entry_to_be_valid():
+def test_reduce_state_allows_new_same_category_open_without_forced_full_switch():
     frame = pd.DataFrame(
         [
             _base_row(
@@ -228,5 +233,121 @@ def test_switch_requires_old_position_to_be_weak_and_new_entry_to_be_valid():
     result = _build_items(frame, current_holdings=current_holdings, target_weights={"NEW": 0.20})
     item_by_symbol = {item["symbol"]: item for item in result["items"]}
 
+    assert item_by_symbol["NEW"]["action_code"] == "buy_open"
+    assert item_by_symbol["OLD"]["action_code"] == "sell_reduce"
+
+
+def test_exit_state_allows_same_category_switch():
+    frame = pd.DataFrame(
+        [
+            _base_row(
+                symbol="OLD",
+                category_rank=2,
+                global_rank=2,
+                final_score=68.0,
+                intra_score=65.0,
+                close_price=98.0,
+                ma20=100.0,
+                momentum_20d=-1.0,
+                drawdown_20d=-5.0,
+            ),
+            _base_row(
+                symbol="NEW",
+                category_rank=1,
+                global_rank=1,
+                final_score=84.0,
+                intra_score=82.0,
+                drawdown_20d=-4.0,
+                close_price=107.0,
+                ma5=103.0,
+                momentum_3d=1.1,
+            ),
+        ]
+    )
+    current_holdings = [
+        {
+            "symbol": "OLD",
+            "name": "ETF-OLD",
+            "category": "stock_etf",
+            "current_weight": 0.20,
+            "current_amount": 20000.0,
+            "hold_days": 10,
+        }
+    ]
+
+    result = _build_items(frame, current_holdings=current_holdings, target_weights={"NEW": 0.20})
+    item_by_symbol = {item["symbol"]: item for item in result["items"]}
+
     assert item_by_symbol["NEW"]["action_code"] == "switch"
     assert item_by_symbol["OLD"]["action_code"] == "sell_exit"
+
+
+def test_money_etf_exit_score_is_driven_by_offensive_opportunity_not_hold_days():
+    frame = pd.DataFrame(
+        [
+            _base_row(
+                symbol="CASH",
+                decision_category="money_etf",
+                close_price=100.1,
+                ma5=100.0,
+                ma10=100.0,
+                ma20=100.0,
+                momentum_3d=0.02,
+                momentum_5d=0.05,
+                momentum_10d=0.08,
+                momentum_20d=0.10,
+                trend_strength=0.10,
+                volatility_10d=0.2,
+                volatility_20d=0.3,
+                drawdown_20d=-0.05,
+                liquidity_score=90.0,
+                relative_strength_10d=0.0,
+            ),
+            _base_row(
+                symbol="STK",
+                decision_category="stock_etf",
+                close_price=108.0,
+                ma5=104.0,
+                ma10=103.0,
+                ma20=100.0,
+                momentum_3d=1.0,
+                momentum_5d=3.0,
+                momentum_10d=6.0,
+                momentum_20d=12.0,
+                trend_strength=5.0,
+                volatility_10d=4.0,
+                volatility_20d=5.0,
+                drawdown_20d=-1.0,
+                relative_strength_10d=2.0,
+                liquidity_score=70.0,
+            ),
+        ]
+    )
+    current_holdings_short = [
+        {
+            "symbol": "CASH",
+            "name": "ETF-CASH",
+            "category": "money_etf",
+            "current_weight": 0.20,
+            "current_amount": 20000.0,
+            "hold_days": 1,
+            "hold_days_known": True,
+        }
+    ]
+    current_holdings_long = [
+        {
+            "symbol": "CASH",
+            "name": "ETF-CASH",
+            "category": "money_etf",
+            "current_weight": 0.20,
+            "current_amount": 20000.0,
+            "hold_days": 200,
+            "hold_days_known": True,
+        }
+    ]
+
+    result_short = _build_items(frame, current_holdings=current_holdings_short, target_weights={"CASH": 0.20})
+    result_long = _build_items(frame, current_holdings=current_holdings_long, target_weights={"CASH": 0.20})
+
+    assert result_short["overlay_rows"]["CASH"]["exit_score"] == result_long["overlay_rows"]["CASH"]["exit_score"]
+    assert result_short["overlay_rows"]["CASH"]["exit_score"] > 0

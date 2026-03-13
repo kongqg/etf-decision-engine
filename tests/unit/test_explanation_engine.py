@@ -288,4 +288,4 @@ def test_serialize_explanations_handles_legacy_item_payload_gracefully():
     assert item["summary_card"]["symbol"] == "518880"
     assert item["intra_score_breakdown"]["available"] is False
     assert item["allocation_trace"]["normal_target_weight"] == 0.0
-    assert item["execution_trace"]["entry_checks"] == {}
+    assert item["execution_trace"]["entry_checks"]["reason_steps"] == []

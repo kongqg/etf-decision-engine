@@ -24,6 +24,8 @@ class PortfolioAllocator:
         preferences: Any,
         market_regime: dict[str, Any],
         risk_mode: str | None,
+        blocked_candidate_reasons: dict[str, str] | None = None,
+        overlay_hints: dict[str, dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         if scored_df.empty:
             return {
@@ -41,6 +43,16 @@ class PortfolioAllocator:
             }
 
         risk_profile = self.risk_mode_service.resolve(risk_mode)
+        blocked_candidate_reasons = {
+            str(symbol): str(reason)
+            for symbol, reason in (blocked_candidate_reasons or {}).items()
+            if str(symbol)
+        }
+        overlay_hints = {
+            str(symbol): dict(payload)
+            for symbol, payload in (overlay_hints or {}).items()
+            if str(symbol)
+        }
         selection_cfg = self.constraints.get("selection", {})
         budget_cfg = self.constraints.get("budget", {})
         min_final_score = float(self.scoring_config.get("selection", {}).get("min_final_score_for_target", 55.0))
@@ -185,6 +197,14 @@ class PortfolioAllocator:
                     }
                 )
                 continue
+            if symbol not in current_by_symbol and symbol in blocked_candidate_reasons:
+                selection_trace[symbol].update(
+                    {
+                        "blocked_stage": "execution_gate",
+                        "blocked_reason": blocked_candidate_reasons[symbol],
+                    }
+                )
+                continue
             if not can_add(row_dict):
                 blocked_reason = "可选席位已满。"
                 if selected_by_category[category] >= max_selected_per_category:
@@ -205,11 +225,28 @@ class PortfolioAllocator:
                     score_gap = float(row_dict.get("final_score", 0.0)) - float(incumbent.get("final_score", 0.0))
                     hold_days = int(incumbent.get("hold_days", 0) or 0)
                     hold_days_known = bool(incumbent.get("hold_days_known", False))
-                    replace_allowed = bool((not hold_days_known or hold_days >= min_hold_days_before_replace) and score_gap >= replace_threshold)
-                    if score_gap < replace_threshold:
-                        blocked_reason = "旧持仓与新候选分差不足，暂不替换。"
-                    elif hold_days_known and hold_days < min_hold_days_before_replace:
+                    candidate_hint = overlay_hints.get(symbol, {})
+                    incumbent_hint = overlay_hints.get(str(incumbent.get("symbol", "")), {})
+                    incumbent_state = str(incumbent_hint.get("position_state", "NONE"))
+                    candidate_entry_allowed = bool(candidate_hint.get("entry_allowed", False))
+                    state_based_replace_allowed = bool(
+                        candidate_entry_allowed
+                        and incumbent_state in {"REDUCE", "EXIT"}
+                        and (not hold_days_known or hold_days >= min_hold_days_before_replace)
+                    )
+                    score_gap_replace_allowed = bool(
+                        (not hold_days_known or hold_days >= min_hold_days_before_replace)
+                        and score_gap >= replace_threshold
+                    )
+                    replace_allowed = bool(state_based_replace_allowed or score_gap_replace_allowed)
+                    if hold_days_known and hold_days < min_hold_days_before_replace:
                         blocked_reason = "旧持仓仍处于最短持有期保护，暂不替换。"
+                    elif state_based_replace_allowed:
+                        blocked_reason = ""
+                    elif score_gap < replace_threshold:
+                        blocked_reason = "旧持仓与新候选分差不足，暂不替换。"
+                    elif not candidate_entry_allowed:
+                        blocked_reason = "新候选当前未通过入场通道，暂不替换。"
                     else:
                         blocked_reason = ""
                     replacement_payload = {
@@ -221,6 +258,10 @@ class PortfolioAllocator:
                         "replace_threshold": replace_threshold,
                         "hold_days": hold_days,
                         "hold_days_known": hold_days_known,
+                        "incumbent_state": incumbent_state,
+                        "candidate_entry_allowed": candidate_entry_allowed,
+                        "state_based_replace_allowed": state_based_replace_allowed,
+                        "score_gap_replace_allowed": score_gap_replace_allowed,
                         "replace_allowed": replace_allowed,
                         "blocked_reason": "" if replace_allowed else blocked_reason,
                     }
@@ -302,6 +343,10 @@ class PortfolioAllocator:
             )
             allocation_trace[symbol]["selection_trace"] = selection_trace.get(symbol, {})
             allocation_trace[symbol]["replacement_trace"] = replacement_trace.get(symbol, {})
+            allocation_trace[symbol]["selected_reason"] = selection_trace.get(symbol, {}).get("selected_reason", "")
+            allocation_trace[symbol]["blocked_reason"] = selection_trace.get(symbol, {}).get("blocked_reason", "")
+            allocation_trace[symbol]["protected"] = bool(selection_trace.get(symbol, {}).get("protected", False))
+            allocation_trace[symbol]["protected_reasons"] = list(selection_trace.get(symbol, {}).get("protected_reasons", []))
 
         return {
             "selected": selected_rows,

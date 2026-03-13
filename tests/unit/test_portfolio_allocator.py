@@ -116,3 +116,67 @@ def test_allocator_does_not_apply_min_hold_guard_when_hold_days_unknown():
 
     assert list(allocation["target_weights"]) == ["NEW"]
     assert allocation["replacement_trace"]["NEW"]["hold_days_known"] is False
+
+
+def test_allocator_skips_execution_blocked_candidate_and_backfills_next_slot():
+    allocator = PortfolioAllocator()
+    allocator.constraints["selection"]["max_selected_total"] = 1
+    allocator.constraints["selection"]["max_selected_per_category"] = 1
+    allocator.constraints["selection"]["hold_guard_global_rank"] = 1
+    allocator.constraints["selection"]["hold_guard_category_rank"] = 1
+    allocator.scoring_config["selection"]["min_final_score_for_target"] = 0.0
+
+    scored_df = pd.DataFrame(
+        [
+            {"symbol": "A", "name": "A", "decision_category": "stock_etf", "final_score": 82.0, "intra_score": 82.0, "category_score": 70.0, "global_rank": 1, "category_rank": 1, "filter_pass": True},
+            {"symbol": "B", "name": "B", "decision_category": "stock_etf", "final_score": 79.0, "intra_score": 79.0, "category_score": 69.0, "global_rank": 2, "category_rank": 2, "filter_pass": True},
+        ]
+    )
+
+    allocation = allocator.build_target_portfolio(
+        scored_df,
+        current_holdings=[],
+        preferences=_preferences(),
+        market_regime=_market_regime(),
+        risk_mode="balanced",
+        blocked_candidate_reasons={"A": "执行层未通过入场通道，因此不占用正式名额。"},
+    )
+
+    assert list(allocation["target_weights"]) == ["B"]
+    assert allocation["selection_trace"]["A"]["blocked_stage"] == "execution_gate"
+    assert "执行层未通过入场通道" in allocation["selection_trace"]["A"]["blocked_reason"]
+
+
+def test_allocator_allows_replacement_when_incumbent_is_reduce_and_candidate_entry_allowed():
+    allocator = PortfolioAllocator()
+    allocator.constraints["selection"]["max_selected_total"] = 2
+    allocator.constraints["selection"]["max_selected_per_category"] = 2
+    allocator.constraints["selection"]["replace_threshold"] = 10.0
+    allocator.constraints["selection"]["min_hold_days_before_replace"] = 5
+    allocator.scoring_config["selection"]["min_final_score_for_target"] = 0.0
+
+    scored_df = pd.DataFrame(
+        [
+            {"symbol": "NEW", "name": "New", "decision_category": "stock_etf", "final_score": 65.9, "intra_score": 73.0, "category_score": 49.0, "global_rank": 1, "category_rank": 1, "filter_pass": True},
+            {"symbol": "OLD", "name": "Old", "decision_category": "stock_etf", "final_score": 56.0, "intra_score": 59.0, "category_score": 49.0, "global_rank": 2, "category_rank": 2, "filter_pass": True},
+        ]
+    )
+    current_holdings = [
+        {"symbol": "OLD", "name": "Old", "category": "stock_etf", "current_weight": 0.20, "current_amount": 20000.0, "hold_days": 0, "hold_days_known": False},
+    ]
+
+    allocation = allocator.build_target_portfolio(
+        scored_df,
+        current_holdings=current_holdings,
+        preferences=_preferences(),
+        market_regime=_market_regime(),
+        risk_mode="balanced",
+        overlay_hints={
+            "OLD": {"position_state": "REDUCE", "entry_allowed": False},
+            "NEW": {"position_state": "NONE", "entry_allowed": True},
+        },
+    )
+
+    assert "NEW" in allocation["target_weights"]
+    assert allocation["replacement_trace"]["NEW"]["replace_allowed"] is True
+    assert allocation["replacement_trace"]["NEW"]["state_based_replace_allowed"] is True
