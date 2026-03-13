@@ -446,6 +446,34 @@ def _normalize_explanation_item(payload: dict[str, Any], overall: dict[str, Any]
     execution_trace["final_action_calc"].setdefault("reason_steps", [])
 
     natural_language_summary = str(payload.get("natural_language_summary", "") or payload.get("summary", ""))
+    primary_reason_stage = str(payload.get("primary_reason_stage", "final_action") or "final_action")
+    primary_reason_stage_label = str(payload.get("primary_reason_stage_label", "") or {
+        "score": "评分层",
+        "allocation": "候选与分仓层",
+        "replacement": "同类别替换层",
+        "execution_gate": "执行门禁层",
+        "position_state": "持仓管理层",
+        "final_action": "最终动作层",
+    }.get(primary_reason_stage, primary_reason_stage))
+    primary_reason_text = str(payload.get("primary_reason_text", "") or natural_language_summary or payload.get("summary", ""))
+    decision_ladder = payload.get("decision_ladder", [])
+    if not isinstance(decision_ladder, list):
+        decision_ladder = []
+    show_blocks = payload.get("show_blocks", {})
+    if not isinstance(show_blocks, dict):
+        show_blocks = {}
+    normalized_show_blocks = {
+        "feature_snapshot": bool(show_blocks.get("feature_snapshot", True)),
+        "score_breakdown": bool(show_blocks.get("score_breakdown", True)),
+        "allocation_trace": bool(show_blocks.get("allocation_trace", True)),
+        "replacement_trace": bool(show_blocks.get("replacement_trace", bool(allocation_trace.get("replacement_trace", {})))),
+        "entry_checks": bool(show_blocks.get("entry_checks", True)),
+        "position_state": bool(show_blocks.get("position_state", float(payload.get("weights", {}).get("current_weight", 0.0) or 0.0) > 0)),
+        "switch_checks": bool(show_blocks.get("switch_checks", False)),
+        "target_weight_adjustment": bool(show_blocks.get("target_weight_adjustment", True)),
+        "final_action_calc": bool(show_blocks.get("final_action_calc", True)),
+        "head_formulas": bool(show_blocks.get("head_formulas", False)),
+    }
 
     normalized.update(
         {
@@ -467,6 +495,11 @@ def _normalize_explanation_item(payload: dict[str, Any], overall: dict[str, Any]
             "final_score_breakdown": final_score_breakdown,
             "allocation_trace": allocation_trace,
             "execution_trace": execution_trace,
+            "primary_reason_stage": primary_reason_stage,
+            "primary_reason_stage_label": primary_reason_stage_label,
+            "primary_reason_text": primary_reason_text,
+            "decision_ladder": decision_ladder,
+            "show_blocks": normalized_show_blocks,
             "natural_language_summary": natural_language_summary,
         }
     )

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from collections import Counter
 from datetime import date, timedelta
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -66,6 +67,7 @@ class MarketDataService:
     def __init__(self) -> None:
         settings = get_settings()
         self.settings = settings
+        self.backtest_config = load_yaml_config(settings.config_dir / "backtest.yaml")
         self.feature_engine = FeatureEngine()
         self.market_regime_service = MarketRegimeService()
         self.data_quality_service = DataQualityService()
@@ -73,6 +75,13 @@ class MarketDataService:
         self.filter_service = UniverseFilterService()
         self.scoring_engine = ScoringEngine()
         self.risk_rules = load_yaml_config(settings.config_dir / "risk_rules.yaml")
+        historical_cfg = self.backtest_config.get("historical_data", {})
+        cache_dir = Path(str(historical_cfg.get("cache_dir", "data/history_cache")))
+        if not cache_dir.is_absolute():
+            cache_dir = settings.base_dir / cache_dir
+        self.history_cache_enabled = bool(historical_cfg.get("cache_enabled", True))
+        self.history_cache_dir = cache_dir
+        self.history_cache_dir.mkdir(parents=True, exist_ok=True)
         self.source_loader_map = {
             "akshare": self._load_history_from_akshare,
             "fallback": self._load_history_from_fallback,
@@ -86,6 +95,7 @@ class MarketDataService:
         min_avg_amount: float,
         start_date: date,
         end_date: date,
+        allow_fallback: bool = True,
     ) -> dict[str, Any]:
         request_params = {
             "symbol": symbol,
@@ -94,16 +104,63 @@ class MarketDataService:
             "start_date": start_date.strftime("%Y%m%d"),
             "end_date": end_date.strftime("%Y%m%d"),
         }
+        cached_history = self._load_history_from_cache_range(
+            symbol=symbol,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        cache_covers_range = self._history_covers_range(
+            history=cached_history,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        if cache_covers_range:
+            return {
+                "history": cached_history,
+                "source": "akshare_cache",
+                "request_params": {
+                    **request_params,
+                    "cache_hit": True,
+                },
+            }
+
         akshare_history = self._load_history_from_akshare_range(
             symbol=symbol,
             start_date=start_date,
             end_date=end_date,
         )
         if akshare_history is not None and not akshare_history.empty:
+            merged_history = self._merge_history_frames(cached_history, akshare_history)
+            self._store_history_cache(symbol=symbol, history=merged_history)
             return {
-                "history": akshare_history,
+                "history": merged_history,
                 "source": "akshare",
-                "request_params": request_params,
+                "request_params": {
+                    **request_params,
+                    "cache_hit": False,
+                },
+            }
+
+        if not cached_history.empty:
+            return {
+                "history": cached_history,
+                "source": "akshare_cache_partial",
+                "request_params": {
+                    **request_params,
+                    "cache_hit": True,
+                    "cache_partial": True,
+                },
+            }
+
+        if not allow_fallback:
+            return {
+                "history": pd.DataFrame(columns=["date", "close", "amount"]),
+                "source": "unavailable",
+                "request_params": {
+                    **request_params,
+                    "cache_hit": False,
+                    "historical_source_status": "unavailable",
+                },
             }
 
         fallback_history = self._load_history_from_fallback_range(
@@ -123,6 +180,61 @@ class MarketDataService:
                 "end_date": end_date.isoformat(),
             },
         }
+
+    def _history_cache_path(self, symbol: str) -> Path:
+        return self.history_cache_dir / f"{symbol}.csv"
+
+    def _load_history_from_cache_range(self, *, symbol: str, start_date: date, end_date: date) -> pd.DataFrame:
+        if not self.history_cache_enabled:
+            return pd.DataFrame(columns=["date", "close", "amount"])
+        cache_path = self._history_cache_path(symbol)
+        if not cache_path.exists():
+            return pd.DataFrame(columns=["date", "close", "amount"])
+        try:
+            frame = pd.read_csv(cache_path)
+        except Exception:
+            return pd.DataFrame(columns=["date", "close", "amount"])
+        required_columns = {"date", "close", "amount"}
+        if not required_columns.issubset(frame.columns):
+            return pd.DataFrame(columns=["date", "close", "amount"])
+        frame["date"] = pd.to_datetime(frame["date"], errors="coerce")
+        frame["close"] = pd.to_numeric(frame["close"], errors="coerce")
+        frame["amount"] = pd.to_numeric(frame["amount"], errors="coerce")
+        frame = frame.dropna(subset=["date", "close", "amount"]).sort_values("date")
+        if frame.empty:
+            return pd.DataFrame(columns=["date", "close", "amount"])
+        start_ts = pd.Timestamp(start_date)
+        end_ts = pd.Timestamp(end_date)
+        return frame.loc[(frame["date"] >= start_ts) & (frame["date"] <= end_ts), ["date", "close", "amount"]].reset_index(drop=True)
+
+    def _store_history_cache(self, *, symbol: str, history: pd.DataFrame) -> None:
+        if not self.history_cache_enabled or history.empty:
+            return
+        cache_path = self._history_cache_path(symbol)
+        cache_frame = history[["date", "close", "amount"]].copy()
+        cache_frame["date"] = pd.to_datetime(cache_frame["date"], errors="coerce")
+        cache_frame = cache_frame.dropna(subset=["date", "close", "amount"])
+        cache_frame = cache_frame.sort_values("date").drop_duplicates(subset=["date"], keep="last")
+        cache_frame.to_csv(cache_path, index=False)
+
+    def _merge_history_frames(self, cached_history: pd.DataFrame, fresh_history: pd.DataFrame) -> pd.DataFrame:
+        frames = [frame for frame in (cached_history, fresh_history) if frame is not None and not frame.empty]
+        if not frames:
+            return pd.DataFrame(columns=["date", "close", "amount"])
+        merged = pd.concat(frames, ignore_index=True)
+        merged["date"] = pd.to_datetime(merged["date"], errors="coerce")
+        merged["close"] = pd.to_numeric(merged["close"], errors="coerce")
+        merged["amount"] = pd.to_numeric(merged["amount"], errors="coerce")
+        merged = merged.dropna(subset=["date", "close", "amount"])
+        merged = merged.sort_values("date").drop_duplicates(subset=["date"], keep="last")
+        return merged.reset_index(drop=True)
+
+    def _history_covers_range(self, *, history: pd.DataFrame, start_date: date, end_date: date) -> bool:
+        if history.empty:
+            return False
+        min_date = pd.Timestamp(history["date"].min()).date()
+        max_date = pd.Timestamp(history["date"].max()).date()
+        return min_date <= start_date and max_date >= end_date
 
     def refresh_data(self, session: Session, now=None) -> dict[str, Any]:
         current_time = now or get_now()

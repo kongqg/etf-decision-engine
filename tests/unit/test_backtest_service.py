@@ -3,12 +3,23 @@ from __future__ import annotations
 from datetime import date
 
 from app.services.backtest_service import BacktestRequest, BacktestService
-from app.services.backtest_runner import BacktestRunner
+from app.services.backtest_runner import BacktestRunConfig, BacktestRunner
 from app.services.decision_engine import DecisionEngine
 from app.services.portfolio_allocator import PortfolioAllocator
 from app.services.scoring_engine import ScoringEngine
 
 from tests.unit.backtest_helpers import build_dataset, seed_user, setup_test_db
+
+
+def _comparable_backtest_payload(result: dict) -> dict:
+    return {
+        "metrics": result["metrics"],
+        "daily_curve": result["daily_curve"],
+        "daily_decisions": result["daily_decisions"],
+        "trades": result["trades"],
+        "effective_preferences": result["effective_preferences"],
+        "overview": result["overview"],
+    }
 
 
 def test_backtest_service_runs_minimal_score_based_backtest(monkeypatch):
@@ -147,3 +158,184 @@ def test_backtest_runner_override_supports_execution_overlay_and_category_heads(
     assert decision_engine.execution_overlay_service.config.default_target_holding_days == 45
     assert decision_engine.execution_overlay_service.category_heads["stock_etf"]["entry"]["momentum_5d"] == 0.31
     assert allocator.scoring_config["selection"]["min_final_score_for_target"] == 61.0
+
+
+def test_backtest_runner_override_supports_category_caps_and_preferences(monkeypatch):
+    session_local = setup_test_db(monkeypatch)
+    with session_local()() as session:
+        seed_user(session)
+        runner = BacktestRunner()
+        allocator = PortfolioAllocator()
+        decision_engine = DecisionEngine()
+        scoring_engine = ScoringEngine()
+
+        runner._apply_overrides(
+            scoring_engine=scoring_engine,
+            allocator=allocator,
+            decision_engine=decision_engine,
+            overrides={
+                "category_caps.stock_etf": 0.55,
+                "preferences.min_trade_amount": 200.0,
+                "preferences.max_total_position_pct": 0.95,
+                "preferences.max_single_position_pct": 0.45,
+                "preferences.cash_reserve_pct": 0.05,
+            },
+        )
+        prefs = runner._build_preferences(
+            request=BacktestRunConfig(
+                start_date=date(2026, 1, 5),
+                end_date=date(2026, 2, 20),
+                initial_capital=100000.0,
+                risk_mode="balanced",
+                config_overrides={
+                    "preferences.min_trade_amount": 200.0,
+                    "preferences.max_total_position_pct": 0.95,
+                    "preferences.max_single_position_pct": 0.45,
+                    "preferences.cash_reserve_pct": 0.05,
+                },
+            ),
+            base_preferences=None,
+            default_target_holding_days=30,
+        )
+
+    assert allocator.constraints["category_caps"]["stock_etf"] == 0.55
+    assert prefs.min_trade_amount == 200.0
+    assert prefs.max_total_position_pct == 0.95
+    assert prefs.max_single_position_pct == 0.45
+    assert prefs.cash_reserve_pct == 0.05
+
+
+def test_backtest_precomputed_dataset_matches_raw_dataset(monkeypatch):
+    session_local = setup_test_db(monkeypatch)
+    with session_local()() as session:
+        seed_user(session)
+        raw_dataset = build_dataset(
+            session,
+            start_date=date(2026, 1, 5),
+            end_date=date(2026, 2, 20),
+        )
+        service = BacktestService()
+        prepared_dataset = service.prepare_precomputed_dataset(raw_dataset)
+        request = BacktestRequest(
+            start_date=date(2026, 1, 5),
+            end_date=date(2026, 2, 20),
+            initial_capital=100000.0,
+            risk_mode="balanced",
+            config_overrides={
+                "selection.min_final_score_for_target": 0.0,
+                "selection.max_selected_total": 2,
+                "selection.max_selected_per_category": 1,
+            },
+        )
+
+        raw_result = service.run(session, request, dataset=raw_dataset, persist_output=False)
+        prepared_result = service.run(session, request, dataset=prepared_dataset, persist_output=False)
+
+    assert _comparable_backtest_payload(raw_result) == _comparable_backtest_payload(prepared_result)
+
+
+def test_backtest_reused_precomputed_dataset_is_deterministic(monkeypatch):
+    session_local = setup_test_db(monkeypatch)
+    with session_local()() as session:
+        seed_user(session)
+        raw_dataset = build_dataset(
+            session,
+            start_date=date(2026, 1, 5),
+            end_date=date(2026, 2, 20),
+        )
+        service = BacktestService()
+        prepared_dataset = service.prepare_precomputed_dataset(raw_dataset)
+        request = BacktestRequest(
+            start_date=date(2026, 1, 5),
+            end_date=date(2026, 2, 20),
+            initial_capital=100000.0,
+            risk_mode="balanced",
+            config_overrides={
+                "selection.min_final_score_for_target": 0.0,
+                "selection.max_selected_total": 2,
+                "selection.max_selected_per_category": 1,
+            },
+        )
+
+        first_result = service.run(session, request, dataset=prepared_dataset, persist_output=False)
+        second_result = service.run(session, request, dataset=prepared_dataset, persist_output=False)
+
+    assert _comparable_backtest_payload(first_result) == _comparable_backtest_payload(second_result)
+
+
+def test_backtest_prepare_dataset_rejects_non_formal_history(monkeypatch):
+    session_local = setup_test_db(monkeypatch)
+    with session_local()() as session:
+        service = BacktestService()
+
+        def fake_load_raw_dataset(*args, **kwargs):
+            return {
+                "start_date": date(2026, 1, 5),
+                "end_date": date(2026, 2, 20),
+                "warmup_start": date(2025, 12, 1),
+                "history_by_symbol": {},
+                "trading_dates": [date(2026, 1, 5), date(2026, 1, 6)],
+                "daily_feature_frames": {},
+                "daily_quality_summaries": {
+                    date(2026, 1, 5): {"formal_decision_ready": False},
+                    date(2026, 1, 6): {"formal_decision_ready": False},
+                },
+                "historical_source_summary": {
+                    "symbol_count": 4,
+                    "real_source_symbols": 0,
+                    "real_source_ratio": 0.0,
+                    "symbols_with_requested_end": 0,
+                    "end_coverage_ratio": 0.0,
+                },
+            }
+
+        monkeypatch.setattr(service, "load_raw_dataset", fake_load_raw_dataset)
+
+        try:
+            service.prepare_dataset(
+                session,
+                start_date=date(2026, 1, 5),
+                end_date=date(2026, 2, 20),
+                require_formal_history=True,
+            )
+            assert False, "expected ValueError"
+        except ValueError as exc:
+            assert "历史正式数据不足" in str(exc)
+
+
+def test_backtest_prepare_dataset_allows_demo_history_when_formal_not_required(monkeypatch):
+    session_local = setup_test_db(monkeypatch)
+    with session_local()() as session:
+        service = BacktestService()
+
+        def fake_load_raw_dataset(*args, **kwargs):
+            return {
+                "start_date": date(2026, 1, 5),
+                "end_date": date(2026, 2, 20),
+                "warmup_start": date(2025, 12, 1),
+                "history_by_symbol": {},
+                "trading_dates": [date(2026, 1, 5), date(2026, 1, 6)],
+                "daily_feature_frames": {},
+                "daily_quality_summaries": {
+                    date(2026, 1, 5): {"formal_decision_ready": False},
+                    date(2026, 1, 6): {"formal_decision_ready": False},
+                },
+                "historical_source_summary": {
+                    "symbol_count": 4,
+                    "real_source_symbols": 0,
+                    "real_source_ratio": 0.0,
+                    "symbols_with_requested_end": 0,
+                    "end_coverage_ratio": 0.0,
+                },
+            }
+
+        monkeypatch.setattr(service, "load_raw_dataset", fake_load_raw_dataset)
+
+        prepared = service.prepare_dataset(
+            session,
+            start_date=date(2026, 1, 5),
+            end_date=date(2026, 2, 20),
+            require_formal_history=False,
+        )
+
+    assert prepared["historical_source_summary"]["real_source_ratio"] == 0.0

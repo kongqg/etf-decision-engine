@@ -1,0 +1,1145 @@
+{
+  "metadata": {
+    "run_id": "exp_20260313_175013",
+    "created_at": "2026-03-13T18:13:59.155329",
+    "start_date": "2025-01-01",
+    "end_date": "2026-03-11",
+    "initial_capital": 4000.0,
+    "risk_mode": "balanced",
+    "target_holding_days": 30,
+    "strict_data_quality": true,
+    "dataset_trading_days": 285,
+    "dataset_symbol_count": 17
+  },
+  "baseline": {
+    "type": "baseline",
+    "variant_id": "BASELINE",
+    "title": "当前规则基线",
+    "hypothesis": "不改任何参数，只观察当前规则在 4000 元资金口径下的表现。",
+    "metrics": {
+      "total_return_pct": 13.04,
+      "annualized_return_pct": 11.44,
+      "max_drawdown_pct": -6.67,
+      "win_rate_pct": 51.61,
+      "trade_count": 99,
+      "total_execution_cost": 134.47,
+      "turnover_ratio": 17.7286,
+      "final_asset": 4521.46,
+      "open_count": 28,
+      "add_count": 9,
+      "reduce_count": 39,
+      "exit_count": 23,
+      "avg_holding_days": 22.22,
+      "replacement_frequency": 0.0
+    },
+    "overview": {
+      "one_line_conclusion": "累计收益 13.04%，最大回撤 -6.67%，共交易 99 次。",
+      "overall_performance": "positive",
+      "risk_level": "elevated"
+    },
+    "profiling": {
+      "dataset_prepare_sec": 0.0,
+      "dataset_cache_prepare_sec": 25.735,
+      "dataset_symbol_count": 17,
+      "dataset_trading_days": 285,
+      "daily_feature_lookup_sec": 0.045,
+      "market_regime_sec": 0.4372,
+      "filter_sec": 0.4371,
+      "scoring_sec": 3.8835,
+      "allocation_execution_sec": 50.0944,
+      "trade_execution_sec": 0.6247,
+      "daily_loop_sec": 55.6821
+    }
+  },
+  "single_factor_results": [
+    {
+      "type": "single_factor",
+      "group": "动量权重组",
+      "variant_id": "G1_A",
+      "title": "短动量加强",
+      "hypothesis": "提高 5 日和 10 日动量权重，观察 4000 小资金是否更容易出现可执行信号。",
+      "config_overrides": {
+        "intra_score_weights.momentum_20d_rank": 0.2,
+        "intra_score_weights.momentum_10d_rank": 0.25,
+        "intra_score_weights.momentum_5d_rank": 0.2,
+        "intra_score_weights.trend_rank": 0.15,
+        "intra_score_weights.liquidity_rank": 0.1,
+        "intra_score_weights.volatility_rank": 0.05,
+        "intra_score_weights.drawdown_rank": 0.05
+      },
+      "request_overrides": {},
+      "metrics": {
+        "total_return_pct": 12.03,
+        "annualized_return_pct": 10.57,
+        "max_drawdown_pct": -7.14,
+        "win_rate_pct": 49.18,
+        "trade_count": 96,
+        "total_execution_cost": 130.25,
+        "turnover_ratio": 17.119,
+        "final_asset": 4481.31,
+        "open_count": 28,
+        "add_count": 7,
+        "reduce_count": 38,
+        "exit_count": 23,
+        "avg_holding_days": 22.26,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 12.03%，最大回撤 -7.14%，共交易 96 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.0447,
+        "market_regime_sec": 0.4303,
+        "filter_sec": 0.4414,
+        "scoring_sec": 3.9068,
+        "allocation_execution_sec": 51.6765,
+        "trade_execution_sec": 0.6252,
+        "daily_loop_sec": 57.2859
+      }
+    },
+    {
+      "type": "single_factor",
+      "group": "动量权重组",
+      "variant_id": "G1_B",
+      "title": "主趋势加强",
+      "hypothesis": "提高 20 日动量权重，观察更稳的主趋势锚是否减少无效切换。",
+      "config_overrides": {
+        "intra_score_weights.momentum_20d_rank": 0.4,
+        "intra_score_weights.momentum_10d_rank": 0.2,
+        "intra_score_weights.momentum_5d_rank": 0.05,
+        "intra_score_weights.trend_rank": 0.15,
+        "intra_score_weights.liquidity_rank": 0.1,
+        "intra_score_weights.volatility_rank": 0.05,
+        "intra_score_weights.drawdown_rank": 0.05
+      },
+      "request_overrides": {},
+      "metrics": {
+        "total_return_pct": 12.77,
+        "annualized_return_pct": 11.22,
+        "max_drawdown_pct": -6.69,
+        "win_rate_pct": 49.15,
+        "trade_count": 94,
+        "total_execution_cost": 128.08,
+        "turnover_ratio": 17.0392,
+        "final_asset": 4510.97,
+        "open_count": 27,
+        "add_count": 8,
+        "reduce_count": 37,
+        "exit_count": 22,
+        "avg_holding_days": 21.23,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 12.77%，最大回撤 -6.69%，共交易 94 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.045,
+        "market_regime_sec": 0.4379,
+        "filter_sec": 0.4479,
+        "scoring_sec": 3.9978,
+        "allocation_execution_sec": 51.8587,
+        "trade_execution_sec": 0.7033,
+        "daily_loop_sec": 57.654
+      }
+    },
+    {
+      "type": "single_factor",
+      "group": "趋势过滤组",
+      "variant_id": "G2_A",
+      "title": "降低最低候选阈值",
+      "hypothesis": "用更低的正式候选阈值测试当前系统是不是太难形成目标组合。",
+      "config_overrides": {
+        "selection.min_final_score_for_target": 50.0
+      },
+      "request_overrides": {},
+      "metrics": {
+        "total_return_pct": 12.27,
+        "annualized_return_pct": 10.78,
+        "max_drawdown_pct": -7.3,
+        "win_rate_pct": 50.0,
+        "trade_count": 104,
+        "total_execution_cost": 141.46,
+        "turnover_ratio": 18.7178,
+        "final_asset": 4490.78,
+        "open_count": 29,
+        "add_count": 11,
+        "reduce_count": 40,
+        "exit_count": 24,
+        "avg_holding_days": 21.42,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 12.27%，最大回撤 -7.30%，共交易 104 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.0443,
+        "market_regime_sec": 0.4307,
+        "filter_sec": 0.4412,
+        "scoring_sec": 3.9089,
+        "allocation_execution_sec": 57.1372,
+        "trade_execution_sec": 0.6259,
+        "daily_loop_sec": 62.7496
+      }
+    },
+    {
+      "type": "single_factor",
+      "group": "趋势过滤组",
+      "variant_id": "G2_B",
+      "title": "提高最低候选阈值",
+      "hypothesis": "用更高的正式候选阈值验证当前无交易是否来自严格的候选层过滤。",
+      "config_overrides": {
+        "selection.min_final_score_for_target": 60.0
+      },
+      "request_overrides": {},
+      "metrics": {
+        "total_return_pct": 12.24,
+        "annualized_return_pct": 10.75,
+        "max_drawdown_pct": -6.72,
+        "win_rate_pct": 46.43,
+        "trade_count": 89,
+        "total_execution_cost": 121.33,
+        "turnover_ratio": 16.1697,
+        "final_asset": 4489.67,
+        "open_count": 27,
+        "add_count": 6,
+        "reduce_count": 34,
+        "exit_count": 22,
+        "avg_holding_days": 21.23,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 12.24%，最大回撤 -6.72%，共交易 89 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.0438,
+        "market_regime_sec": 0.4244,
+        "filter_sec": 0.4344,
+        "scoring_sec": 3.8618,
+        "allocation_execution_sec": 44.7168,
+        "trade_execution_sec": 0.6195,
+        "daily_loop_sec": 50.2591
+      }
+    },
+    {
+      "type": "single_factor",
+      "group": "通道A/B组",
+      "variant_id": "G3_A",
+      "title": "回撤反弹优先",
+      "hypothesis": "扩大回撤区间、抬高突破门槛，测试回调买入是否更适合当前区间。",
+      "config_overrides": {
+        "execution_overlay.pullback_low_pct": -8.0,
+        "execution_overlay.pullback_high_pct": -3.0,
+        "execution_overlay.breakout_entry_threshold": 80.0
+      },
+      "request_overrides": {},
+      "metrics": {
+        "total_return_pct": 13.41,
+        "annualized_return_pct": 11.77,
+        "max_drawdown_pct": -7.72,
+        "win_rate_pct": 41.27,
+        "trade_count": 102,
+        "total_execution_cost": 140.28,
+        "turnover_ratio": 19.1489,
+        "final_asset": 4536.44,
+        "open_count": 28,
+        "add_count": 11,
+        "reduce_count": 41,
+        "exit_count": 22,
+        "avg_holding_days": 20.68,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 13.41%，最大回撤 -7.72%，共交易 102 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.045,
+        "market_regime_sec": 0.441,
+        "filter_sec": 0.4488,
+        "scoring_sec": 3.9812,
+        "allocation_execution_sec": 51.9068,
+        "trade_execution_sec": 0.6397,
+        "daily_loop_sec": 57.6274
+      }
+    },
+    {
+      "type": "single_factor",
+      "group": "通道A/B组",
+      "variant_id": "G3_B",
+      "title": "强趋势突破优先",
+      "hypothesis": "缩窄回撤区间、降低突破门槛，测试强势突破是否能更快形成可执行仓位。",
+      "config_overrides": {
+        "execution_overlay.pullback_low_pct": -5.0,
+        "execution_overlay.pullback_high_pct": -1.5,
+        "execution_overlay.breakout_entry_threshold": 70.0
+      },
+      "request_overrides": {},
+      "metrics": {
+        "total_return_pct": 4.99,
+        "annualized_return_pct": 4.4,
+        "max_drawdown_pct": -7.05,
+        "win_rate_pct": 36.62,
+        "trade_count": 117,
+        "total_execution_cost": 157.28,
+        "turnover_ratio": 20.1443,
+        "final_asset": 4199.55,
+        "open_count": 31,
+        "add_count": 15,
+        "reduce_count": 46,
+        "exit_count": 25,
+        "avg_holding_days": 21.44,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 4.99%，最大回撤 -7.05%，共交易 117 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.0441,
+        "market_regime_sec": 0.4309,
+        "filter_sec": 0.4406,
+        "scoring_sec": 3.9081,
+        "allocation_execution_sec": 51.4447,
+        "trade_execution_sec": 0.7667,
+        "daily_loop_sec": 57.1959
+      }
+    },
+    {
+      "type": "single_factor",
+      "group": "相对强弱组",
+      "variant_id": "G4_A",
+      "title": "强化相对强弱",
+      "hypothesis": "更强调 relative_strength_10d，观察系统是否更容易抓到同类龙头。",
+      "config_overrides": {
+        "category_heads.stock_etf.entry.relative_strength_10d": 0.24,
+        "category_heads.stock_etf.entry.momentum_10d": 0.16,
+        "category_heads.stock_etf.hold.relative_strength_10d": 0.3,
+        "category_heads.stock_etf.hold.momentum_20d": 0.18
+      },
+      "request_overrides": {},
+      "metrics": {
+        "total_return_pct": 13.04,
+        "annualized_return_pct": 11.44,
+        "max_drawdown_pct": -6.67,
+        "win_rate_pct": 51.61,
+        "trade_count": 99,
+        "total_execution_cost": 134.47,
+        "turnover_ratio": 17.7286,
+        "final_asset": 4521.46,
+        "open_count": 28,
+        "add_count": 9,
+        "reduce_count": 39,
+        "exit_count": 23,
+        "avg_holding_days": 22.22,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 13.04%，最大回撤 -6.67%，共交易 99 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.0438,
+        "market_regime_sec": 0.4276,
+        "filter_sec": 0.4376,
+        "scoring_sec": 3.8734,
+        "allocation_execution_sec": 50.8624,
+        "trade_execution_sec": 0.6223,
+        "daily_loop_sec": 56.4267
+      }
+    },
+    {
+      "type": "single_factor",
+      "group": "相对强弱组",
+      "variant_id": "G4_B",
+      "title": "弱化相对强弱",
+      "hypothesis": "降低 relative_strength_10d 的影响，观察系统是否更稳但更慢。",
+      "config_overrides": {
+        "category_heads.stock_etf.entry.relative_strength_10d": 0.1,
+        "category_heads.stock_etf.entry.momentum_10d": 0.3,
+        "category_heads.stock_etf.hold.relative_strength_10d": 0.16,
+        "category_heads.stock_etf.hold.momentum_20d": 0.32
+      },
+      "request_overrides": {},
+      "metrics": {
+        "total_return_pct": 13.04,
+        "annualized_return_pct": 11.44,
+        "max_drawdown_pct": -6.67,
+        "win_rate_pct": 51.61,
+        "trade_count": 99,
+        "total_execution_cost": 134.47,
+        "turnover_ratio": 17.7286,
+        "final_asset": 4521.46,
+        "open_count": 28,
+        "add_count": 9,
+        "reduce_count": 39,
+        "exit_count": 23,
+        "avg_holding_days": 22.22,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 13.04%，最大回撤 -6.67%，共交易 99 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.0442,
+        "market_regime_sec": 0.4288,
+        "filter_sec": 0.4404,
+        "scoring_sec": 3.9196,
+        "allocation_execution_sec": 51.1643,
+        "trade_execution_sec": 0.7011,
+        "daily_loop_sec": 56.8593
+      }
+    },
+    {
+      "type": "single_factor",
+      "group": "风险控制组",
+      "variant_id": "G5_A",
+      "title": "强化低波低回撤过滤",
+      "hypothesis": "更强调低波和低回撤，验证是否能减少短周期噪音开仓。",
+      "config_overrides": {
+        "category_heads.stock_etf.entry.volatility_10d": -0.08,
+        "category_heads.stock_etf.entry.abs_drawdown_20d": -0.08,
+        "category_heads.stock_etf.hold.volatility_10d": -0.14,
+        "category_heads.stock_etf.hold.abs_drawdown_20d": -0.18
+      },
+      "request_overrides": {},
+      "metrics": {
+        "total_return_pct": 13.04,
+        "annualized_return_pct": 11.44,
+        "max_drawdown_pct": -6.67,
+        "win_rate_pct": 51.61,
+        "trade_count": 99,
+        "total_execution_cost": 134.47,
+        "turnover_ratio": 17.7286,
+        "final_asset": 4521.46,
+        "open_count": 28,
+        "add_count": 9,
+        "reduce_count": 39,
+        "exit_count": 23,
+        "avg_holding_days": 22.22,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 13.04%，最大回撤 -6.67%，共交易 99 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.0457,
+        "market_regime_sec": 0.4431,
+        "filter_sec": 0.4536,
+        "scoring_sec": 4.0149,
+        "allocation_execution_sec": 52.9577,
+        "trade_execution_sec": 0.7189,
+        "daily_loop_sec": 58.8006
+      }
+    },
+    {
+      "type": "single_factor",
+      "group": "风险控制组",
+      "variant_id": "G5_B",
+      "title": "放松低波低回撤过滤",
+      "hypothesis": "减弱低波和低回撤过滤，观察当前系统是否因为风控过强而长期空仓。",
+      "config_overrides": {
+        "category_heads.stock_etf.entry.volatility_10d": -0.02,
+        "category_heads.stock_etf.entry.abs_drawdown_20d": -0.02,
+        "category_heads.stock_etf.hold.volatility_10d": -0.06,
+        "category_heads.stock_etf.hold.abs_drawdown_20d": -0.1
+      },
+      "request_overrides": {},
+      "metrics": {
+        "total_return_pct": 13.04,
+        "annualized_return_pct": 11.44,
+        "max_drawdown_pct": -6.67,
+        "win_rate_pct": 51.61,
+        "trade_count": 99,
+        "total_execution_cost": 134.47,
+        "turnover_ratio": 17.7286,
+        "final_asset": 4521.46,
+        "open_count": 28,
+        "add_count": 9,
+        "reduce_count": 39,
+        "exit_count": 23,
+        "avg_holding_days": 22.22,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 13.04%，最大回撤 -6.67%，共交易 99 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.0457,
+        "market_regime_sec": 0.4465,
+        "filter_sec": 0.4526,
+        "scoring_sec": 4.0203,
+        "allocation_execution_sec": 52.7793,
+        "trade_execution_sec": 0.7194,
+        "daily_loop_sec": 58.6307
+      }
+    },
+    {
+      "type": "single_factor",
+      "group": "REDUCE组",
+      "variant_id": "G6_A",
+      "title": "轻减仓",
+      "hypothesis": "趋势转弱时只减到 70%，测试是否能保留更多趋势延续收益。",
+      "config_overrides": {
+        "execution_overlay.internals.reduced_target_multiplier": 0.7
+      },
+      "request_overrides": {},
+      "metrics": {
+        "total_return_pct": 13.83,
+        "annualized_return_pct": 12.14,
+        "max_drawdown_pct": -7.0,
+        "win_rate_pct": 49.18,
+        "trade_count": 99,
+        "total_execution_cost": 133.45,
+        "turnover_ratio": 17.2315,
+        "final_asset": 4553.27,
+        "open_count": 28,
+        "add_count": 10,
+        "reduce_count": 37,
+        "exit_count": 24,
+        "avg_holding_days": 24.17,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 13.83%，最大回撤 -7.00%，共交易 99 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.0453,
+        "market_regime_sec": 0.4417,
+        "filter_sec": 0.4516,
+        "scoring_sec": 4.0021,
+        "allocation_execution_sec": 53.5868,
+        "trade_execution_sec": 0.7997,
+        "daily_loop_sec": 59.4926
+      }
+    },
+    {
+      "type": "single_factor",
+      "group": "REDUCE组",
+      "variant_id": "G6_B",
+      "title": "重减仓",
+      "hypothesis": "趋势转弱时只保留 30%，测试是否能更快控制回撤。",
+      "config_overrides": {
+        "execution_overlay.internals.reduced_target_multiplier": 0.3
+      },
+      "request_overrides": {},
+      "metrics": {
+        "total_return_pct": 11.23,
+        "annualized_return_pct": 9.86,
+        "max_drawdown_pct": -7.13,
+        "win_rate_pct": 37.5,
+        "trade_count": 93,
+        "total_execution_cost": 131.09,
+        "turnover_ratio": 19.0417,
+        "final_asset": 4449.06,
+        "open_count": 28,
+        "add_count": 9,
+        "reduce_count": 39,
+        "exit_count": 17,
+        "avg_holding_days": 20.06,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 11.23%，最大回撤 -7.13%，共交易 93 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.044,
+        "market_regime_sec": 0.4294,
+        "filter_sec": 0.4383,
+        "scoring_sec": 3.8675,
+        "allocation_execution_sec": 50.9241,
+        "trade_execution_sec": 0.6256,
+        "daily_loop_sec": 56.489
+      }
+    },
+    {
+      "type": "single_factor",
+      "group": "交易摩擦组",
+      "variant_id": "G7_A",
+      "title": "低交易摩擦",
+      "hypothesis": "降低滑点和执行成本，判断策略是否主要被摩擦成本吞掉。",
+      "config_overrides": {},
+      "request_overrides": {
+        "slippage_bps": 1.0,
+        "execution_cost_bps_override": 2.0
+      },
+      "metrics": {
+        "total_return_pct": 13.68,
+        "annualized_return_pct": 12.01,
+        "max_drawdown_pct": -6.58,
+        "win_rate_pct": 50.0,
+        "trade_count": 102,
+        "total_execution_cost": 116.74,
+        "turnover_ratio": 18.4247,
+        "final_asset": 4547.39,
+        "open_count": 29,
+        "add_count": 9,
+        "reduce_count": 41,
+        "exit_count": 23,
+        "avg_holding_days": 22.22,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 13.68%，最大回撤 -6.58%，共交易 102 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.0451,
+        "market_regime_sec": 0.4361,
+        "filter_sec": 0.4448,
+        "scoring_sec": 3.9613,
+        "allocation_execution_sec": 52.2725,
+        "trade_execution_sec": 0.7103,
+        "daily_loop_sec": 58.034
+      }
+    },
+    {
+      "type": "single_factor",
+      "group": "交易摩擦组",
+      "variant_id": "G7_B",
+      "title": "高交易摩擦",
+      "hypothesis": "抬高滑点和执行成本，验证收益是否对交易摩擦高度敏感。",
+      "config_overrides": {},
+      "request_overrides": {
+        "slippage_bps": 5.0,
+        "execution_cost_bps_override": 10.0
+      },
+      "metrics": {
+        "total_return_pct": 11.8,
+        "annualized_return_pct": 10.36,
+        "max_drawdown_pct": -6.76,
+        "win_rate_pct": 49.21,
+        "trade_count": 101,
+        "total_execution_cost": 171.88,
+        "turnover_ratio": 17.7244,
+        "final_asset": 4471.97,
+        "open_count": 28,
+        "add_count": 10,
+        "reduce_count": 40,
+        "exit_count": 23,
+        "avg_holding_days": 22.22,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 11.80%，最大回撤 -6.76%，共交易 101 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.0451,
+        "market_regime_sec": 0.4417,
+        "filter_sec": 0.4513,
+        "scoring_sec": 3.9927,
+        "allocation_execution_sec": 52.5131,
+        "trade_execution_sec": 0.6438,
+        "daily_loop_sec": 58.2531
+      }
+    },
+    {
+      "type": "single_factor",
+      "group": "替换与保护组",
+      "variant_id": "G8_A",
+      "title": "加快换仓",
+      "hypothesis": "降低替换阈值和最短持有期，观察是否能更快切到新龙头。",
+      "config_overrides": {
+        "selection.replace_threshold": 6.0,
+        "selection.min_hold_days_before_replace": 2,
+        "selection.hold_guard_global_rank": 4
+      },
+      "request_overrides": {},
+      "metrics": {
+        "total_return_pct": 13.03,
+        "annualized_return_pct": 11.44,
+        "max_drawdown_pct": -6.67,
+        "win_rate_pct": 51.61,
+        "trade_count": 98,
+        "total_execution_cost": 133.37,
+        "turnover_ratio": 17.6767,
+        "final_asset": 4521.12,
+        "open_count": 28,
+        "add_count": 8,
+        "reduce_count": 39,
+        "exit_count": 23,
+        "avg_holding_days": 22.22,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 13.03%，最大回撤 -6.67%，共交易 98 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.0446,
+        "market_regime_sec": 0.4372,
+        "filter_sec": 0.4463,
+        "scoring_sec": 3.9583,
+        "allocation_execution_sec": 51.638,
+        "trade_execution_sec": 0.7199,
+        "daily_loop_sec": 57.4076
+      }
+    },
+    {
+      "type": "single_factor",
+      "group": "替换与保护组",
+      "variant_id": "G8_B",
+      "title": "增强保护",
+      "hypothesis": "提高替换阈值和最短持有期，观察是否能减少频繁切换。",
+      "config_overrides": {
+        "selection.replace_threshold": 12.0,
+        "selection.min_hold_days_before_replace": 8,
+        "selection.hold_guard_global_rank": 8
+      },
+      "request_overrides": {},
+      "metrics": {
+        "total_return_pct": 13.38,
+        "annualized_return_pct": 11.74,
+        "max_drawdown_pct": -6.66,
+        "win_rate_pct": 53.23,
+        "trade_count": 98,
+        "total_execution_cost": 133.49,
+        "turnover_ratio": 17.7431,
+        "final_asset": 4535.22,
+        "open_count": 28,
+        "add_count": 8,
+        "reduce_count": 39,
+        "exit_count": 23,
+        "avg_holding_days": 22.22,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 13.38%，最大回撤 -6.66%，共交易 98 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.0435,
+        "market_regime_sec": 0.4244,
+        "filter_sec": 0.4315,
+        "scoring_sec": 3.839,
+        "allocation_execution_sec": 51.2495,
+        "trade_execution_sec": 0.7719,
+        "daily_loop_sec": 56.918
+      }
+    },
+    {
+      "type": "single_factor",
+      "group": "仓位组",
+      "variant_id": "G9_A",
+      "title": "更集中",
+      "hypothesis": "提高单票上限并降低最小正式持仓权重，测试 4000 小资金是否更容易形成有效仓位。",
+      "config_overrides": {
+        "budget.max_single_weight": 0.4,
+        "budget.min_position_weight": 0.05,
+        "category_caps.stock_etf": 0.8
+      },
+      "request_overrides": {},
+      "metrics": {
+        "total_return_pct": 12.43,
+        "annualized_return_pct": 10.92,
+        "max_drawdown_pct": -8.87,
+        "win_rate_pct": 49.18,
+        "trade_count": 102,
+        "total_execution_cost": 145.38,
+        "turnover_ratio": 21.6756,
+        "final_asset": 4497.21,
+        "open_count": 28,
+        "add_count": 13,
+        "reduce_count": 38,
+        "exit_count": 23,
+        "avg_holding_days": 22.22,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 12.43%，最大回撤 -8.87%，共交易 102 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.0438,
+        "market_regime_sec": 0.4276,
+        "filter_sec": 0.4354,
+        "scoring_sec": 3.8648,
+        "allocation_execution_sec": 51.2397,
+        "trade_execution_sec": 0.625,
+        "daily_loop_sec": 56.796
+      }
+    },
+    {
+      "type": "single_factor",
+      "group": "仓位组",
+      "variant_id": "G9_B",
+      "title": "更分散",
+      "hypothesis": "降低单票上限并提高最小正式持仓权重，观察是否进一步压缩可执行信号。",
+      "config_overrides": {
+        "budget.max_single_weight": 0.2,
+        "budget.min_position_weight": 0.1,
+        "category_caps.stock_etf": 0.6
+      },
+      "request_overrides": {},
+      "metrics": {
+        "total_return_pct": 10.21,
+        "annualized_return_pct": 8.98,
+        "max_drawdown_pct": -4.12,
+        "win_rate_pct": 45.45,
+        "trade_count": 92,
+        "total_execution_cost": 116.38,
+        "turnover_ratio": 12.2057,
+        "final_asset": 4408.47,
+        "open_count": 28,
+        "add_count": 9,
+        "reduce_count": 32,
+        "exit_count": 23,
+        "avg_holding_days": 22.22,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 10.21%，最大回撤 -4.12%，共交易 92 次。",
+        "overall_performance": "positive",
+        "risk_level": "controlled"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.0471,
+        "market_regime_sec": 0.4615,
+        "filter_sec": 0.4708,
+        "scoring_sec": 4.181,
+        "allocation_execution_sec": 55.0302,
+        "trade_execution_sec": 0.7635,
+        "daily_loop_sec": 61.1275
+      }
+    },
+    {
+      "type": "single_factor",
+      "group": "货币ETF防守切换组",
+      "variant_id": "G10_A",
+      "title": "机会成本优先",
+      "hypothesis": "更强调外部机会成本，测试货币 ETF 是否会更早让位给进攻仓。",
+      "config_overrides": {
+        "category_heads.money_etf.exit.opportunity_cost": 0.75,
+        "category_heads.money_etf.exit.risk_switch": 0.25
+      },
+      "request_overrides": {},
+      "metrics": {
+        "total_return_pct": 13.04,
+        "annualized_return_pct": 11.44,
+        "max_drawdown_pct": -6.67,
+        "win_rate_pct": 51.61,
+        "trade_count": 99,
+        "total_execution_cost": 134.47,
+        "turnover_ratio": 17.7286,
+        "final_asset": 4521.46,
+        "open_count": 28,
+        "add_count": 9,
+        "reduce_count": 39,
+        "exit_count": 23,
+        "avg_holding_days": 22.22,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 13.04%，最大回撤 -6.67%，共交易 99 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.0456,
+        "market_regime_sec": 0.4461,
+        "filter_sec": 0.4531,
+        "scoring_sec": 4.021,
+        "allocation_execution_sec": 53.3071,
+        "trade_execution_sec": 0.6498,
+        "daily_loop_sec": 59.0898
+      }
+    },
+    {
+      "type": "single_factor",
+      "group": "货币ETF防守切换组",
+      "variant_id": "G10_B",
+      "title": "市场切换优先",
+      "hypothesis": "更强调整体市场切换，测试货币 ETF 是否更愿意等待环境确认。",
+      "config_overrides": {
+        "category_heads.money_etf.exit.opportunity_cost": 0.4,
+        "category_heads.money_etf.exit.risk_switch": 0.6
+      },
+      "request_overrides": {},
+      "metrics": {
+        "total_return_pct": 13.04,
+        "annualized_return_pct": 11.44,
+        "max_drawdown_pct": -6.67,
+        "win_rate_pct": 51.61,
+        "trade_count": 99,
+        "total_execution_cost": 134.47,
+        "turnover_ratio": 17.7286,
+        "final_asset": 4521.46,
+        "open_count": 28,
+        "add_count": 9,
+        "reduce_count": 39,
+        "exit_count": 23,
+        "avg_holding_days": 22.22,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 13.04%，最大回撤 -6.67%，共交易 99 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.0468,
+        "market_regime_sec": 0.4569,
+        "filter_sec": 0.4681,
+        "scoring_sec": 4.1476,
+        "allocation_execution_sec": 54.9089,
+        "trade_execution_sec": 0.6692,
+        "daily_loop_sec": 60.8684
+      }
+    },
+    {
+      "type": "single_factor",
+      "group": "time_decay对照组",
+      "variant_id": "G11_A",
+      "title": "去掉 time_decay",
+      "hypothesis": "验证 time_decay 对当前短周期滚动复利框架是否有必要。",
+      "config_overrides": {
+        "category_heads.stock_etf.exit.time_decay": 0.0,
+        "category_heads.bond_etf.exit.time_decay": 0.0,
+        "category_heads.gold_etf.exit.time_decay": 0.0,
+        "category_heads.cross_border_etf.exit.time_decay": 0.0
+      },
+      "request_overrides": {},
+      "metrics": {
+        "total_return_pct": 13.04,
+        "annualized_return_pct": 11.44,
+        "max_drawdown_pct": -6.67,
+        "win_rate_pct": 51.61,
+        "trade_count": 99,
+        "total_execution_cost": 134.47,
+        "turnover_ratio": 17.7286,
+        "final_asset": 4521.46,
+        "open_count": 28,
+        "add_count": 9,
+        "reduce_count": 39,
+        "exit_count": 23,
+        "avg_holding_days": 22.22,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 13.04%，最大回撤 -6.67%，共交易 99 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.0456,
+        "market_regime_sec": 0.4479,
+        "filter_sec": 0.4551,
+        "scoring_sec": 4.0323,
+        "allocation_execution_sec": 53.276,
+        "trade_execution_sec": 0.7516,
+        "daily_loop_sec": 59.1757
+      }
+    },
+    {
+      "type": "single_factor",
+      "group": "time_decay对照组",
+      "variant_id": "G11_B",
+      "title": "强化 time_decay",
+      "hypothesis": "提高各进攻类别的 time_decay，测试持有时长是否会显著推高退出频率。",
+      "config_overrides": {
+        "category_heads.stock_etf.exit.time_decay": 0.27,
+        "category_heads.bond_etf.exit.time_decay": 0.42,
+        "category_heads.gold_etf.exit.time_decay": 0.33,
+        "category_heads.cross_border_etf.exit.time_decay": 0.3
+      },
+      "request_overrides": {},
+      "metrics": {
+        "total_return_pct": 13.04,
+        "annualized_return_pct": 11.44,
+        "max_drawdown_pct": -6.67,
+        "win_rate_pct": 51.61,
+        "trade_count": 99,
+        "total_execution_cost": 134.47,
+        "turnover_ratio": 17.7286,
+        "final_asset": 4521.46,
+        "open_count": 28,
+        "add_count": 9,
+        "reduce_count": 39,
+        "exit_count": 23,
+        "avg_holding_days": 22.22,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 13.04%，最大回撤 -6.67%，共交易 99 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.0492,
+        "market_regime_sec": 0.4828,
+        "filter_sec": 0.4929,
+        "scoring_sec": 4.3764,
+        "allocation_execution_sec": 57.7029,
+        "trade_execution_sec": 0.8032,
+        "daily_loop_sec": 64.0885
+      }
+    }
+  ],
+  "combo_results": [
+    {
+      "type": "combo",
+      "group": "组合复核",
+      "variant_id": "COMBO_TOP",
+      "title": "单因素最优组合",
+      "hypothesis": "组合来源：G6_A + G7_A + G3_A",
+      "config_overrides": {
+        "execution_overlay.internals.reduced_target_multiplier": 0.7,
+        "execution_overlay.pullback_low_pct": -8.0,
+        "execution_overlay.pullback_high_pct": -3.0,
+        "execution_overlay.breakout_entry_threshold": 80.0
+      },
+      "request_overrides": {
+        "slippage_bps": 1.0,
+        "execution_cost_bps_override": 2.0
+      },
+      "metrics": {
+        "total_return_pct": 18.25,
+        "annualized_return_pct": 15.98,
+        "max_drawdown_pct": -7.27,
+        "win_rate_pct": 44.83,
+        "trade_count": 96,
+        "total_execution_cost": 109.8,
+        "turnover_ratio": 17.2408,
+        "final_asset": 4730.2,
+        "open_count": 28,
+        "add_count": 10,
+        "reduce_count": 34,
+        "exit_count": 24,
+        "avg_holding_days": 22.42,
+        "replacement_frequency": 0.0
+      },
+      "overview": {
+        "one_line_conclusion": "累计收益 18.25%，最大回撤 -7.27%，共交易 96 次。",
+        "overall_performance": "positive",
+        "risk_level": "elevated"
+      },
+      "profiling": {
+        "dataset_prepare_sec": 0.0,
+        "dataset_cache_prepare_sec": 25.735,
+        "dataset_symbol_count": 17,
+        "dataset_trading_days": 285,
+        "daily_feature_lookup_sec": 0.0465,
+        "market_regime_sec": 0.4569,
+        "filter_sec": 0.4662,
+        "scoring_sec": 4.1469,
+        "allocation_execution_sec": 55.2887,
+        "trade_execution_sec": 0.6722,
+        "daily_loop_sec": 61.2482
+      }
+    }
+  ]
+}

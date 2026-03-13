@@ -22,6 +22,36 @@
 {% endif %}
 {% endmacro %}
 
+{% macro render_decision_ladder(ladder) %}
+{% if ladder %}
+<table class="data-table">
+    <thead>
+    <tr>
+        <th>层级</th>
+        <th>状态</th>
+        <th>说明</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for row in ladder %}
+    <tr>
+        <td>{{ row.title }}</td>
+        <td>
+            {% if row.status == "pass" %}通过
+            {% elif row.status == "fail" %}拦截
+            {% else %}提示
+            {% endif %}
+        </td>
+        <td>{{ row.summary }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="muted">旧记录未保存这一层的决策阶梯。</p>
+{% endif %}
+{% endmacro %}
+
 {% block content %}
 <section class="hero split">
     <div>
@@ -120,6 +150,7 @@
 
 {% if explanation["items"] %}
 {% for item in explanation["items"] %}
+{% set show = item.show_blocks %}
 <section class="card wide" id="etf-{{ item.symbol }}">
     <div class="section-head">
         <div>
@@ -142,8 +173,9 @@
                 <div><span>最终分</span><strong>{{ "%.1f"|format(item.summary_card.final_score) }}</strong></div>
                 <div><span>入场通道</span><strong>{{ item.summary_card.entry_channel_label }}</strong></div>
                 <div><span>市场状态</span><strong>{{ item.summary_card.market_regime }}</strong></div>
+                <div><span>主原因层级</span><strong>{{ item.primary_reason_stage_label }}</strong></div>
             </div>
-            <p>{{ item.summary }}</p>
+            <p><strong>主原因：</strong>{{ item.primary_reason_text }}</p>
         </article>
 
         <article class="sub-card">
@@ -159,30 +191,39 @@
         </article>
     </div>
 
-    <div class="card-grid two">
-        <article class="sub-card">
-            <div class="eyebrow">2.1 基础特征层</div>
-            <h4>原始特征快照</h4>
-            <div class="evidence-list">
-                <div><span>收盘价</span><strong>{{ "%.3f"|format(item.feature_snapshot.get('close_price', 0) or 0) }}</strong></div>
-                <div><span>3日动量</span><strong>{{ "%.2f"|format(item.feature_snapshot.get('momentum_3d', 0) or 0) }}</strong></div>
-                <div><span>5日动量</span><strong>{{ "%.2f"|format(item.feature_snapshot.get('momentum_5d', 0) or 0) }}</strong></div>
-                <div><span>10日动量</span><strong>{{ "%.2f"|format(item.feature_snapshot.get('momentum_10d', 0) or 0) }}</strong></div>
-                <div><span>20日动量</span><strong>{{ "%.2f"|format(item.feature_snapshot.get('momentum_20d', 0) or 0) }}</strong></div>
-                <div><span>MA5</span><strong>{{ "%.3f"|format(item.feature_snapshot.get('ma5', 0) or 0) }}</strong></div>
-                <div><span>MA10</span><strong>{{ "%.3f"|format(item.feature_snapshot.get('ma10', 0) or 0) }}</strong></div>
-                <div><span>MA20</span><strong>{{ "%.3f"|format(item.feature_snapshot.get('ma20', 0) or 0) }}</strong></div>
-                <div><span>趋势强度</span><strong>{{ "%.2f"|format(item.feature_snapshot.get('trend_strength', 0) or 0) }}</strong></div>
-                <div><span>20日回撤</span><strong>{{ "%.2f"|format(item.feature_snapshot.get('drawdown_20d', 0) or 0) }}</strong></div>
-                <div><span>20日波动</span><strong>{{ "%.2f"|format(item.feature_snapshot.get('volatility_20d', 0) or 0) }}</strong></div>
-                <div><span>流动性分</span><strong>{{ "%.2f"|format(item.feature_snapshot.get('liquidity_score', 0) or 0) }}</strong></div>
-                <div><span>决策类别</span><strong>{{ item.category or "-" }}</strong></div>
-                <div><span>交易模式</span><strong>{{ item.feature_snapshot.get('tradability_mode', '-') or "-" }}</strong></div>
-            </div>
-        </article>
+    <article class="sub-card" style="margin-top: 18px;">
+        <div class="eyebrow">决策阶梯</div>
+        <h4>按真实决策顺序看这只 ETF</h4>
+        {{ render_decision_ladder(item.decision_ladder) }}
+    </article>
 
+    {% if show.feature_snapshot %}
+    <article class="sub-card" style="margin-top: 18px;">
+        <div class="eyebrow">基础特征层</div>
+        <h4>原始特征快照</h4>
+        <div class="evidence-list">
+            <div><span>收盘价</span><strong>{{ "%.3f"|format(item.feature_snapshot.get('close_price', 0) or 0) }}</strong></div>
+            <div><span>3日动量</span><strong>{{ "%.2f"|format(item.feature_snapshot.get('momentum_3d', 0) or 0) }}</strong></div>
+            <div><span>5日动量</span><strong>{{ "%.2f"|format(item.feature_snapshot.get('momentum_5d', 0) or 0) }}</strong></div>
+            <div><span>10日动量</span><strong>{{ "%.2f"|format(item.feature_snapshot.get('momentum_10d', 0) or 0) }}</strong></div>
+            <div><span>20日动量</span><strong>{{ "%.2f"|format(item.feature_snapshot.get('momentum_20d', 0) or 0) }}</strong></div>
+            <div><span>MA5</span><strong>{{ "%.3f"|format(item.feature_snapshot.get('ma5', 0) or 0) }}</strong></div>
+            <div><span>MA10</span><strong>{{ "%.3f"|format(item.feature_snapshot.get('ma10', 0) or 0) }}</strong></div>
+            <div><span>MA20</span><strong>{{ "%.3f"|format(item.feature_snapshot.get('ma20', 0) or 0) }}</strong></div>
+            <div><span>趋势强度</span><strong>{{ "%.2f"|format(item.feature_snapshot.get('trend_strength', 0) or 0) }}</strong></div>
+            <div><span>20日回撤</span><strong>{{ "%.2f"|format(item.feature_snapshot.get('drawdown_20d', 0) or 0) }}</strong></div>
+            <div><span>20日波动</span><strong>{{ "%.2f"|format(item.feature_snapshot.get('volatility_20d', 0) or 0) }}</strong></div>
+            <div><span>流动性分</span><strong>{{ "%.2f"|format(item.feature_snapshot.get('liquidity_score', 0) or 0) }}</strong></div>
+            <div><span>决策类别</span><strong>{{ item.category or "-" }}</strong></div>
+            <div><span>交易模式</span><strong>{{ item.feature_snapshot.get('tradability_mode', '-') or "-" }}</strong></div>
+        </div>
+    </article>
+    {% endif %}
+
+    {% if show.score_breakdown %}
+    <div class="card-grid two" style="margin-top: 18px;">
         <article class="sub-card">
-            <div class="eyebrow">2.2 标的内得分</div>
+            <div class="eyebrow">评分层</div>
             <h4>单票分拆解</h4>
             <p class="muted">{{ item.intra_score_breakdown.formula }}</p>
             {% if item.intra_score_breakdown.available %}
@@ -213,132 +254,46 @@
             {% endif %}
             <div class="evidence-list" style="margin-top: 12px;">
                 <div><span>单票分</span><strong>{{ "%.2f"|format(item.intra_score_breakdown.intra_score) }}</strong></div>
+                <div><span>类别分</span><strong>{{ "%.2f"|format(item.category_score_breakdown.category_score) }}</strong></div>
+                <div><span>最终分</span><strong>{{ "%.2f"|format(item.final_score_breakdown.final_score) }}</strong></div>
+                <div><span>执行决策分</span><strong>{{ "%.2f"|format(item.final_score_breakdown.decision_score) }}</strong></div>
             </div>
         </article>
-    </div>
 
-    <div class="card-grid two">
         <article class="sub-card">
-            <div class="eyebrow">2.3 类别得分</div>
-            <h4>类别分拆解</h4>
+            <div class="eyebrow">评分层</div>
+            <h4>类别分与候选结果</h4>
             <p class="muted">{{ item.category_score_breakdown.formula }}</p>
-            {% if item.category_score_breakdown.available %}
-            <table class="data-table">
-                <thead>
-                <tr>
-                    <th>分项</th>
-                    <th>权重</th>
-                    <th>数值</th>
-                    <th>贡献</th>
-                    <th>公式</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for component in item.category_score_breakdown.components %}
-                <tr>
-                    <td>{{ component.label }}</td>
-                    <td>{{ "%.3f"|format(component.weight) }}</td>
-                    <td>{{ "%.2f"|format(component.value) }}</td>
-                    <td>{{ "%.2f"|format(component.contribution) }}</td>
-                    <td>{{ component.formula_text }}</td>
-                </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <p class="muted">旧记录未保存这一层的类别分拆解。</p>
-            {% endif %}
-            <div class="evidence-list" style="margin-top: 12px;">
+            <div class="evidence-list">
                 <div><span>类别分</span><strong>{{ "%.2f"|format(item.category_score_breakdown.category_score) }}</strong></div>
                 <div><span>头部平均单票分</span><strong>{{ "%.2f"|format(item.category_score_breakdown.top_mean_intrascore) }}</strong></div>
                 <div><span>类别广度分</span><strong>{{ "%.2f"|format(item.category_score_breakdown.breadth_score) }}</strong></div>
                 <div><span>类别动量分</span><strong>{{ "%.2f"|format(item.category_score_breakdown.category_momentum_score) }}</strong></div>
-            </div>
-        </article>
-
-        <article class="sub-card">
-            <div class="eyebrow">2.4 最终得分</div>
-            <h4>从分数到候选池</h4>
-            <p class="muted">{{ item.final_score_breakdown.formula }}</p>
-            <table class="data-table">
-                <thead>
-                <tr>
-                    <th>分项</th>
-                    <th>权重</th>
-                    <th>数值</th>
-                    <th>贡献</th>
-                    <th>公式</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for component in item.final_score_breakdown.components %}
-                <tr>
-                    <td>{{ component.label }}</td>
-                    <td>{{ "%.3f"|format(component.weight) }}</td>
-                    <td>{{ "%.2f"|format(component.value) }}</td>
-                    <td>{{ "%.2f"|format(component.contribution) }}</td>
-                    <td>{{ component.formula_text }}</td>
-                </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-            <div class="evidence-list" style="margin-top: 12px;">
-                <div><span>最终分</span><strong>{{ "%.2f"|format(item.final_score_breakdown.final_score) }}</strong></div>
-                <div><span>执行决策分</span><strong>{{ "%.2f"|format(item.final_score_breakdown.decision_score) }}</strong></div>
                 <div><span>全局排名</span><strong>{{ item.final_score_breakdown.global_rank }}</strong></div>
                 <div><span>类别排名</span><strong>{{ item.final_score_breakdown.category_rank }}</strong></div>
                 <div><span>最低候选阈值</span><strong>{{ "%.1f"|format(item.final_score_breakdown.minimum_candidate_threshold) }}</strong></div>
-                <div><span>是否达标</span><strong>{{ "是" if item.final_score_breakdown.meets_minimum_candidate_threshold else "否" }}</strong></div>
                 <div><span>是否进入候选池</span><strong>{{ "是" if item.final_score_breakdown.entered_candidate_pool else "否" }}</strong></div>
-                <div><span>淘汰层级</span><strong>{{ item.final_score_breakdown.eliminated_stage or "-" }}</strong></div>
             </div>
             {% if item.final_score_breakdown.eliminated_reason %}
             <p class="muted">{{ item.final_score_breakdown.eliminated_reason }}</p>
             {% endif %}
-        </article>
-    </div>
-
-    <div class="card-grid two">
-        <article class="sub-card">
-            <div class="eyebrow">2.5 执行决策分</div>
-            <h4>decision_score 是怎么混出来的</h4>
             {% if item.decision_score_breakdown is defined and item.decision_score_breakdown.available %}
-            <p class="muted">{{ item.decision_score_breakdown.formula }}</p>
+            <p class="muted" style="margin-top: 12px;">{{ item.decision_score_breakdown.formula }}</p>
             <div class="evidence-list">
                 <div><span>当前执行周期偏好</span><strong>{{ item.decision_score_breakdown.target_holding_days }} 天</strong></div>
                 <div><span>当前周期桶</span><strong>{{ item.decision_score_breakdown.bucket_label }}</strong></div>
                 <div><span>当前状态</span><strong>{{ "已持有" if item.decision_score_breakdown.is_held else "未持有" }}</strong></div>
                 <div><span>stay_score</span><strong>{{ "%.2f"|format(item.decision_score_breakdown.stay_score) }}</strong></div>
             </div>
-            <table class="data-table" style="margin-top: 12px;">
-                <thead>
-                <tr>
-                    <th>分项</th>
-                    <th>当前值</th>
-                    <th>权重</th>
-                    <th>贡献</th>
-                    <th>含义</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for component in item.decision_score_breakdown.components %}
-                <tr>
-                    <td>{{ component.label }}</td>
-                    <td>{{ "%.2f"|format(component.value) }}</td>
-                    <td>{{ "%.2f"|format(component.weight) }}</td>
-                    <td>{{ "%.2f"|format(component.contribution) }}</td>
-                    <td>{{ component.meaning }}</td>
-                </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <p class="muted">旧记录未保存执行决策分拆解，当前只能展示最终 decision_score。</p>
             {% endif %}
         </article>
+    </div>
+    {% endif %}
 
-        <article class="sub-card">
-            <div class="eyebrow">2.6 执行 head 公式</div>
+    {% if show.head_formulas %}
+    <details class="card wide" style="margin-top: 18px;">
+        <summary><strong>执行 head 公式</strong> <span class="muted">这是低优先级技术细节，不参与主因展示。</span></summary>
+        <div style="margin-top: 12px;">
             <h4>{{ item.summary_card.decision_category_label }} 的 entry / hold / exit</h4>
             {% if rulebook and rulebook.category_heads.get(item.summary_card.decision_category) %}
             {% set head_rule = rulebook.category_heads.get(item.summary_card.decision_category) %}
@@ -366,10 +321,13 @@
             {% else %}
             <p class="muted">当前没有这类 ETF 的 head 公式说明。</p>
             {% endif %}
-        </article>
-    </div>
+        </div>
+    </details>
+    {% endif %}
 
-    <div class="card-grid two">
+    {% if show.allocation_trace or show.replacement_trace %}
+    <div class="card-grid two" style="margin-top: 18px;">
+        {% if show.allocation_trace %}
         <article class="sub-card">
             <div class="eyebrow">3. 仓位分配卡</div>
             <h4>为什么分到这个理论仓位</h4>
@@ -395,11 +353,12 @@
             <p class="muted">{{ item.allocation_trace.blocked_reason }}</p>
             {% endif %}
         </article>
+        {% endif %}
 
+        {% if show.replacement_trace %}
         <article class="sub-card">
             <div class="eyebrow">替换判断</div>
             <h4>与旧持仓的比较</h4>
-            {% if item.allocation_trace.replacement_trace %}
             <div class="evidence-list">
                 <div><span>旧持仓</span><strong>{{ item.allocation_trace.replacement_trace.incumbent_symbol or "-" }}</strong></div>
                 <div><span>新候选</span><strong>{{ item.allocation_trace.replacement_trace.candidate_symbol or "-" }}</strong></div>
@@ -411,16 +370,17 @@
             {% if item.allocation_trace.replacement_trace.blocked_reason %}
             <p class="muted">{{ item.allocation_trace.replacement_trace.blocked_reason }}</p>
             {% endif %}
-            {% else %}
-            <p class="muted">本次没有进入“新候选 vs 旧持仓”的替换判断。</p>
-            {% endif %}
         </article>
+        {% endif %}
     </div>
+    {% endif %}
 
-    <div class="card-grid two">
+    {% if show.entry_checks or show.position_state or show.switch_checks or show.target_weight_adjustment %}
+    <div class="card-grid two" style="margin-top: 18px;">
+        {% if show.entry_checks %}
         <article class="sub-card">
             <div class="eyebrow">4.1 入场通道判断</div>
-            <h4>通道 A / 通道 B</h4>
+            <h4>入场通道判断</h4>
             <div class="evidence-list">
                 <div><span>最终 entry_allowed</span><strong>{{ "是" if item.execution_trace.entry_checks.entry_allowed else "否" }}</strong></div>
                 <div><span>最终 entry_channel</span><strong>{{ item.summary_card.entry_channel_label }}</strong></div>
@@ -440,7 +400,7 @@
                     <td>{{ "通过" if item.execution_trace.entry_checks.get('channel_b', {}).get('trend_filter_pass') else "未通过" }}</td>
                 </tr>
                 <tr>
-                    <td>回撤区间</td>
+                    <td>回撤区间 / 近高位</td>
                     <td>{{ "通过" if item.execution_trace.entry_checks.get('channel_a', {}).get('pullback_zone_pass') else "未通过" }}</td>
                     <td>{{ "通过" if item.execution_trace.entry_checks.get('channel_b', {}).get('drawdown_near_high_pass') else "未通过" }}</td>
                 </tr>
@@ -459,60 +419,72 @@
                     <td>-</td>
                     <td>{{ "通过" if item.execution_trace.entry_checks.get('channel_b', {}).get('volatility_guard_pass') else "未通过" }}</td>
                 </tr>
-                <tr>
-                    <td>是否命中</td>
-                    <td>{{ "是" if item.execution_trace.entry_checks.get('channel_a', {}).get('channel_a_pass') else "否" }}</td>
-                    <td>{{ "是" if item.execution_trace.entry_checks.get('channel_b', {}).get('channel_b_pass') else "否" }}</td>
-                </tr>
                 </tbody>
             </table>
             {{ render_reason_steps(item.execution_trace.get('entry_checks', {}).get('reason_steps', []), "旧记录未保存这一层的入场判决步骤。") }}
         </article>
+        {% endif %}
 
-            <article class="sub-card">
-                <div class="eyebrow">4.2 持仓状态判断</div>
-                <h4>HOLD / REDUCE / EXIT</h4>
-                <div class="evidence-list">
+        {% if show.position_state %}
+        <article class="sub-card">
+            <div class="eyebrow">4.2 持仓状态判断</div>
+            <h4>HOLD / REDUCE / EXIT</h4>
+            <div class="evidence-list">
                 <div><span>当前仓位</span><strong>{{ fmt_pct((item.execution_trace.get('position_state', {}).get('current_weight', 0) or 0) * 100) }}</strong></div>
                 <div><span>position_state</span><strong>{{ item.execution_trace.get('position_state', {}).get('position_state_label', '-') or "-" }}</strong></div>
                 <div><span>reduced_target_weight</span><strong>{{ fmt_pct((item.execution_trace.get('position_state', {}).get('reduced_target_weight', 0) or 0) * 100) }}</strong></div>
-                </div>
+            </div>
             <p>{{ item.execution_trace.get('position_state', {}).get('reason', '旧记录未保存这一层说明。') or "旧记录未保存这一层说明。" }}</p>
             {{ render_reason_steps(item.execution_trace.get('position_state', {}).get('reason_steps', []), "旧记录未保存这一层的持仓状态判决步骤。") }}
-            </article>
-        </div>
+        </article>
+        {% else %}
+        <article class="sub-card">
+            <div class="eyebrow">4.2 持仓状态判断</div>
+            <h4>当前未持有</h4>
+            <p class="muted">当前未持有，因此这一层不参与裁决。</p>
+        </article>
+        {% endif %}
+    </div>
+    {% endif %}
 
-    <div class="card-grid two">
-            <article class="sub-card">
-                <div class="eyebrow">4.3 换仓判断</div>
-                <h4>是否允许 switch</h4>
-                <div class="evidence-list">
+    {% if show.switch_checks or show.target_weight_adjustment %}
+    <div class="card-grid two" style="margin-top: 18px;">
+        {% if show.switch_checks %}
+        <article class="sub-card">
+            <div class="eyebrow">4.3 换仓判断</div>
+            <h4>是否触发同类别 switch</h4>
+            <div class="evidence-list">
                 <div><span>旧仓状态</span><strong>{{ item.execution_trace.get('switch_checks', {}).get('old_state', '-') or "-" }}</strong></div>
                 <div><span>新龙头可入场</span><strong>{{ "是" if item.execution_trace.get('switch_checks', {}).get('new_entry_allowed') else "否" }}</strong></div>
                 <div><span>新仓目标权重</span><strong>{{ fmt_pct((item.execution_trace.get('switch_checks', {}).get('new_target_weight', 0) or 0) * 100) }}</strong></div>
                 <div><span>rebalance_band</span><strong>{{ fmt_pct((item.execution_trace.get('switch_checks', {}).get('rebalance_band', 0) or 0) * 100) }}</strong></div>
                 <div><span>score_gap</span><strong>{{ "%.2f"|format(item.execution_trace.get('switch_checks', {}).get('score_gap', 0) or 0) }}</strong></div>
                 <div><span>switch_allowed</span><strong>{{ "是" if item.execution_trace.get('switch_checks', {}).get('switch_allowed') else "否" }}</strong></div>
-                </div>
-                {{ render_reason_steps(item.execution_trace.get('switch_checks', {}).get('reason_steps', []), "本次没有进入明确的换仓判决步骤。") }}
-            </article>
+            </div>
+            {{ render_reason_steps(item.execution_trace.get('switch_checks', {}).get('reason_steps', []), "本次没有进入明确的换仓判决步骤。") }}
+        </article>
+        {% endif %}
 
-            <article class="sub-card">
-                <div class="eyebrow">4.4 effective_target_weight 形成过程</div>
-                <h4>从理论仓位到执行仓位</h4>
-                <div class="evidence-list">
+        {% if show.target_weight_adjustment %}
+        <article class="sub-card">
+            <div class="eyebrow">4.4 effective_target_weight 形成过程</div>
+            <h4>从理论仓位到执行仓位</h4>
+            <div class="evidence-list">
                 <div><span>normal_target_weight</span><strong>{{ fmt_pct((item.execution_trace.get('target_weight_adjustment', {}).get('normal_target_weight', 0) or 0) * 100) }}</strong></div>
                 <div><span>current_weight</span><strong>{{ fmt_pct((item.execution_trace.get('target_weight_adjustment', {}).get('current_weight', 0) or 0) * 100) }}</strong></div>
                 <div><span>reduced_target_weight</span><strong>{{ fmt_pct((item.execution_trace.get('target_weight_adjustment', {}).get('reduced_target_weight', 0) or 0) * 100) }}</strong></div>
                 <div><span>effective_target_weight</span><strong>{{ fmt_pct((item.execution_trace.get('target_weight_adjustment', {}).get('effective_target_weight', 0) or 0) * 100) }}</strong></div>
                 <div><span>采用分支</span><strong>{{ item.execution_trace.get('target_weight_adjustment', {}).get('branch', '-') or "-" }}</strong></div>
-                </div>
-                {{ render_reason_steps(item.execution_trace.get('target_weight_adjustment', {}).get('reason_steps', []), "旧记录未保存这一层的仓位改写步骤。") }}
-            </article>
-        </div>
+            </div>
+            {{ render_reason_steps(item.execution_trace.get('target_weight_adjustment', {}).get('reason_steps', []), "旧记录未保存这一层的仓位改写步骤。") }}
+        </article>
+        {% endif %}
+    </div>
+    {% endif %}
 
+    {% if show.final_action_calc %}
     <article class="sub-card" style="margin-top: 18px;">
-        <div class="eyebrow">5. 最终动作卡</div>
+        <div class="eyebrow">最终动作卡</div>
         <h4>从权重变化到动作</h4>
         <div class="evidence-list">
             <div><span>current_weight</span><strong>{{ fmt_pct((item.execution_trace.get('final_action_calc', {}).get('current_weight', 0) or 0) * 100) }}</strong></div>
@@ -531,9 +503,10 @@
         <p>{{ item.execution_trace.get('final_action_calc', {}).get('action_reason', item.summary) or item.summary }}</p>
         {{ render_reason_steps(item.execution_trace.get('final_action_calc', {}).get('reason_steps', []), "旧记录未保存这一层的最终动作判决步骤。") }}
     </article>
+    {% endif %}
 
     <article class="sub-card" style="margin-top: 18px;">
-        <div class="eyebrow">6. 底部人话总结</div>
+        <div class="eyebrow">底部人话总结</div>
         <h4>这只 ETF 为什么会这样</h4>
         <p>{{ item.natural_language_summary }}</p>
     </article>

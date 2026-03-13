@@ -2,6 +2,12 @@ execution:
   default_slippage_bps: 3.0
   annualization_days: 252
 
+historical_data:
+  cache_enabled: true
+  cache_dir: data/history_cache
+  minimum_real_source_ratio: 0.8
+  minimum_formal_day_ratio: 0.8
+
 grid_search:
   objective_weights:
     total_return_weight: 1.0

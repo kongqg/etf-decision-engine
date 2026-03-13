@@ -39,7 +39,8 @@ class ScoringEngine:
             return {"scored_df": frame.copy(), "category_scores": []}
 
         df = frame.copy()
-        df = self.normalization_engine.apply(df)
+        if not self._has_precomputed_ranks(df):
+            df = self.normalization_engine.apply(df)
         df["intra_score"] = self._weighted_sum(df, self.intra_weights)
 
         category_df = self._build_category_scores(df)
@@ -68,6 +69,13 @@ class ScoringEngine:
             "scored_df": merged,
             "category_scores": category_df.sort_values("category_score", ascending=False).to_dict(orient="records"),
         }
+
+    def _has_precomputed_ranks(self, frame: pd.DataFrame) -> bool:
+        required_columns = {
+            self.normalization_engine._rank_column_name(feature)
+            for feature in self.normalization_engine.directions
+        }
+        return required_columns.issubset(set(frame.columns))
 
     def _build_category_scores(self, df: pd.DataFrame) -> pd.DataFrame:
         grouped = pd.DataFrame(

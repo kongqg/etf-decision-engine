@@ -86,11 +86,15 @@ class PortfolioAllocator:
         }
 
         ranked = scored_df.sort_values(["final_score", "intra_score", "symbol"], ascending=[False, False, True]).reset_index(drop=True)
+        ranked_rows = [row._asdict() for row in ranked.itertuples(index=False)]
+        ranked_by_symbol = {
+            str(row["symbol"]): row
+            for row in ranked_rows
+        }
         selection_trace: dict[str, dict[str, Any]] = {}
         replacement_trace: dict[str, dict[str, Any]] = {}
 
-        for _, row in ranked.iterrows():
-            row_dict = row.to_dict()
+        for row_dict in ranked_rows:
             symbol = str(row_dict["symbol"])
             selection_trace[symbol] = {
                 "symbol": symbol,
@@ -115,10 +119,9 @@ class PortfolioAllocator:
         protected_symbols: list[str] = []
         for holding in current_holdings:
             symbol = str(holding["symbol"])
-            row = ranked[ranked["symbol"] == symbol]
-            if row.empty:
+            row_dict = ranked_by_symbol.get(symbol)
+            if row_dict is None:
                 continue
-            row_dict = row.iloc[0].to_dict()
             hold_days = int(holding.get("hold_days", 0) or 0)
             hold_days_known = bool(holding.get("hold_days_known", False))
             reasons: list[str] = []
@@ -139,6 +142,7 @@ class PortfolioAllocator:
                 selection_trace[symbol].update({"protected": True, "protected_reasons": reasons})
 
         selected_rows: list[dict[str, Any]] = []
+        selected_symbols: set[str] = set()
         selected_by_category: dict[str, int] = defaultdict(int)
 
         def can_add(row_dict: dict[str, Any]) -> bool:
@@ -146,12 +150,12 @@ class PortfolioAllocator:
             return len(selected_rows) < max_total_selected and selected_by_category[category] < max_selected_per_category
 
         for symbol in protected_symbols:
-            row = ranked[ranked["symbol"] == symbol]
-            if row.empty:
+            row_dict = ranked_by_symbol.get(symbol)
+            if row_dict is None:
                 continue
-            row_dict = row.iloc[0].to_dict()
             if can_add(row_dict):
                 selected_rows.append(row_dict)
+                selected_symbols.add(symbol)
                 selected_by_category[str(row_dict["decision_category"])] += 1
                 selection_trace[symbol].update(
                     {
@@ -162,24 +166,26 @@ class PortfolioAllocator:
                 )
 
         incumbent_by_category: dict[str, dict[str, Any]] = {}
+        current_holding_counts_by_category: dict[str, int] = defaultdict(int)
         for holding in current_holdings:
             symbol = str(holding["symbol"])
-            row = ranked[ranked["symbol"] == symbol]
-            if row.empty:
+            row_dict = ranked_by_symbol.get(symbol)
+            if row_dict is None:
                 continue
-            row_dict = row.iloc[0].to_dict()
             category = str(row_dict["decision_category"])
+            current_holding_counts_by_category[category] += 1
             incumbent = incumbent_by_category.get(category)
             if incumbent is None or float(row_dict["final_score"]) > float(incumbent["final_score"]):
                 merged = dict(row_dict)
                 merged.update(current_by_symbol.get(symbol, {}))
                 incumbent_by_category[category] = merged
 
-        for _, candidate in ranked.iterrows():
-            row_dict = candidate.to_dict()
+        non_holding_selected_by_category: dict[str, int] = defaultdict(int)
+
+        for row_dict in ranked_rows:
             symbol = str(row_dict["symbol"])
             category = str(row_dict["decision_category"])
-            if symbol in {row["symbol"] for row in selected_rows}:
+            if symbol in selected_symbols:
                 continue
             if float(row_dict.get("final_score", 0.0)) < min_final_score:
                 selection_trace[symbol].update(
@@ -221,7 +227,10 @@ class PortfolioAllocator:
 
             if symbol not in current_by_symbol:
                 incumbent = incumbent_by_category.get(category)
-                if incumbent is not None and str(incumbent.get("symbol")) != symbol:
+                category_addition_slot_available = (
+                    current_holding_counts_by_category[category] + non_holding_selected_by_category[category]
+                ) < max_selected_per_category
+                if incumbent is not None and str(incumbent.get("symbol")) != symbol and not category_addition_slot_available:
                     score_gap = float(row_dict.get("final_score", 0.0)) - float(incumbent.get("final_score", 0.0))
                     hold_days = int(incumbent.get("hold_days", 0) or 0)
                     hold_days_known = bool(incumbent.get("hold_days_known", False))
@@ -277,12 +286,23 @@ class PortfolioAllocator:
                         continue
 
             selected_rows.append(row_dict)
+            selected_symbols.add(symbol)
             selected_by_category[category] += 1
+            if symbol not in current_by_symbol:
+                non_holding_selected_by_category[category] += 1
             selection_trace[symbol].update(
                 {
                     "selected": True,
                     "selected_stage": "candidate_selected",
-                    "selected_reason": "最终分、过滤条件和替换条件都通过，因此进入目标组合候选。",
+                    "selected_reason": (
+                        "同类别仍有新增名额，因此按并存新增进入目标组合候选。"
+                        if symbol not in current_by_symbol
+                        and (
+                            current_holding_counts_by_category[category] + non_holding_selected_by_category[category]
+                        ) <= max_selected_per_category
+                        and symbol not in replacement_trace
+                        else "最终分、过滤条件和替换条件都通过，因此进入目标组合候选。"
+                    ),
                 }
             )
 
@@ -296,8 +316,7 @@ class PortfolioAllocator:
 
         candidate_summary = []
         watchlist_size = max(1, int(self.scoring_config.get("selection", {}).get("candidate_watchlist_size", 8)))
-        for _, row in ranked.head(watchlist_size).iterrows():
-            row_dict = row.to_dict()
+        for row_dict in ranked_rows[:watchlist_size]:
             candidate_summary.append(
                 {
                     "symbol": row_dict["symbol"],
@@ -316,8 +335,7 @@ class PortfolioAllocator:
             str(symbol): dict(trace)
             for symbol, trace in allocation_result.get("allocation_trace", {}).items()
         }
-        for _, row in ranked.iterrows():
-            row_dict = row.to_dict()
+        for row_dict in ranked_rows:
             symbol = str(row_dict["symbol"])
             allocation_trace.setdefault(
                 symbol,

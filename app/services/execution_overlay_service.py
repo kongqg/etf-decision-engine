@@ -7,6 +7,7 @@ from typing import Any
 import pandas as pd
 
 from app.core.config import get_settings, load_yaml_config
+from app.services.execution_cost_service import get_execution_cost_service
 
 POSITION_STATE_LABELS = {
     "HOLD": "继续持有",
@@ -37,6 +38,8 @@ class ExecutionOverlayConfig:
 class ExecutionOverlayService:
     def __init__(self) -> None:
         settings = get_settings()
+        self.settings = settings
+        self.execution_cost_service = get_execution_cost_service()
         overlay_cfg = load_yaml_config(settings.config_dir / "execution_overlay.yaml")
         self.category_profiles = load_yaml_config(settings.config_dir / "category_profiles.yaml")
         selection_cfg = self.category_profiles.get("selection", {})
@@ -74,6 +77,7 @@ class ExecutionOverlayService:
         preferences: Any,
         policy: Any,
         min_trade_amount: float,
+        prepared_overlay: pd.DataFrame | None = None,
     ) -> dict[str, Any]:
         if scored_df.empty:
             return {
@@ -85,7 +89,11 @@ class ExecutionOverlayService:
 
         current_by_symbol = {str(row["symbol"]): dict(row) for row in current_holdings}
         total_asset = float(portfolio_summary.get("total_asset", 0.0))
-        prepared = self._prepare_overlay_frame(scored_df=scored_df, current_holdings=current_holdings, preferences=preferences)
+        prepared = prepared_overlay if prepared_overlay is not None else self._prepare_overlay_frame(
+            scored_df=scored_df,
+            current_holdings=current_holdings,
+            preferences=preferences,
+        )
 
         target_weights = {
             str(symbol): float(weight)
@@ -96,8 +104,8 @@ class ExecutionOverlayService:
         items: list[dict[str, Any]] = []
         effective_target_weights: dict[str, float] = {}
         overlay_rows: dict[str, dict[str, Any]] = {
-            str(row["symbol"]): row.to_dict()
-            for _, row in prepared.iterrows()
+            str(row.symbol): row._asdict()
+            for row in prepared.itertuples(index=False)
         }
         overlay_traces: dict[str, dict[str, Any]] = {}
         symbols = list(prepared.sort_values(["global_rank", "symbol"], ascending=[True, True])["symbol"].astype(str))
@@ -111,6 +119,10 @@ class ExecutionOverlayService:
             normal_target_weight = float(target_weights.get(symbol, 0.0))
             is_held = current_weight > 0
             category = str(row["decision_category"])
+            latest_price = float(row.get("close_price", 0.0) or 0.0)
+            lot_size = float(row.get("lot_size", self.settings.default_lot_size) or self.settings.default_lot_size)
+            fee_rate = float(row.get("fee_rate", self.settings.default_fee_rate) or self.settings.default_fee_rate)
+            min_fee = float(row.get("min_fee", self.settings.default_min_fee) or self.settings.default_min_fee)
             target_amount = 0.0
             suggested_amount = 0.0
             suggested_pct = 0.0
@@ -206,6 +218,46 @@ class ExecutionOverlayService:
             delta_weight = effective_target_weight - current_weight
             delta_amount = round(float(total_asset) * abs(delta_weight), 2)
             min_trade_blocked = False
+            min_order_blocked = False
+            min_order_amount = self._minimum_order_amount(
+                price=latest_price,
+                lot_size=lot_size,
+                fee_rate=fee_rate,
+                min_fee=min_fee,
+            )
+            order_amount = round(abs(target_amount - current_amount), 2) if action in {"buy", "sell"} else 0.0
+
+            if action == "buy" and action_code in {"buy_open", "buy_add", "switch"} and min_order_amount > 0:
+                if order_amount < min_order_amount:
+                    min_order_blocked = True
+                    if is_held:
+                        planned_order_amount = order_amount
+                        action = "hold"
+                        action_code = "hold"
+                        intent = "hold"
+                        effective_target_weight = current_weight
+                        target_amount = round(float(total_asset) * effective_target_weight, 2)
+                        delta_weight = 0.0
+                        delta_amount = 0.0
+                        order_amount = 0.0
+                        action_reason = (
+                            f"信号存在，但按最新价格至少需要 {min_order_amount:.2f} 元才能买入一手，"
+                            f"本次计划加仓金额只有 {planned_order_amount:.2f} 元，先不加仓。"
+                        )
+                    else:
+                        planned_order_amount = order_amount
+                        action = "no_trade"
+                        action_code = "no_trade"
+                        intent = "hold"
+                        effective_target_weight = 0.0
+                        target_amount = 0.0
+                        delta_weight = 0.0
+                        delta_amount = 0.0
+                        order_amount = 0.0
+                        action_reason = (
+                            f"信号存在，但按最新价格至少需要 {min_order_amount:.2f} 元才能买入一手，"
+                            f"本次目标金额只有 {planned_order_amount:.2f} 元，暂不开仓。"
+                        )
 
             if action in {"buy", "sell"} and action_code != "sell_exit" and delta_amount < min_trade_amount:
                 min_trade_blocked = True
@@ -277,8 +329,12 @@ class ExecutionOverlayService:
                 target_amount=target_amount,
                 delta_weight=delta_weight,
                 delta_amount=delta_amount,
+                order_amount=order_amount,
                 total_asset=total_asset,
                 min_trade_amount=min_trade_amount,
+                latest_price=latest_price,
+                lot_size=lot_size,
+                min_order_amount=min_order_amount,
                 action=action,
                 action_code=action_code,
                 switch_in=switch_in,
@@ -287,6 +343,7 @@ class ExecutionOverlayService:
                 switch_partner=switch_partner,
                 action_reason=action_reason,
                 min_trade_blocked=min_trade_blocked,
+                min_order_blocked=min_order_blocked,
             )
 
             item = {
@@ -330,7 +387,10 @@ class ExecutionOverlayService:
                 "hold_days": int(current.get("hold_days", 0) or 0),
                 "hold_days_known": bool(current.get("hold_days_known", False)),
                 "is_held": is_held,
-                "latest_price": float(row.get("close_price", 0.0)),
+                "latest_price": latest_price,
+                "lot_size": lot_size,
+                "min_order_amount": min_order_amount,
+                "affordable_now": not min_order_blocked,
                 "scores": {
                     "entry_score": float(row.get("entry_score", 0.0)),
                     "hold_score": float(row.get("hold_score", 0.0)),
@@ -367,7 +427,10 @@ class ExecutionOverlayService:
                 "feature_snapshot": item["feature_snapshot"],
                 "score_breakdown": item["score_breakdown"],
                 "is_held": is_held,
-                "latest_price": float(row.get("close_price", 0.0)),
+                "latest_price": latest_price,
+                "lot_size": lot_size,
+                "min_order_amount": min_order_amount,
+                "affordable_now": not min_order_blocked,
             }
             if action != "no_trade":
                 items.append(item)
@@ -422,6 +485,9 @@ class ExecutionOverlayService:
             "liquidity_score": 0.0,
             "decision_category": "",
             "symbol": "",
+            "lot_size": float(self.settings.default_lot_size),
+            "fee_rate": float(self.settings.default_fee_rate),
+            "min_fee": float(self.settings.default_min_fee),
         }
         for column, default in default_columns.items():
             if column not in df.columns:
@@ -451,9 +517,11 @@ class ExecutionOverlayService:
         df["drawdown_severity"] = self._category_relative_percentile(df, "abs_drawdown_20d", higher_is_better=True)
         df["rank_drop_score"] = self._rank_drop_score(df)
         df["time_decay_score"] = self._time_decay_score(df, preferences)
-        preliminary_entry_scores = []
-        for _, row in df.iterrows():
-            preliminary_entry_scores.append(self._head_score(str(row.get("decision_category", "")), "entry", row))
+        prepared_rows = [row._asdict() for row in df.itertuples(index=False)]
+        preliminary_entry_scores = [
+            self._head_score(str(row.get("decision_category", "")), "entry", row)
+            for row in prepared_rows
+        ]
         df["preliminary_entry_score"] = preliminary_entry_scores
         offensive_leader_scores = (
             df[df["decision_category"].isin(self.offensive_categories)]
@@ -465,6 +533,7 @@ class ExecutionOverlayService:
         risk_switch_score = sum(offensive_leader_scores) / len(offensive_leader_scores) if offensive_leader_scores else 0.0
         df["opportunity_cost_score"] = opportunity_cost_score
         df["risk_switch_score"] = risk_switch_score
+        prepared_rows = [row._asdict() for row in df.itertuples(index=False)]
 
         entry_scores: list[float] = []
         hold_scores: list[float] = []
@@ -478,7 +547,7 @@ class ExecutionOverlayService:
         breakout_passes: list[bool] = []
         entry_allowed_flags: list[bool] = []
 
-        for _, row in df.iterrows():
+        for row in prepared_rows:
             category = str(row.get("decision_category", ""))
             is_held = bool(row.get("is_held", False))
             entry_score = self._head_score(category, "entry", row)
@@ -551,8 +620,9 @@ class ExecutionOverlayService:
         context: dict[str, dict[str, Any]] = {}
         grouped = prepared.groupby("decision_category", dropna=False, sort=False)
         for category, group in grouped:
-            held_rows = [row for _, row in group.iterrows() if str(row["symbol"]) in current_by_symbol]
-            target_rows = [row for _, row in group.iterrows() if float(target_weights.get(str(row["symbol"]), 0.0)) > 0]
+            group_rows = [row._asdict() for row in group.itertuples(index=False)]
+            held_rows = [row for row in group_rows if str(row["symbol"]) in current_by_symbol]
+            target_rows = [row for row in group_rows if float(target_weights.get(str(row["symbol"]), 0.0)) > 0]
             new_rows = [row for row in target_rows if str(row["symbol"]) not in current_by_symbol]
             if not held_rows or not new_rows:
                 continue
@@ -689,6 +759,21 @@ class ExecutionOverlayService:
             return "虽然已进入合理回撤区，但反弹确认还不够，继续等待。"
         return "当前既不满足回撤后反弹，也不满足强趋势突破，因此暂不开仓。"
 
+    def _minimum_order_amount(
+        self,
+        *,
+        price: float,
+        lot_size: float,
+        fee_rate: float,
+        min_fee: float,
+    ) -> float:
+        if price <= 0 or lot_size <= 0:
+            return 0.0
+        gross_amount = float(price) * float(lot_size)
+        broker_fee = max(gross_amount * max(float(fee_rate), 0.0), max(float(min_fee), 0.0))
+        impact_cost = self.execution_cost_service.estimate_execution_cost(gross_amount)
+        return round(gross_amount + broker_fee + impact_cost, 2)
+
     def _execution_note(self, *, action_code: str, tradability_mode: str) -> str:
         if tradability_mode == "t0":
             mode_note = "该 ETF 按 T+0 口径展示执行提示。"
@@ -731,8 +816,12 @@ class ExecutionOverlayService:
         target_amount: float,
         delta_weight: float,
         delta_amount: float,
+        order_amount: float,
         total_asset: float,
         min_trade_amount: float,
+        latest_price: float,
+        lot_size: float,
+        min_order_amount: float,
         action: str,
         action_code: str,
         switch_in: bool,
@@ -741,6 +830,7 @@ class ExecutionOverlayService:
         switch_partner: str,
         action_reason: str,
         min_trade_blocked: bool,
+        min_order_blocked: bool,
     ) -> dict[str, Any]:
         trend_filter_pass = bool(row.get("trend_filter_pass", False))
         pullback_zone_pass = bool(row.get("pullback_zone_pass", False))
@@ -898,9 +988,14 @@ class ExecutionOverlayService:
             effective_target_weight=effective_target_weight,
             delta_weight=delta_weight,
             delta_amount=delta_amount,
+            order_amount=order_amount,
             rebalance_band=self.config.rebalance_band,
             min_trade_amount=min_trade_amount,
             min_trade_blocked=min_trade_blocked,
+            latest_price=latest_price,
+            lot_size=lot_size,
+            min_order_amount=min_order_amount,
+            min_order_blocked=min_order_blocked,
             entry_allowed=entry_allowed,
             switch_in=switch_in,
             switch_out=switch_out,
@@ -974,9 +1069,14 @@ class ExecutionOverlayService:
                 "current_amount": current_amount,
                 "target_amount": target_amount,
                 "delta_amount": delta_amount,
+                "order_amount": order_amount,
                 "min_trade_amount": min_trade_amount,
+                "latest_price": latest_price,
+                "lot_size": lot_size,
+                "min_order_amount": min_order_amount,
                 "rebalance_band": self.config.rebalance_band,
                 "min_trade_blocked": min_trade_blocked,
+                "min_order_blocked": min_order_blocked,
                 "action": action,
                 "action_code": action_code,
                 "action_reason": action_reason,
@@ -1182,9 +1282,14 @@ class ExecutionOverlayService:
         effective_target_weight: float,
         delta_weight: float,
         delta_amount: float,
+        order_amount: float,
         rebalance_band: float,
         min_trade_amount: float,
         min_trade_blocked: bool,
+        latest_price: float,
+        lot_size: float,
+        min_order_amount: float,
+        min_order_blocked: bool,
         entry_allowed: bool,
         switch_in: bool,
         switch_out: bool,
@@ -1257,6 +1362,18 @@ class ExecutionOverlayService:
                     meaning="这次没有形成正式可执行动作，因此最终保持不交易。",
                 )
             )
+        if min_order_amount > 0:
+            steps.append(
+                self._reason_step(
+                    condition=(
+                        f"按最新价格一手门槛：latest_price × lot_size + 成本 = "
+                        f"{latest_price:.3f} × {lot_size:.0f} ≈ {min_order_amount:.2f} 元；"
+                        f"本次计划下单金额 = {order_amount:.2f} 元"
+                    ),
+                    passed=order_amount >= min_order_amount or not min_order_blocked,
+                    meaning="正式买入/加仓除了方向正确，还必须至少买得起一手，否则这次建议不能直接执行。",
+                )
+            )
         if action_code != "sell_exit":
             steps.append(
                 self._reason_step(
@@ -1324,26 +1441,20 @@ class ExecutionOverlayService:
     def _rank_drop_score(self, df: pd.DataFrame) -> pd.Series:
         if df.empty:
             return pd.Series(dtype=float)
-        values = []
-        for _, row in df.iterrows():
-            size = int(row.get("category_symbol_count", 1) or 1)
-            rank = int(row.get("category_rank", 1) or 1)
-            if size <= 1:
-                values.append(0.0)
-                continue
-            values.append(((rank - 1) / max(size - 1, 1)) * 100.0)
-        return pd.Series(values, index=df.index, dtype=float)
+        size = pd.to_numeric(df.get("category_symbol_count", 1), errors="coerce").fillna(1).clip(lower=1)
+        rank = pd.to_numeric(df.get("category_rank", 1), errors="coerce").fillna(1).clip(lower=1)
+        denominator = (size - 1).clip(lower=1)
+        values = ((rank - 1) / denominator) * 100.0
+        values = values.where(size > 1, 0.0)
+        return values.astype(float)
 
     def _time_decay_score(self, df: pd.DataFrame, preferences: Any) -> pd.Series:
         target_holding_days = max(
             1,
             int(getattr(preferences, "target_holding_days", self.config.default_target_holding_days) or self.config.default_target_holding_days),
         )
-        values = []
-        for _, row in df.iterrows():
-            hold_days = max(int(row.get("hold_days", 0) or 0), 0)
-            values.append(min(hold_days / target_holding_days, 1.0) * 100.0)
-        return pd.Series(values, index=df.index, dtype=float)
+        hold_days = pd.to_numeric(df.get("hold_days", 0), errors="coerce").fillna(0.0).clip(lower=0.0)
+        return ((hold_days / target_holding_days).clip(upper=1.0) * 100.0).astype(float)
 
     def _parse_json(self, value: Any) -> dict[str, Any]:
         if isinstance(value, dict):

@@ -5,6 +5,7 @@ from copy import deepcopy
 from dataclasses import dataclass, replace
 from datetime import date, datetime, time
 from pathlib import Path
+from time import perf_counter
 from types import SimpleNamespace
 from typing import Any
 from uuid import uuid4
@@ -34,6 +35,7 @@ class BacktestRunConfig:
     execution_cost_bps_override: float | None = None
     strict_data_quality: bool = True
     config_overrides: dict[str, Any] | None = None
+    profile: bool = False
 
 
 class BacktestRunner:
@@ -43,6 +45,15 @@ class BacktestRunner:
         self.backtest_config = load_yaml_config(settings.config_dir / "backtest.yaml")
         self.policy = get_decision_policy_service()
         self.feature_engine = FeatureEngine()
+
+    @staticmethod
+    def classify_symbol(*, etf: Any) -> dict[str, Any]:
+        return get_decision_policy_service().classify(
+            symbol=str(etf.symbol),
+            universe_category=str(etf.category),
+            asset_class=str(etf.asset_class),
+            trade_mode=str(etf.trade_mode),
+        )
 
     def run(self, dataset: dict[str, Any], request: BacktestRunConfig, *, base_preferences: Any | None = None) -> dict[str, Any]:
         market_regime_service = MarketRegimeService()
@@ -73,6 +84,15 @@ class BacktestRunner:
             base_preferences=base_preferences,
             default_target_holding_days=decision_engine.execution_overlay_service.config.default_target_holding_days,
         )
+        profiling = {
+            "daily_feature_lookup_sec": 0.0,
+            "market_regime_sec": 0.0,
+            "filter_sec": 0.0,
+            "scoring_sec": 0.0,
+            "allocation_execution_sec": 0.0,
+            "trade_execution_sec": 0.0,
+            "daily_loop_sec": 0.0,
+        }
         cash_balance = float(request.initial_capital)
         positions: dict[str, dict[str, Any]] = {}
         trades: list[dict[str, Any]] = []
@@ -85,17 +105,23 @@ class BacktestRunner:
             if trade_date < request.start_date or trade_date > request.end_date:
                 continue
 
+            day_started_at = perf_counter()
+            lookup_started_at = perf_counter()
             features_df, quality_summary = self._build_daily_features(
                 dataset=dataset,
                 trade_date=trade_date,
                 data_quality_service=data_quality_service,
             )
+            profiling["daily_feature_lookup_sec"] += perf_counter() - lookup_started_at
             if features_df.empty:
+                profiling["daily_loop_sec"] += perf_counter() - day_started_at
                 continue
 
-            formal_scope = features_df[features_df["formal_eligible"]].copy()
+            regime_started_at = perf_counter()
+            formal_scope = features_df[features_df["formal_eligible"]]
             regime_input = formal_scope if not formal_scope.empty else features_df
             market_regime = market_regime_service.evaluate(regime_input)
+            profiling["market_regime_sec"] += perf_counter() - regime_started_at
             portfolio_summary = self._portfolio_summary(positions=positions, cash_balance=cash_balance, scored_df=features_df)
             current_holdings = self._current_holdings(positions, portfolio_summary)
 
@@ -124,11 +150,17 @@ class BacktestRunner:
                 for position in positions.values():
                     if position["quantity"] > 0:
                         position["hold_days"] += 1
+                profiling["daily_loop_sec"] += perf_counter() - day_started_at
                 continue
 
+            filter_started_at = perf_counter()
             filtered_df = filter_service.apply(features_df, preferences)
+            profiling["filter_sec"] += perf_counter() - filter_started_at
+            scoring_started_at = perf_counter()
             scoring_result = scoring_engine.score(filtered_df)
             scored_df = scoring_result["scored_df"]
+            profiling["scoring_sec"] += perf_counter() - scoring_started_at
+            allocation_started_at = perf_counter()
             allocation, items = decision_engine._build_allocation_and_items(
                 scored_df=scored_df,
                 current_holdings=current_holdings,
@@ -136,8 +168,10 @@ class BacktestRunner:
                 preferences=preferences,
                 market_regime=market_regime,
             )
+            profiling["allocation_execution_sec"] += perf_counter() - allocation_started_at
 
             replacement_days += 1 if any(item.get("replacement_symbol") for item in items if item["intent"] == "open") else 0
+            execution_started_at = perf_counter()
             day_trades, cash_balance, exit_holding_days = self._execute_items(
                 items=items,
                 scored_df=scored_df,
@@ -148,6 +182,7 @@ class BacktestRunner:
                 execution_cost_service=execution_cost_service,
                 request=request,
             )
+            profiling["trade_execution_sec"] += perf_counter() - execution_started_at
             trades.extend(day_trades)
             realized_holding_days.extend(exit_holding_days)
             self._mark_positions(positions=positions, scored_df=scored_df)
@@ -173,6 +208,7 @@ class BacktestRunner:
             for position in positions.values():
                 if position["quantity"] > 0:
                     position["hold_days"] += 1
+            profiling["daily_loop_sec"] += perf_counter() - day_started_at
 
         metrics = self._build_metrics(
             initial_capital=request.initial_capital,
@@ -214,6 +250,10 @@ class BacktestRunner:
             "daily_curve": daily_curve,
             "daily_decisions": daily_decisions,
             "trades": trades,
+            "profiling": {
+                key: round(value, 4)
+                for key, value in profiling.items()
+            } if request.profile else {},
         }
 
     def _build_preferences(
@@ -237,14 +277,34 @@ class BacktestRunner:
         return SimpleNamespace(
             risk_level=str(getattr(base_preferences, "risk_level", "中性")),
             risk_mode=str(request.risk_mode or getattr(base_preferences, "risk_mode", "balanced")),
-            allow_gold=bool(getattr(base_preferences, "allow_gold", True)),
-            allow_bond=bool(getattr(base_preferences, "allow_bond", True)),
-            allow_overseas=bool(getattr(base_preferences, "allow_overseas", True)),
+            allow_gold=bool(overrides.get("preferences.allow_gold", getattr(base_preferences, "allow_gold", True))),
+            allow_bond=bool(overrides.get("preferences.allow_bond", getattr(base_preferences, "allow_bond", True))),
+            allow_overseas=bool(overrides.get("preferences.allow_overseas", getattr(base_preferences, "allow_overseas", True))),
             target_holding_days=max(1, target_holding_days),
-            min_trade_amount=float(getattr(base_preferences, "min_trade_amount", self.settings.default_min_advice_amount)),
-            max_total_position_pct=float(getattr(base_preferences, "max_total_position_pct", 0.85)),
-            max_single_position_pct=float(getattr(base_preferences, "max_single_position_pct", 0.35)),
-            cash_reserve_pct=float(getattr(base_preferences, "cash_reserve_pct", 0.0)),
+            min_trade_amount=float(
+                overrides.get(
+                    "preferences.min_trade_amount",
+                    getattr(base_preferences, "min_trade_amount", self.settings.default_min_advice_amount),
+                )
+            ),
+            max_total_position_pct=float(
+                overrides.get(
+                    "preferences.max_total_position_pct",
+                    getattr(base_preferences, "max_total_position_pct", 0.85),
+                )
+            ),
+            max_single_position_pct=float(
+                overrides.get(
+                    "preferences.max_single_position_pct",
+                    getattr(base_preferences, "max_single_position_pct", 0.35),
+                )
+            ),
+            cash_reserve_pct=float(
+                overrides.get(
+                    "preferences.cash_reserve_pct",
+                    getattr(base_preferences, "cash_reserve_pct", 0.0),
+                )
+            ),
         )
 
     def _build_daily_features(
@@ -254,13 +314,24 @@ class BacktestRunner:
         trade_date: date,
         data_quality_service: DataQualityService,
     ) -> tuple[pd.DataFrame, dict[str, Any]]:
+        # 优先复用 dataset 里预先算好的日级特征与质量摘要；没有缓存时再回退到旧的逐日现算路径。
+        cached_frames = dataset.get("daily_feature_frames")
+        cached_summaries = dataset.get("daily_quality_summaries")
+        if cached_frames is not None and cached_summaries is not None:
+            return (
+                cached_frames.get(trade_date, pd.DataFrame()),
+                cached_summaries.get(trade_date, {}),
+            )
+
         rows = []
         quality_reports: list[dict[str, Any]] = []
         risk_rules = load_yaml_config(self.settings.config_dir / "risk_rules.yaml")
         anomaly_threshold = float(risk_rules.get("anomaly_pct_change_threshold", 9.0))
         for symbol, payload in dataset["history_by_symbol"].items():
             history = payload["history"]
-            truncated = history[pd.to_datetime(history["date"]).dt.date <= trade_date].copy()
+            date_values = history["date"].to_numpy()
+            cutoff_index = int(date_values.searchsorted(pd.Timestamp(trade_date).to_datetime64(), side="right"))
+            truncated = history.iloc[:cutoff_index]
             etf = payload["etf"]
             quality_report = data_quality_service.assess_history(
                 symbol=str(etf.symbol),
@@ -350,7 +421,12 @@ class BacktestRunner:
     def _portfolio_summary(self, *, positions: dict[str, dict[str, Any]], cash_balance: float, scored_df: pd.DataFrame) -> dict[str, Any]:
         market_value = 0.0
         holdings = []
-        price_lookup = {str(row["symbol"]): float(row["close_price"]) for _, row in scored_df.iterrows()}
+        price_lookup = dict(
+            zip(
+                scored_df["symbol"].astype(str).tolist(),
+                pd.to_numeric(scored_df["close_price"], errors="coerce").fillna(0.0).tolist(),
+            )
+        )
         for symbol, position in positions.items():
             last_price = price_lookup.get(symbol, float(position.get("last_price", 0.0)))
             market_val = float(position["quantity"]) * last_price
@@ -393,8 +469,8 @@ class BacktestRunner:
         trades: list[dict[str, Any]] = []
         realized_holding_days: list[int] = []
         universe_lookup = {
-            str(payload["symbol"]): payload
-            for payload in scored_df.to_dict(orient="records")
+            str(row.symbol): row._asdict()
+            for row in scored_df.itertuples(index=False)
         }
         ordered_items = sorted(items, key=lambda item: 0 if item["action"] == "sell" else 1)
         for item in ordered_items:
@@ -565,7 +641,12 @@ class BacktestRunner:
         }
 
     def _mark_positions(self, *, positions: dict[str, dict[str, Any]], scored_df: pd.DataFrame) -> None:
-        price_lookup = {str(row["symbol"]): float(row["close_price"]) for _, row in scored_df.iterrows()}
+        price_lookup = dict(
+            zip(
+                scored_df["symbol"].astype(str).tolist(),
+                pd.to_numeric(scored_df["close_price"], errors="coerce").fillna(0.0).tolist(),
+            )
+        )
         for symbol, position in positions.items():
             if symbol in price_lookup:
                 position["last_price"] = price_lookup[symbol]
@@ -648,6 +729,8 @@ class BacktestRunner:
                 allocator.constraints.setdefault("selection", {})[path.split(".", 1)[1]] = value
             elif path.startswith("budget."):
                 allocator.constraints.setdefault("budget", {})[path.split(".", 1)[1]] = value
+            elif path.startswith("category_caps."):
+                allocator.constraints.setdefault("category_caps", {})[path.split(".", 1)[1]] = float(value)
             elif path.startswith("execution_overlay."):
                 self._apply_execution_overlay_override(decision_engine, path.split(".", 1)[1], value)
             elif path.startswith("category_heads."):

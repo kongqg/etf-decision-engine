@@ -58,6 +58,20 @@ FINAL_COMPONENTS = [
 
 
 class ExplanationTraceService:
+    """Build explanation payloads in the same order as the real decision pipeline.
+
+    Primary reason selection is deterministic:
+    1. If an ETF never entered candidate allocation, the earliest blocking stage wins
+       (score -> allocation -> replacement).
+    2. If candidate allocation passed but the execution gate rejected a new entry,
+       execution_gate becomes the primary reason.
+    3. For existing holdings in REDUCE/EXIT, position_state is the primary reason.
+    4. For executed actions, final_action becomes primary unless position_state is the
+       true driver of a reduce/exit.
+
+    show_blocks is derived from the same normalized stage model so the template only
+    renders sections that are actually relevant to the final action.
+    """
     def __init__(self) -> None:
         settings = get_settings()
         self.scoring_config = load_yaml_config(settings.config_dir / "strategy_scoring.yaml")
@@ -159,6 +173,16 @@ class ExplanationTraceService:
                 is_held=float(weight_payload.get("current_weight", 0.0) or 0.0) > 0,
                 preferences=preferences,
             )
+            decision_explanation = self._decision_explanation(
+                summary_card=summary_card,
+                score_payload=score_payload,
+                selection=selection,
+                allocation_row=allocation_row,
+                replacement=replacement,
+                execution_trace=execution_trace,
+                weight_payload=weight_payload,
+                action_item=action_item,
+            )
             natural_language_summary = self._natural_language_summary(
                 summary_card=summary_card,
                 selection=selection,
@@ -166,6 +190,7 @@ class ExplanationTraceService:
                 execution_trace=execution_trace,
                 comparison=comparison,
                 action_reason=str(action_item.get("reason_short", overlay_trace.get("reason_short", ""))),
+                primary_reason_text=str(decision_explanation.get("primary_reason_text", "")),
             )
             short_summary = str(action_item.get("reason_short", "")) or natural_language_summary
 
@@ -197,6 +222,11 @@ class ExplanationTraceService:
                     "decision_score_breakdown": decision_score_breakdown,
                     "allocation_trace": self._allocation_trace(allocation_row, selection, replacement),
                     "execution_trace": execution_trace,
+                    "primary_reason_stage": decision_explanation["primary_reason_stage"],
+                    "primary_reason_stage_label": decision_explanation["primary_reason_stage_label"],
+                    "primary_reason_text": decision_explanation["primary_reason_text"],
+                    "decision_ladder": decision_explanation["decision_ladder"],
+                    "show_blocks": decision_explanation["show_blocks"],
                     "natural_language_summary": natural_language_summary,
                 }
             )
@@ -297,12 +327,22 @@ class ExplanationTraceService:
         replacement: dict[str, Any],
         allocation: dict[str, Any],
     ) -> dict[str, Any]:
+        has_replacement_context = bool(replacement.get("incumbent_symbol") and replacement.get("candidate_symbol"))
+        hold_days = int((replacement.get("hold_days", 0) if has_replacement_context else action_item.get("hold_days", replacement.get("hold_days", 0))) or 0)
+        hold_days_known = bool(
+            has_replacement_context
+            or (
+                replacement.get("hold_days_known", False)
+                if has_replacement_context
+                else action_item.get("hold_days_known", replacement.get("hold_days_known", False))
+            )
+        )
         return {
             "replacement_symbol": str(action_item.get("replacement_symbol", replacement.get("candidate_symbol", replacement.get("incumbent_symbol", "")))),
             "score_gap_vs_holding": float(action_item.get("score_gap_vs_holding", replacement.get("score_gap", 0.0)) or 0.0),
             "replace_threshold_used": float(action_item.get("replace_threshold_used", allocation.get("replace_threshold", replacement.get("replace_threshold", 0.0))) or 0.0),
-            "hold_days": int(action_item.get("hold_days", replacement.get("hold_days", 0)) or 0),
-            "hold_days_known": bool(action_item.get("hold_days_known", replacement.get("hold_days_known", False))),
+            "hold_days": hold_days,
+            "hold_days_known": hold_days_known,
         }
 
     def _intra_score_breakdown(self, score_breakdown: dict[str, Any], score_payload: dict[str, Any]) -> dict[str, Any]:
@@ -451,6 +491,290 @@ class ExplanationTraceService:
             "final_action_calc": final_action_calc,
         }
 
+    def _decision_explanation(
+        self,
+        *,
+        summary_card: dict[str, Any],
+        score_payload: dict[str, Any],
+        selection: dict[str, Any],
+        allocation_row: dict[str, Any],
+        replacement: dict[str, Any],
+        execution_trace: dict[str, Any],
+        weight_payload: dict[str, Any],
+        action_item: dict[str, Any],
+    ) -> dict[str, Any]:
+        action_code = str(summary_card.get("final_action", "no_trade"))
+        category = str(summary_card.get("decision_category", ""))
+        is_money_etf = category == "money_etf"
+        current_weight = float(weight_payload.get("current_weight", 0.0) or 0.0)
+        normal_target_weight = float(weight_payload.get("normal_target_weight", 0.0) or 0.0)
+        effective_target_weight = float(weight_payload.get("effective_target_weight", 0.0) or 0.0)
+        is_held = current_weight > 0
+        raw_blocked_stage = str(selection.get("blocked_stage", ""))
+        blocked_reason = str(selection.get("blocked_reason", "")).strip()
+        entry_checks = execution_trace.get("entry_checks", {}) if isinstance(execution_trace.get("entry_checks", {}), dict) else {}
+        position_state = execution_trace.get("position_state", {}) if isinstance(execution_trace.get("position_state", {}), dict) else {}
+        switch_checks = execution_trace.get("switch_checks", {}) if isinstance(execution_trace.get("switch_checks", {}), dict) else {}
+        final_action_calc = execution_trace.get("final_action_calc", {}) if isinstance(execution_trace.get("final_action_calc", {}), dict) else {}
+        entry_allowed = bool(entry_checks.get("entry_allowed", False))
+        state = str(position_state.get("position_state", "NONE"))
+        replacement_relevant = bool(replacement.get("incumbent_symbol") and replacement.get("candidate_symbol"))
+        entered_candidate_pool = bool(selection.get("selected", False) or normal_target_weight > 0)
+        switch_relevant = bool(
+            replacement_relevant
+            and (
+                bool(switch_checks.get("switch_allowed", False))
+                or bool(switch_checks.get("switch_blocked", False))
+                or bool(switch_checks.get("switch_in", False))
+                or bool(switch_checks.get("switch_out", False))
+                or action_code == "switch"
+            )
+        )
+
+        primary_stage = "final_action"
+        primary_text = str(final_action_calc.get("action_reason", "") or action_item.get("reason_short", "")).strip()
+        if is_held and state in {"REDUCE", "EXIT"}:
+            primary_stage = "position_state"
+            primary_text = str(position_state.get("reason", "")).strip()
+        elif not entered_candidate_pool:
+            if raw_blocked_stage in {"final_score", "basic_filter"}:
+                primary_stage = "score"
+                primary_text = blocked_reason or "评分层没有通过，因此没有进入正式候选池。"
+            elif raw_blocked_stage == "replacement" and replacement_relevant:
+                primary_stage = "replacement"
+                primary_text = blocked_reason or "同类别旧持仓仍更占优，因此这只ETF没有完成替换。"
+            else:
+                primary_stage = "allocation"
+                primary_text = blocked_reason or "虽然评分不差，但没有拿到正式目标组合仓位。"
+        elif not is_held and not entry_allowed and not is_money_etf:
+            primary_stage = "execution_gate"
+            primary_text = str(final_action_calc.get("action_reason", "")).strip() or "评分和分仓层通过了，但执行层没有允许今天开仓。"
+        elif is_money_etf:
+            if action_code in {"buy_open", "buy_add"}:
+                primary_stage = "final_action"
+                primary_text = "当前市场仍偏防守，外部风险资产没有形成更好的可执行机会，因此把这只货币ETF作为防守停泊仓位。"
+            elif action_code == "no_trade":
+                primary_stage = "final_action"
+                primary_text = "当前仍处于防守观察阶段，货币ETF没有被提升为这次的主要执行动作。"
+        elif action_code in {"buy_open", "buy_add"}:
+            primary_stage = "final_action"
+            primary_text = "评分层和分仓层都通过了，而且执行层允许今天进场，因此形成正式买入动作。"
+        elif action_code == "switch":
+            primary_stage = "final_action"
+            primary_text = str(final_action_calc.get("action_reason", "")).strip() or "旧持仓已经转弱，新龙头通过入场条件，因此执行同类换仓。"
+        elif action_code == "hold" and is_held:
+            primary_stage = "position_state"
+            primary_text = str(position_state.get("reason", "")).strip() or "当前持仓趋势仍然健康，因此继续持有。"
+        elif action_code == "no_trade":
+            primary_stage = "final_action"
+            primary_text = str(final_action_calc.get("action_reason", "")).strip() or blocked_reason or "这次没有形成正式可执行动作。"
+
+        decision_ladder = self._build_decision_ladder(
+            summary_card=summary_card,
+            score_payload=score_payload,
+            selection=selection,
+            allocation_row=allocation_row,
+            replacement=replacement,
+            execution_trace=execution_trace,
+            weight_payload=weight_payload,
+            action_item=action_item,
+            entered_candidate_pool=entered_candidate_pool,
+            replacement_relevant=replacement_relevant,
+            is_money_etf=is_money_etf,
+            is_held=is_held,
+        )
+        show_blocks = self._derive_show_blocks(
+            primary_stage=primary_stage,
+            action_code=action_code,
+            is_money_etf=is_money_etf,
+            is_held=is_held,
+            entered_candidate_pool=entered_candidate_pool,
+            replacement_relevant=replacement_relevant,
+            switch_relevant=switch_relevant,
+            entry_allowed=entry_allowed,
+            normal_target_weight=normal_target_weight,
+            effective_target_weight=effective_target_weight,
+        )
+        return {
+            "primary_reason_stage": primary_stage,
+            "primary_reason_stage_label": self._stage_label(primary_stage),
+            "primary_reason_text": primary_text,
+            "decision_ladder": decision_ladder,
+            "show_blocks": show_blocks,
+        }
+
+    def _build_decision_ladder(
+        self,
+        *,
+        summary_card: dict[str, Any],
+        score_payload: dict[str, Any],
+        selection: dict[str, Any],
+        allocation_row: dict[str, Any],
+        replacement: dict[str, Any],
+        execution_trace: dict[str, Any],
+        weight_payload: dict[str, Any],
+        action_item: dict[str, Any],
+        entered_candidate_pool: bool,
+        replacement_relevant: bool,
+        is_money_etf: bool,
+        is_held: bool,
+    ) -> list[dict[str, Any]]:
+        ladder: list[dict[str, Any]] = []
+        final_score = float(score_payload.get("final_score", 0.0))
+        min_threshold = float(selection.get("min_final_score_for_target", self.min_final_score) or self.min_final_score)
+        filter_pass = bool(selection.get("filter_pass", False) if "filter_pass" in selection else True)
+        blocked_stage = str(selection.get("blocked_stage", ""))
+        blocked_reason = str(selection.get("blocked_reason", "")).strip()
+        ladder.append(
+            {
+                "stage": "score",
+                "status": "pass" if final_score >= min_threshold and filter_pass else "fail",
+                "title": "评分层",
+                "summary": (
+                    f"最终分 {final_score:.1f}，最低候选阈值 {min_threshold:.1f}，"
+                    f"全局排名 {int(score_payload.get('global_rank', 0) or 0)}，"
+                    f"类别排名 {int(score_payload.get('category_rank', 0) or 0)}。"
+                    if final_score >= min_threshold and filter_pass
+                    else blocked_reason or "评分层没有通过，未进入后续候选流程。"
+                ),
+            }
+        )
+
+        allocation_status = "pass" if entered_candidate_pool else ("fail" if blocked_stage in {"slot_limit", "budget"} or bool(allocation_row.get("below_min_position_weight", False)) else "info")
+        allocation_summary = (
+            f"拿到 normal_target_weight {float(allocation_row.get('normal_target_weight', 0.0)) * 100:.1f}% 的理论目标仓位。"
+            if entered_candidate_pool
+            else blocked_reason
+            or ("理论仓位低于最小持仓权重，因此没有形成正式目标组合。" if bool(allocation_row.get("below_min_position_weight", False)) else "没有进入正式目标组合分配。")
+        )
+        ladder.append(
+            {
+                "stage": "allocation",
+                "status": allocation_status,
+                "title": "候选与分仓层",
+                "summary": allocation_summary,
+            }
+        )
+
+        if replacement_relevant:
+            replace_allowed = bool(replacement.get("replace_allowed", False))
+            hold_days_known = bool(replacement.get("hold_days_known", False) or replacement.get("incumbent_symbol"))
+            hold_days_text = str(int(replacement.get("hold_days", 0) or 0)) if hold_days_known else "未知"
+            ladder.append(
+                {
+                    "stage": "replacement",
+                    "status": "pass" if replace_allowed else "fail",
+                    "title": "同类别替换层",
+                    "summary": (
+                        f"与旧持仓 {replacement.get('incumbent_symbol', '-')} 比较，分差 {float(replacement.get('score_gap', 0.0)):.1f}，"
+                        f"替换阈值 {float(replacement.get('replace_threshold', 0.0)):.1f}，持有天数 {hold_days_text}。"
+                        if replace_allowed
+                        else str(replacement.get("blocked_reason", "")) or "同类别旧持仓仍占优，暂不替换。"
+                    ),
+                }
+            )
+
+        entry_checks = execution_trace.get("entry_checks", {}) if isinstance(execution_trace.get("entry_checks", {}), dict) else {}
+        if entered_candidate_pool:
+            if is_money_etf:
+                ladder.append(
+                    {
+                        "stage": "execution_gate",
+                        "status": "info",
+                        "title": "执行门禁层",
+                        "summary": "货币ETF按防守停泊逻辑解释，主因不是突破买点，而是外部机会成本和市场防守状态。",
+                    }
+                )
+            else:
+                entry_allowed = bool(entry_checks.get("entry_allowed", False))
+                ladder.append(
+                    {
+                        "stage": "execution_gate",
+                        "status": "pass" if entry_allowed else "fail",
+                        "title": "执行门禁层",
+                        "summary": (
+                            f"入场通道 {ENTRY_CHANNEL_LABELS.get(str(entry_checks.get('entry_channel', 'none')), str(entry_checks.get('entry_channel', 'none')))} 通过，因此允许执行层继续开仓/加仓。"
+                            if entry_allowed
+                            else str(action_item.get("reason_short", "")) or "执行层没有允许今天开仓。"
+                        ),
+                    }
+                )
+
+        position_state = execution_trace.get("position_state", {}) if isinstance(execution_trace.get("position_state", {}), dict) else {}
+        if is_held:
+            state = str(position_state.get("position_state", "NONE"))
+            ladder.append(
+                {
+                    "stage": "position_state",
+                    "status": "pass" if state == "HOLD" else "fail",
+                    "title": "持仓管理层",
+                    "summary": str(position_state.get("reason", "")) or "当前持仓进入状态管理层。",
+                }
+            )
+        else:
+            ladder.append(
+                {
+                    "stage": "position_state",
+                    "status": "info",
+                    "title": "持仓管理层",
+                    "summary": "当前未持有，因此这一层不参与裁决。",
+                }
+            )
+
+        final_action_calc = execution_trace.get("final_action_calc", {}) if isinstance(execution_trace.get("final_action_calc", {}), dict) else {}
+        ladder.append(
+            {
+                "stage": "final_action",
+                "status": "pass" if str(summary_card.get("final_action", "no_trade")) != "no_trade" else "info",
+                "title": "最终动作层",
+                "summary": (
+                    f"当前仓位 {float(weight_payload.get('current_weight', 0.0)) * 100:.1f}% ，"
+                    f"执行仓位 {float(weight_payload.get('effective_target_weight', 0.0)) * 100:.1f}% ，"
+                    f"最终动作是 {ACTION_CODE_LABELS.get(str(summary_card.get('final_action', 'no_trade')), str(summary_card.get('final_action', 'no_trade')))}。"
+                ),
+            }
+        )
+        return ladder
+
+    def _derive_show_blocks(
+        self,
+        *,
+        primary_stage: str,
+        action_code: str,
+        is_money_etf: bool,
+        is_held: bool,
+        entered_candidate_pool: bool,
+        replacement_relevant: bool,
+        switch_relevant: bool,
+        entry_allowed: bool,
+        normal_target_weight: float,
+        effective_target_weight: float,
+    ) -> dict[str, bool]:
+        score_relevant = primary_stage in {"score", "allocation", "replacement"} or action_code in {"buy_open", "buy_add", "sell_reduce", "sell_exit", "switch"}
+        allocation_relevant = primary_stage in {"allocation", "replacement", "final_action"} or normal_target_weight > 0
+        return {
+            "feature_snapshot": score_relevant or primary_stage in {"execution_gate", "position_state"},
+            "score_breakdown": score_relevant,
+            "allocation_trace": allocation_relevant,
+            "replacement_trace": replacement_relevant and primary_stage in {"replacement", "final_action", "position_state"},
+            "entry_checks": (not is_money_etf) and entered_candidate_pool and (primary_stage == "execution_gate" or action_code in {"buy_open", "buy_add", "switch"} or entry_allowed),
+            "position_state": is_held,
+            "switch_checks": replacement_relevant and switch_relevant,
+            "target_weight_adjustment": is_held or action_code in {"buy_open", "buy_add", "sell_reduce", "sell_exit", "switch"} or abs(normal_target_weight - effective_target_weight) > 1e-9,
+            "final_action_calc": True,
+            "head_formulas": primary_stage == "score",
+        }
+
+    def _stage_label(self, stage: str) -> str:
+        return {
+            "score": "评分层",
+            "allocation": "候选与分仓层",
+            "replacement": "同类别替换层",
+            "execution_gate": "执行门禁层",
+            "position_state": "持仓管理层",
+            "final_action": "最终动作层",
+        }.get(stage, stage)
+
     def _legacy_execution_overlay(self, overlay_trace: dict[str, Any], action_item: dict[str, Any]) -> dict[str, Any]:
         rationale = overlay_trace.get("rationale", {})
         if isinstance(action_item.get("rationale", {}), dict):
@@ -468,8 +792,10 @@ class ExplanationTraceService:
         execution_trace: dict[str, Any],
         comparison: dict[str, Any],
         action_reason: str,
+        primary_reason_text: str,
     ) -> str:
         action_code = str(summary_card.get("final_action", "no_trade"))
+        category = str(summary_card.get("decision_category", ""))
         final_score = float(summary_card.get("final_score", 0.0))
         decision_score = float(summary_card.get("decision_score", 0.0))
         effective_target_weight = float(summary_card.get("effective_target_weight", 0.0)) * 100
@@ -477,6 +803,14 @@ class ExplanationTraceService:
         entry_checks = execution_trace.get("entry_checks", {}) if isinstance(execution_trace.get("entry_checks", {}), dict) else {}
         entry_allowed = bool(entry_checks.get("entry_allowed", False))
         entry_channel = ENTRY_CHANNEL_LABELS.get(str(summary_card.get("entry_channel", "none")), str(summary_card.get("entry_channel", "none")))
+        if category == "money_etf":
+            if action_code in {"buy_open", "buy_add"}:
+                return (
+                    f"这只货币ETF这次承担的是防守停泊角色。当前市场更偏防守，"
+                    f"外部风险资产没有形成更强的可执行机会，因此系统给了它 {effective_target_weight:.1f}% 的有效仓位。"
+                )
+            if action_code in {"hold", "no_trade"}:
+                return primary_reason_text or "当前仍处于防守观察阶段，货币ETF按停泊仓位逻辑处理。"
         if action_code in {"buy_open", "buy_add", "switch"}:
             return (
                 f"该 ETF 最终被选中，是因为最终分 {final_score:.1f}、执行决策分 {decision_score:.1f}，"

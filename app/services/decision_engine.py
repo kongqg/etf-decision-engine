@@ -305,6 +305,7 @@ class DecisionEngine:
         allocation: dict[str, Any],
         portfolio_summary: dict[str, Any],
         preferences: Any,
+        prepared_overlay: pd.DataFrame | None = None,
     ) -> list[dict[str, Any]]:
         total_asset = float(portfolio_summary.get("total_asset", 0.0))
         min_trade_amount = self.execution_cost_service.effective_min_trade_amount(getattr(preferences, "min_trade_amount", 0.0))
@@ -316,6 +317,7 @@ class DecisionEngine:
             preferences=preferences,
             policy=self.policy,
             min_trade_amount=min_trade_amount,
+            prepared_overlay=prepared_overlay,
         )
         allocation["effective_target_weights"] = overlay["effective_target_weights"]
         allocation["overlay_rows"] = overlay["overlay_rows"]
@@ -341,8 +343,8 @@ class DecisionEngine:
             preferences=preferences,
         )
         overlay_hints = {
-            str(row["symbol"]): row.to_dict()
-            for _, row in prepared_overlay.iterrows()
+            str(row.symbol): row._asdict()
+            for row in prepared_overlay.itertuples(index=False)
         }
 
         for _ in range(max_rounds):
@@ -361,6 +363,7 @@ class DecisionEngine:
                 allocation=allocation,
                 portfolio_summary=portfolio_summary,
                 preferences=preferences,
+                prepared_overlay=prepared_overlay,
             )
             newly_blocked = self._non_executable_selected_candidate_reasons(allocation)
             delta = {symbol: reason for symbol, reason in newly_blocked.items() if symbol not in blocked_candidate_reasons}
@@ -422,7 +425,12 @@ class DecisionEngine:
         incumbents = [row for row in current_holdings if row.get("category") == category and row["symbol"] != symbol]
         if not incumbents:
             return "", 0.0
-        scored_lookup = {str(row["symbol"]): float(row["final_score"]) for _, row in scored_df.iterrows()}
+        scored_lookup = dict(
+            zip(
+                scored_df["symbol"].astype(str).tolist(),
+                pd.to_numeric(scored_df["final_score"], errors="coerce").fillna(0.0).tolist(),
+            )
+        )
         best = max(incumbents, key=lambda item: scored_lookup.get(str(item["symbol"]), 0.0))
         gap = scored_lookup.get(symbol, 0.0) - scored_lookup.get(str(best["symbol"]), 0.0)
         return str(best["symbol"]), float(gap)
@@ -680,6 +688,9 @@ class DecisionEngine:
                     "latest_row_date": row.latest_row_date,
                     "anomaly_flag": row.anomaly_flag,
                     "min_avg_amount": getattr(universe, "min_avg_amount", 0.0),
+                    "lot_size": getattr(universe, "lot_size", 100.0),
+                    "fee_rate": getattr(universe, "fee_rate", 0.0003),
+                    "min_fee": getattr(universe, "min_fee", 1.0),
                     "close_price": row.close_price,
                     "latest_amount": row.latest_amount,
                     "avg_amount_20d": row.avg_amount_20d,

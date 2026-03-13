@@ -45,6 +45,7 @@ def test_explanation_page_renders_key_sections():
                 "summary_card": {
                     "name": "沪深300ETF",
                     "symbol": "510300",
+                    "decision_category": "stock_etf",
                     "decision_category_label": "股票ETF",
                     "final_action_label": "开仓买入",
                     "effective_target_weight": 0.2,
@@ -52,6 +53,27 @@ def test_explanation_page_renders_key_sections():
                     "final_score": 75.1,
                     "entry_channel_label": "通道A：回撤后反弹",
                     "market_regime": "偏进攻",
+                },
+                "primary_reason_stage_label": "最终动作层",
+                "primary_reason_text": "评分层和分仓层都通过了，而且执行层允许今天进场，因此形成正式买入动作。",
+                "decision_ladder": [
+                    {"title": "评分层", "status": "pass", "summary": "最终分 75.1，最低候选阈值 55.0，全局排名 1，类别排名 1。"},
+                    {"title": "候选与分仓层", "status": "pass", "summary": "拿到 normal_target_weight 20.0% 的理论目标仓位。"},
+                    {"title": "执行门禁层", "status": "pass", "summary": "入场通道 通道A：回撤后反弹 通过，因此允许执行层继续开仓/加仓。"},
+                    {"title": "持仓管理层", "status": "info", "summary": "当前未持有，因此这一层不参与裁决。"},
+                    {"title": "最终动作层", "status": "pass", "summary": "当前仓位 0.0%，执行仓位 20.0%，最终动作是开仓买入。"},
+                ],
+                "show_blocks": {
+                    "feature_snapshot": True,
+                    "score_breakdown": True,
+                    "allocation_trace": True,
+                    "replacement_trace": False,
+                    "entry_checks": True,
+                    "position_state": False,
+                    "switch_checks": False,
+                    "target_weight_adjustment": True,
+                    "final_action_calc": True,
+                    "head_formulas": False,
                 },
                 "feature_snapshot": {
                     "close_price": 4.213,
@@ -135,12 +157,15 @@ def test_explanation_page_renders_key_sections():
     html = _render_explanation(explanation)
 
     assert "顶部摘要卡" in html
+    assert "决策阶梯" in html
+    assert "主原因：" in html
     assert "单票分拆解" in html
     assert "仓位分配卡" in html
     assert "最终动作卡" in html
     assert "510300" in html
     assert "momentum_20d &gt; 0" in html
     assert "因此最终动作 = buy_open" in html
+    assert "换仓判断" not in html
 
 
 def test_explanation_page_gracefully_degrades_for_legacy_payload():
@@ -160,6 +185,7 @@ def test_explanation_page_gracefully_degrades_for_legacy_payload():
                 "summary_card": {
                     "name": "黄金ETF",
                     "symbol": "518880",
+                    "decision_category": "gold_etf",
                     "decision_category_label": "黄金ETF",
                     "final_action_label": "暂不交易",
                     "effective_target_weight": 0.0,
@@ -167,6 +193,21 @@ def test_explanation_page_gracefully_degrades_for_legacy_payload():
                     "final_score": 61.0,
                     "entry_channel_label": "无",
                     "market_regime": "中性",
+                },
+                "primary_reason_stage_label": "最终动作层",
+                "primary_reason_text": "旧记录未保存完整链路，但仍可查看结论。",
+                "decision_ladder": [],
+                "show_blocks": {
+                    "feature_snapshot": False,
+                    "score_breakdown": True,
+                    "allocation_trace": False,
+                    "replacement_trace": False,
+                    "entry_checks": False,
+                    "position_state": False,
+                    "switch_checks": False,
+                    "target_weight_adjustment": False,
+                    "final_action_calc": True,
+                    "head_formulas": False,
                 },
                 "feature_snapshot": {"tradability_mode": "t1"},
                 "intra_score_breakdown": {"formula": "单票分 = ...", "available": False, "intra_score": 0.0, "components": []},
@@ -183,3 +224,62 @@ def test_explanation_page_gracefully_degrades_for_legacy_payload():
     html = _render_explanation(explanation)
 
     assert "旧记录未保存这一层的分项贡献" in html
+
+
+def test_money_etf_page_uses_defensive_wording():
+    explanation = {
+        "overall": {
+            "headline": "当前偏防守",
+            "market_regime": "偏防守",
+            "reasons": ["测试原因"],
+            "portfolio": {"current_position_pct": 0.3, "cash_balance": 70000.0},
+            "budget": {"total_budget_pct": 0.3, "single_weight_cap": 0.3},
+            "candidate_summary": [],
+        },
+        "items": [
+            {
+                "symbol": "511990",
+                "summary": "作为防守停泊仓位处理。",
+                "summary_card": {
+                    "name": "华宝添益",
+                    "symbol": "511990",
+                    "decision_category": "money_etf",
+                    "decision_category_label": "货币ETF",
+                    "final_action_label": "开仓买入",
+                    "effective_target_weight": 0.3,
+                    "decision_score": 61.0,
+                    "final_score": 66.0,
+                    "entry_channel_label": "无",
+                    "market_regime": "偏防守",
+                },
+                "primary_reason_stage_label": "最终动作层",
+                "primary_reason_text": "当前市场仍偏防守，外部风险资产没有形成更好的可执行机会，因此把这只货币ETF作为防守停泊仓位。",
+                "decision_ladder": [{"title": "执行门禁层", "status": "info", "summary": "货币ETF按防守停泊逻辑解释，主因不是突破买点，而是外部机会成本和市场防守状态。"}],
+                "show_blocks": {
+                    "feature_snapshot": False,
+                    "score_breakdown": False,
+                    "allocation_trace": True,
+                    "replacement_trace": False,
+                    "entry_checks": False,
+                    "position_state": False,
+                    "switch_checks": False,
+                    "target_weight_adjustment": True,
+                    "final_action_calc": True,
+                    "head_formulas": False,
+                },
+                "feature_snapshot": {"tradability_mode": "t0"},
+                "intra_score_breakdown": {"formula": "单票分 = ...", "available": False, "intra_score": 0.0, "components": []},
+                "category_score_breakdown": {"formula": "类别分 = ...", "available": False, "category_score": 0.0, "top_mean_intrascore": 0.0, "breadth_score": 0.0, "category_momentum_score": 0.0, "components": []},
+                "final_score_breakdown": {"formula": "最终分 = ...", "final_score": 66.0, "decision_score": 61.0, "global_rank": 1, "category_rank": 1, "minimum_candidate_threshold": 55.0, "meets_minimum_candidate_threshold": True, "entered_candidate_pool": True, "eliminated_stage": "", "eliminated_reason": "", "components": []},
+                "allocation_trace": {"total_budget_pct": 0.3, "single_weight_cap": 0.3, "category_cap": 0.3, "provisional_weight": 0.3, "normal_target_weight": 0.3, "cap_applied": False, "cap_reasons": [], "protected": False, "protected_reasons": [], "selected_for_allocation": True, "selected_reason": "作为防守停泊仓位进入组合。", "blocked_reason": "", "replacement_trace": {}},
+                "execution_trace": {"entry_checks": {}, "position_state": {}, "switch_checks": {}, "target_weight_adjustment": {"reason_steps": []}, "final_action_calc": {"current_weight": 0.0, "effective_target_weight": 0.3, "delta_weight": 0.3, "total_asset": 100000.0, "target_amount": 30000.0, "delta_amount": 30000.0, "min_trade_amount": 1000.0, "rebalance_band": 0.05, "min_trade_blocked": False, "action_reason": "作为防守停泊仓位执行。", "reason_steps": []}},
+                "natural_language_summary": "这只货币ETF这次承担的是防守停泊角色。",
+                "weights": {"current_weight": 0.0, "normal_target_weight": 0.3, "effective_target_weight": 0.3},
+            }
+        ],
+    }
+
+    html = _render_explanation(explanation)
+
+    assert "防守停泊仓位" in html
+    assert "通道B：强趋势突破" not in html

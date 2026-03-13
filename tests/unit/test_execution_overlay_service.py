@@ -149,6 +149,34 @@ def test_pullback_but_still_falling_does_not_open():
     assert result["overlay_rows"]["AAA"]["entry_allowed"] is False
 
 
+def test_new_open_is_blocked_when_target_amount_cannot_cover_one_lot():
+    frame = pd.DataFrame(
+        [
+            _base_row(
+                close_price=20.0,
+                ma5=19.2,
+                ma10=18.9,
+                ma20=18.5,
+                drawdown_20d=-4.0,
+                momentum_3d=1.0,
+                momentum_5d=2.5,
+                momentum_10d=4.0,
+                momentum_20d=7.0,
+            )
+        ]
+    )
+
+    result = _build_items(frame, target_weights={"AAA": 0.40}, total_asset=3000.0)
+
+    assert result["items"] == []
+    assert result["overlay_traces"]["AAA"]["action_code"] == "no_trade"
+    assert result["overlay_traces"]["AAA"]["affordable_now"] is False
+    assert result["overlay_traces"]["AAA"]["min_order_amount"] > 1200.0
+    assert "至少需要" in result["overlay_traces"]["AAA"]["reason_short"]
+    final_steps = result["overlay_traces"]["AAA"]["execution_trace"]["final_action_calc"]["reason_steps"]
+    assert any("一手门槛" in step["condition"] for step in final_steps)
+
+
 def test_reduce_when_trend_weakens_but_not_fully_broken():
     frame = pd.DataFrame([_base_row(close_price=99.0, ma20=100.0, momentum_20d=6.0)])
     current_holdings = [

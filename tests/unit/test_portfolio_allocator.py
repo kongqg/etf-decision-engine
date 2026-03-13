@@ -149,8 +149,10 @@ def test_allocator_skips_execution_blocked_candidate_and_backfills_next_slot():
 
 def test_allocator_allows_replacement_when_incumbent_is_reduce_and_candidate_entry_allowed():
     allocator = PortfolioAllocator()
-    allocator.constraints["selection"]["max_selected_total"] = 2
-    allocator.constraints["selection"]["max_selected_per_category"] = 2
+    allocator.constraints["selection"]["max_selected_total"] = 1
+    allocator.constraints["selection"]["max_selected_per_category"] = 1
+    allocator.constraints["selection"]["hold_guard_global_rank"] = 1
+    allocator.constraints["selection"]["hold_guard_category_rank"] = 1
     allocator.constraints["selection"]["replace_threshold"] = 10.0
     allocator.constraints["selection"]["min_hold_days_before_replace"] = 5
     allocator.scoring_config["selection"]["min_final_score_for_target"] = 0.0
@@ -177,6 +179,39 @@ def test_allocator_allows_replacement_when_incumbent_is_reduce_and_candidate_ent
         },
     )
 
-    assert "NEW" in allocation["target_weights"]
+    assert list(allocation["target_weights"]) == ["NEW"]
     assert allocation["replacement_trace"]["NEW"]["replace_allowed"] is True
     assert allocation["replacement_trace"]["NEW"]["state_based_replace_allowed"] is True
+
+
+def test_allocator_allows_same_category_addition_when_category_slots_remain():
+    allocator = PortfolioAllocator()
+    allocator.constraints["selection"]["max_selected_total"] = 4
+    allocator.constraints["selection"]["max_selected_per_category"] = 3
+    allocator.constraints["selection"]["replace_threshold"] = 10.0
+    allocator.constraints["selection"]["min_hold_days_before_replace"] = 5
+    allocator.scoring_config["selection"]["min_final_score_for_target"] = 0.0
+
+    scored_df = pd.DataFrame(
+        [
+            {"symbol": "NEW1", "name": "New1", "decision_category": "stock_etf", "final_score": 70.0, "intra_score": 75.0, "category_score": 50.0, "global_rank": 1, "category_rank": 1, "filter_pass": True},
+            {"symbol": "NEW2", "name": "New2", "decision_category": "stock_etf", "final_score": 61.4, "intra_score": 66.0, "category_score": 49.0, "global_rank": 2, "category_rank": 2, "filter_pass": True},
+            {"symbol": "OLD", "name": "Old", "decision_category": "stock_etf", "final_score": 56.0, "intra_score": 58.0, "category_score": 49.0, "global_rank": 3, "category_rank": 3, "filter_pass": True},
+        ]
+    )
+    current_holdings = [
+        {"symbol": "OLD", "name": "Old", "category": "stock_etf", "current_weight": 0.20, "current_amount": 20000.0, "hold_days": 1, "hold_days_known": True},
+    ]
+
+    allocation = allocator.build_target_portfolio(
+        scored_df,
+        current_holdings=current_holdings,
+        preferences=_preferences(),
+        market_regime=_market_regime(),
+        risk_mode="balanced",
+    )
+
+    assert {"NEW1", "NEW2"}.issubset(set(allocation["target_weights"]))
+    assert allocation["selection_trace"]["NEW2"]["selected"] is True
+    assert allocation["selection_trace"]["NEW2"]["selected_reason"] == "同类别仍有新增名额，因此按并存新增进入目标组合候选。"
+    assert "NEW2" not in allocation["replacement_trace"]
